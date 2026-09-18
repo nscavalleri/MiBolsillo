@@ -8,7 +8,7 @@ import { cargarTodo } from './data-service.js';
 
 // Valores por defecto al agregar un gasto nuevo (no se aplican al editar).
 const MONEDA_POR_DEFECTO = "Euros";
-const ORIGEN_POR_DEFECTO = "BBVA";
+const ORIGEN_POR_DEFECTO = "Efectivo";
 
 export function poblarSelects() {
   const selConcepto = document.getElementById("concepto");
@@ -39,7 +39,7 @@ export function abrirModal(id) {
     state.tipoActual = "egreso";
     document.getElementById("fecha").valueAsDate = new Date();
     poblarSelects();
-    // Defaults para un gasto nuevo: Euros / BBVA (si existen y están activos).
+    // Defaults para un gasto nuevo: Euros / Efectivo (si existen y están activos).
     const monedaDefault = state.monedas.find(mo => mo.nombre === MONEDA_POR_DEFECTO);
     const origenDefault = state.origenes.find(o => o.nombre === ORIGEN_POR_DEFECTO);
     if (monedaDefault) document.getElementById("moneda").value = monedaDefault.id;
@@ -66,6 +66,18 @@ export function setupModal() {
       btn.classList.add("active");
       state.tipoActual = btn.dataset.tipo;
     });
+  });
+
+  // Enter en cualquier campo del modal agrega el movimiento, siempre que
+  // "Cantidad" ya tenga un valor cargado (si falta algún campo obligatorio,
+  // requestSubmit() dispara la validación nativa del navegador igual que
+  // al tocar "Guardar").
+  document.getElementById("formMovimiento").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const monto = document.getElementById("monto").value;
+    if (!monto) return;
+    e.preventDefault();
+    document.getElementById("formMovimiento").requestSubmit();
   });
 
   document.getElementById("formMovimiento").addEventListener("submit", async (e) => {
