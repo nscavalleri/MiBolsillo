@@ -75,7 +75,9 @@ export function setupModal() {
       tipo: state.tipoActual,
       descripcion: document.getElementById("descripcion").value,
       monto: Number(document.getElementById("monto").value),
-      // concepto_id / moneda_id / origen_id son uuid (texto), no números: no se convierten.
+      // concepto_id / moneda_id / origen_id son bigint, pero llegan como texto
+      // desde el <select> (su .value siempre es string); no hace falta
+      // convertirlos con Number(), Postgres los interpreta igual al guardar.
       concepto_id: document.getElementById("concepto").value,
       moneda_id: document.getElementById("moneda").value,
       origen_id: document.getElementById("origen").value,

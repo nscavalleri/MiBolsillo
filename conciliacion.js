@@ -87,7 +87,8 @@ export function renderConciliacion() {
 
   tabla.querySelectorAll("input[type=\"checkbox\"]").forEach(chk => {
     chk.addEventListener("change", async () => {
-      // origen_id / moneda_id son uuid (texto), no números.
+      // origen_id / moneda_id son bigint, pero llegan como texto desde el
+      // dataset del checkbox; no hace falta convertirlos con Number().
       const origenId = chk.dataset.origenId;
       const monedaId = chk.dataset.monedaId;
       const marcado = chk.checked;
@@ -121,7 +122,7 @@ export function setupConciliacion() {
         if (v === undefined) return;
         filas.push({
           mes,
-          // origen_id / moneda_id son uuid (texto), no números.
+          // origen_id / moneda_id son bigint, pero llegan como texto acá.
           origen_id: origenId,
           moneda_id: monedaId,
           monto: v,
