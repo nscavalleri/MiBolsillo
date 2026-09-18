@@ -293,7 +293,7 @@
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwcm5ma3V1YXdmaXJ3c213anpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MjMxMjMsImV4cCI6MjEwNTI5OTEyM30.Ufz3J0EqaDR8ioe5tSv2qSK4f62h5bvc2eSFcJbDgUc";
   // ====================================================================================
 
-  let supabase = null;
+  let supabaseClient = null;
   let conceptos = [], monedas = [], origenes = [], movimientos = [];
   let tipoActual = "egreso";
   let editandoId = null;
@@ -303,13 +303,13 @@
       document.getElementById("configWarning").style.display = "block";
       return false;
     }
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     return true;
   }
 
   // ---------- LOGIN / SESIÓN ----------
   async function mostrarSegunSesion() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
       document.getElementById("loginView").style.display = "none";
       document.getElementById("appView").style.display = "block";
@@ -325,7 +325,7 @@
     const password = document.getElementById("loginPassword").value;
     const errEl = document.getElementById("loginError");
     errEl.style.display = "none";
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
       errEl.textContent = "No se pudo iniciar sesión: " + error.message;
       errEl.style.display = "block";
@@ -335,7 +335,7 @@
   });
 
   document.getElementById("btnLogout").addEventListener("click", async () => {
-    await supabase.auth.signOut();
+    await supabaseClient.auth.signOut();
     await mostrarSegunSesion();
   });
 
@@ -353,10 +353,10 @@
   // ---------- CARGA DE DATOS ----------
   async function cargarTodo() {
     const [c, m, o, mv] = await Promise.all([
-      supabase.from("conceptos").select("*").order("nombre"),
-      supabase.from("monedas").select("*").order("nombre"),
-      supabase.from("origenes").select("*").order("nombre"),
-      supabase.from("movimientos").select("*").order("fecha", { ascending: false })
+      supabaseClient.from("conceptos").select("*").order("nombre"),
+      supabaseClient.from("monedas").select("*").order("nombre"),
+      supabaseClient.from("origenes").select("*").order("nombre"),
+      supabaseClient.from("movimientos").select("*").order("fecha", { ascending: false })
     ]);
     conceptos = c.data || [];
     monedas = m.data || [];
@@ -440,7 +440,7 @@
 
   async function borrarMovimiento(id) {
     if (!confirm("¿Borrar este movimiento?")) return;
-    const { error } = await supabase.from("movimientos").delete().eq("id", id);
+    const { error } = await supabaseClient.from("movimientos").delete().eq("id", id);
     if (error) { alert("Error borrando: " + error.message); return; }
     await cargarTodo();
   }
@@ -466,7 +466,7 @@
     el.querySelectorAll("[data-toggle]").forEach(chk => {
       chk.addEventListener("change", async () => {
         const [tab, id] = chk.dataset.toggle.split(":");
-        const { error } = await supabase.from(tab).update({ activo: chk.checked }).eq("id", id);
+        const { error } = await supabaseClient.from(tab).update({ activo: chk.checked }).eq("id", id);
         if (error) { alert("Error: " + error.message); return; }
         await cargarTodo();
       });
@@ -475,7 +475,7 @@
       btn.addEventListener("click", async () => {
         if (!confirm("¿Eliminar esta opción? Los movimientos ya cargados no se van a borrar.")) return;
         const [tab, id] = btn.dataset.eliminar.split(":");
-        const { error } = await supabase.from(tab).delete().eq("id", id);
+        const { error } = await supabaseClient.from(tab).delete().eq("id", id);
         if (error) { alert("Error: " + error.message); return; }
         await cargarTodo();
       });
@@ -488,7 +488,7 @@
       const input = document.getElementById(btn.dataset.input);
       const nombre = input.value.trim();
       if (!nombre) return;
-      const { error } = await supabase.from(tabla).insert({ nombre });
+      const { error } = await supabaseClient.from(tabla).insert({ nombre });
       if (error) { alert("Error agregando: " + error.message); return; }
       input.value = "";
       await cargarTodo();
@@ -562,9 +562,9 @@
 
     let error;
     if (editandoId) {
-      ({ error } = await supabase.from("movimientos").update(payload).eq("id", editandoId));
+      ({ error } = await supabaseClient.from("movimientos").update(payload).eq("id", editandoId));
     } else {
-      ({ error } = await supabase.from("movimientos").insert(payload));
+      ({ error } = await supabaseClient.from("movimientos").insert(payload));
     }
     if (error) { alert("Error guardando: " + error.message); return; }
     cerrarModal();
@@ -573,7 +573,7 @@
 
   // ---------- INICIALIZACIÓN ----------
   if (initSupabase()) {
-    supabase.auth.onAuthStateChange(() => mostrarSegunSesion());
+    supabaseClient.auth.onAuthStateChange(() => mostrarSegunSesion());
     mostrarSegunSesion();
   }
 </script>
