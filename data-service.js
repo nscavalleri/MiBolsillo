@@ -10,6 +10,7 @@ import { renderPivot } from './dashboard.js';
 import { renderMovimientos, poblarFiltros } from './gastos.js';
 import { renderConfigLista } from './configuracion.js';
 import { poblarSelects } from './modal.js';
+import { renderConciliacion } from './conciliacion.js';
 
 function ordenarMovimientos(lista) {
   // Más nuevo primero: por fecha descendente y, si coinciden, por
@@ -23,14 +24,15 @@ function ordenarMovimientos(lista) {
 
 export async function cargarTodo() {
   const supabaseClient = getClient();
-  const [c, m, o, mv] = await Promise.all([
+  const [c, m, o, mv, cc] = await Promise.all([
     supabaseClient.from("conceptos").select("*").order("nombre"),
     supabaseClient.from("monedas").select("*").order("nombre"),
     supabaseClient.from("origenes").select("*").order("nombre"),
     supabaseClient.from("movimientos").select("*").order("fecha", { ascending: false }).order("created_at", { ascending: false }),
+    supabaseClient.from("conciliacion_checks").select("*"),
   ]);
 
-  const errores = [c.error, m.error, o.error, mv.error].filter(Boolean);
+  const errores = [c.error, m.error, o.error, mv.error, cc.error].filter(Boolean);
   const errEl = document.getElementById("loadError");
   if (errores.length > 0) {
     console.error("Error cargando datos de Supabase:", errores);
@@ -47,6 +49,13 @@ export async function cargarTodo() {
   // resguardo: así el criterio de "más nuevo primero" queda garantizado
   // sin depender únicamente de lo que devuelva la base de datos.
   state.movimientos = ordenarMovimientos(mv.data || []);
+
+  // Estado de los tildes de conciliación en curso, indexado por "origen::moneda".
+  state.conciliacionChecks = {};
+  (cc.data || []).forEach(row => {
+    state.conciliacionChecks[row.origen + "::" + row.moneda] = !!row.conciliado;
+  });
+
   renderTodo();
 }
 
@@ -58,4 +67,5 @@ function renderTodo() {
   renderConfigLista("origenes", state.origenes, "listaOrigenes");
   poblarSelects();
   poblarFiltros();
+  renderConciliacion();
 }

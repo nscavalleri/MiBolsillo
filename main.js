@@ -6,12 +6,14 @@ import { setupAuth, mostrarSegunSesion } from './auth.js';
 import { setupFiltros } from './gastos.js';
 import { setupAddItemRows } from './configuracion.js';
 import { setupModal } from './modal.js';
+import { setupConciliacion } from './conciliacion.js';
 
 setupAllTabs();
 setupAuth();
 setupFiltros();
 setupAddItemRows();
 setupModal();
+setupConciliacion();
 
 if (initSupabase()) {
   getClient().auth.onAuthStateChange(() => mostrarSegunSesion());

@@ -11,4 +11,9 @@ export const state = {
   tipoActual: "egreso",
   editandoId: null,
   filtros: { mes: "", tipo: "", concepto: "", origen: "", moneda: "" },
+  // Estado de los tildes de conciliación en curso (todavía no cerrado con
+  // "Conciliar mes"). Clave "origen::moneda" -> true/false. Se guarda en la
+  // tabla conciliacion_checks para no perderlo si se recarga la página o se
+  // sigue tildando otro día dentro del mismo mes.
+  conciliacionChecks: {},
 };
