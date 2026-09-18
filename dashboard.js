@@ -1,37 +1,41 @@
 // Dashboard > Snapshot: tabla pivot de saldo por Origen x Moneda.
+// Los movimientos guardan origen_id / moneda_id (claves foráneas); acá se
+// agrupa por esos ids y se resuelve el nombre a mostrar con lookups.js.
 
 import { state } from './state.js';
+import { nombreOrigen, nombreMoneda } from './lookups.js';
 
 export function renderPivot() {
   const pivot = {};
-  const monedasUsadas = new Set();
+  const monedaIdsUsadas = new Set();
   state.movimientos.forEach(m => {
     const signo = m.tipo === "ingreso" ? 1 : -1;
     const val = signo * Number(m.monto);
-    if (!pivot[m.origen]) pivot[m.origen] = {};
-    pivot[m.origen][m.moneda] = (pivot[m.origen][m.moneda] || 0) + val;
-    monedasUsadas.add(m.moneda);
+    if (!pivot[m.origen_id]) pivot[m.origen_id] = {};
+    pivot[m.origen_id][m.moneda_id] = (pivot[m.origen_id][m.moneda_id] || 0) + val;
+    monedaIdsUsadas.add(m.moneda_id);
   });
-  const listaMonedas = Array.from(monedasUsadas).sort();
+  const listaMonedaIds = Array.from(monedaIdsUsadas).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
   const tabla = document.getElementById("pivotTable");
 
-  if (listaMonedas.length === 0) {
+  if (listaMonedaIds.length === 0) {
     tabla.innerHTML = `<tr><td class="empty">Todavía no hay movimientos cargados.</td></tr>`;
     return;
   }
 
-  let html = "<tr><th>Origen</th>" + listaMonedas.map(mo => `<th>${mo}</th>`).join("") + "</tr>";
+  let html = "<tr><th>Origen</th>" + listaMonedaIds.map(id => `<th>${nombreMoneda(id)}</th>`).join("") + "</tr>";
   const totales = {};
-  Object.keys(pivot).sort().forEach(origen => {
-    html += `<tr><td>${origen}</td>`;
-    listaMonedas.forEach(mo => {
-      const v = pivot[origen][mo] || 0;
-      totales[mo] = (totales[mo] || 0) + v;
+  const listaOrigenIds = Object.keys(pivot).sort((a, b) => nombreOrigen(a).localeCompare(nombreOrigen(b)));
+  listaOrigenIds.forEach(origenId => {
+    html += `<tr><td>${nombreOrigen(origenId)}</td>`;
+    listaMonedaIds.forEach(monedaId => {
+      const v = pivot[origenId][monedaId] || 0;
+      totales[monedaId] = (totales[monedaId] || 0) + v;
       html += `<td>${v ? v.toFixed(2) : "–"}</td>`;
     });
     html += "</tr>";
   });
   html += `<tr class="total-row"><td>Total</td>` +
-    listaMonedas.map(mo => `<td>${(totales[mo] || 0).toFixed(2)}</td>`).join("") + "</tr>";
+    listaMonedaIds.map(id => `<td>${(totales[id] || 0).toFixed(2)}</td>`).join("") + "</tr>";
   tabla.innerHTML = html;
 }

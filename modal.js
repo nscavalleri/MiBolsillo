@@ -1,4 +1,6 @@
-// Modal para agregar / editar un movimiento (gasto o ingreso).
+// Modal para agregar / editar un movimiento (gasto o ingreso). Moneda y
+// origen se guardan como moneda_id / origen_id (claves foráneas hacia
+// monedas y origenes).
 
 import { state } from './state.js';
 import { getClient } from './config.js';
@@ -13,8 +15,8 @@ export function poblarSelects() {
   const selMoneda = document.getElementById("moneda");
   const selOrigen = document.getElementById("origen");
   selConcepto.innerHTML = state.conceptos.filter(c => c.activo).map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join("");
-  selMoneda.innerHTML = state.monedas.filter(m => m.activo).map(m => `<option value="${m.nombre}">${m.nombre}</option>`).join("");
-  selOrigen.innerHTML = state.origenes.filter(o => o.activo).map(o => `<option value="${o.nombre}">${o.nombre}</option>`).join("");
+  selMoneda.innerHTML = state.monedas.filter(m => m.activo).map(m => `<option value="${m.id}">${m.nombre}</option>`).join("");
+  selOrigen.innerHTML = state.origenes.filter(o => o.activo).map(o => `<option value="${o.id}">${o.nombre}</option>`).join("");
 }
 
 export function abrirModal(id) {
@@ -31,15 +33,17 @@ export function abrirModal(id) {
     document.getElementById("monto").value = m.monto;
     poblarSelects();
     document.getElementById("concepto").value = m.concepto;
-    document.getElementById("moneda").value = m.moneda;
-    document.getElementById("origen").value = m.origen;
+    document.getElementById("moneda").value = m.moneda_id;
+    document.getElementById("origen").value = m.origen_id;
   } else {
     state.tipoActual = "egreso";
     document.getElementById("fecha").valueAsDate = new Date();
     poblarSelects();
     // Defaults para un gasto nuevo: Euros / BBVA (si existen y están activos).
-    document.getElementById("moneda").value = MONEDA_POR_DEFECTO;
-    document.getElementById("origen").value = ORIGEN_POR_DEFECTO;
+    const monedaDefault = state.monedas.find(mo => mo.nombre === MONEDA_POR_DEFECTO);
+    const origenDefault = state.origenes.find(o => o.nombre === ORIGEN_POR_DEFECTO);
+    if (monedaDefault) document.getElementById("moneda").value = monedaDefault.id;
+    if (origenDefault) document.getElementById("origen").value = origenDefault.id;
   }
   document.querySelectorAll(".tipo-toggle button").forEach(b => {
     b.classList.toggle("active", b.dataset.tipo === state.tipoActual);
@@ -72,8 +76,9 @@ export function setupModal() {
       concepto: document.getElementById("concepto").value,
       descripcion: document.getElementById("descripcion").value,
       monto: Number(document.getElementById("monto").value),
-      moneda: document.getElementById("moneda").value,
-      origen: document.getElementById("origen").value,
+      // moneda_id / origen_id son uuid (texto), no números: no se convierten.
+      moneda_id: document.getElementById("moneda").value,
+      origen_id: document.getElementById("origen").value,
     };
 
     let error;

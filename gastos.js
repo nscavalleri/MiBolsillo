@@ -1,10 +1,13 @@
 // Gastos > Movimientos: filtros combinables y listado (más nuevo primero,
-// según la fecha ingresada en cada movimiento).
+// según la fecha ingresada en cada movimiento). Origen y moneda se guardan
+// como origen_id / moneda_id (claves foráneas); acá se resuelve el nombre
+// a mostrar con lookups.js.
 
 import { state } from './state.js';
 import { getClient } from './config.js';
 import { abrirModal } from './modal.js';
 import { cargarTodo } from './data-service.js';
+import { nombreOrigen, nombreMoneda } from './lookups.js';
 
 export function aplicarFiltros(lista) {
   const f = state.filtros;
@@ -12,8 +15,8 @@ export function aplicarFiltros(lista) {
     if (f.mes && String(m.fecha).slice(0, 7) !== f.mes) return false;
     if (f.tipo && m.tipo !== f.tipo) return false;
     if (f.concepto && m.concepto !== f.concepto) return false;
-    if (f.origen && m.origen !== f.origen) return false;
-    if (f.moneda && m.moneda !== f.moneda) return false;
+    if (f.origen && String(m.origen_id) !== f.origen) return false;
+    if (f.moneda && String(m.moneda_id) !== f.moneda) return false;
     return true;
   });
 }
@@ -24,8 +27,8 @@ export function poblarFiltros() {
   const selMoneda = document.getElementById("filtroMoneda");
   const prevConcepto = selConcepto.value, prevOrigen = selOrigen.value, prevMoneda = selMoneda.value;
   selConcepto.innerHTML = `<option value="">Todos</option>` + state.conceptos.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join("");
-  selOrigen.innerHTML = `<option value="">Todos</option>` + state.origenes.map(o => `<option value="${o.nombre}">${o.nombre}</option>`).join("");
-  selMoneda.innerHTML = `<option value="">Todos</option>` + state.monedas.map(m => `<option value="${m.nombre}">${m.nombre}</option>`).join("");
+  selOrigen.innerHTML = `<option value="">Todos</option>` + state.origenes.map(o => `<option value="${o.id}">${o.nombre}</option>`).join("");
+  selMoneda.innerHTML = `<option value="">Todos</option>` + state.monedas.map(m => `<option value="${m.id}">${m.nombre}</option>`).join("");
   selConcepto.value = prevConcepto;
   selOrigen.value = prevOrigen;
   selMoneda.value = prevMoneda;
@@ -44,9 +47,9 @@ export function renderMovimientos() {
     <div class="movimiento">
       <div class="info">
         <div class="concepto">${m.concepto}</div>
-        <div class="detalle">${m.fecha} · ${m.origen}${m.descripcion ? " · " + m.descripcion : ""}</div>
+        <div class="detalle">${m.fecha} · ${nombreOrigen(m.origen_id)}${m.descripcion ? " · " + m.descripcion : ""}</div>
       </div>
-      <div class="monto ${m.tipo}">${m.tipo === "egreso" ? "-" : "+"}${Number(m.monto).toFixed(2)} ${m.moneda}</div>
+      <div class="monto ${m.tipo}">${m.tipo === "egreso" ? "-" : "+"}${Number(m.monto).toFixed(2)} ${nombreMoneda(m.moneda_id)}</div>
       <div class="acciones">
         <button data-editar="${m.id}" title="Editar">✎</button>
         <button data-borrar="${m.id}" title="Borrar">✕</button>

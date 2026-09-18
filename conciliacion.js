@@ -6,27 +6,34 @@
 // no se pierde si Nadia sigue conciliando otro día). El botón "Conciliar
 // mes" saca una foto de los saldos + el estado de cada tilde en ese momento
 // y la guarda para siempre en conciliaciones; después reinicia los tildes
-// para que el mes que viene se pueda volver a conciliar de cero.
+// (se borran todas las filas de conciliacion_checks) para que el mes que
+// viene se pueda volver a conciliar de cero, sin ningún casillero tildado.
+//
+// Origen y moneda se guardan como origen_id / moneda_id (claves foráneas
+// hacia origenes y monedas), tanto en conciliacion_checks como en
+// conciliaciones.
 
 import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
+import { nombreOrigen, nombreMoneda } from './lookups.js';
 
-function clave(origen, moneda) {
-  return origen + "::" + moneda;
+function clave(origenId, monedaId) {
+  return origenId + "::" + monedaId;
 }
 
 function calcularPivot() {
   const pivot = {};
-  const monedasUsadas = new Set();
+  const monedaIdsUsadas = new Set();
   state.movimientos.forEach(m => {
     const signo = m.tipo === "ingreso" ? 1 : -1;
     const val = signo * Number(m.monto);
-    if (!pivot[m.origen]) pivot[m.origen] = {};
-    pivot[m.origen][m.moneda] = (pivot[m.origen][m.moneda] || 0) + val;
-    monedasUsadas.add(m.moneda);
+    if (!pivot[m.origen_id]) pivot[m.origen_id] = {};
+    pivot[m.origen_id][m.moneda_id] = (pivot[m.origen_id][m.moneda_id] || 0) + val;
+    monedaIdsUsadas.add(m.moneda_id);
   });
-  return { pivot, monedas: Array.from(monedasUsadas).sort() };
+  const monedaIds = Array.from(monedaIdsUsadas).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
+  return { pivot, monedaIds };
 }
 
 function mesActualTexto() {
@@ -42,11 +49,11 @@ function actualizarResumen() {
 }
 
 export function renderConciliacion() {
-  const { pivot, monedas } = calcularPivot();
+  const { pivot, monedaIds } = calcularPivot();
   const tabla = document.getElementById("conciliacionTable");
   const boton = document.getElementById("btnConciliarMes");
 
-  if (monedas.length === 0) {
+  if (monedaIds.length === 0) {
     tabla.innerHTML = `<tr><td class="empty">Todavía no hay movimientos cargados.</td></tr>`;
     document.getElementById("conciliacionResumen").textContent = "";
     boton.disabled = true;
@@ -54,21 +61,22 @@ export function renderConciliacion() {
   }
   boton.disabled = false;
 
-  let html = "<tr><th>Origen</th>" + monedas.map(mo => `<th>${mo}</th>`).join("") + "</tr>";
-  Object.keys(pivot).sort().forEach(origen => {
-    html += `<tr><td>${origen}</td>`;
-    monedas.forEach(mo => {
-      const v = pivot[origen][mo];
+  let html = "<tr><th>Origen</th>" + monedaIds.map(id => `<th>${nombreMoneda(id)}</th>`).join("") + "</tr>";
+  const origenIds = Object.keys(pivot).sort((a, b) => nombreOrigen(a).localeCompare(nombreOrigen(b)));
+  origenIds.forEach(origenId => {
+    html += `<tr><td>${nombreOrigen(origenId)}</td>`;
+    monedaIds.forEach(monedaId => {
+      const v = pivot[origenId][monedaId];
       if (v === undefined) {
         html += `<td class="conciliacion-vacia">–</td>`;
         return;
       }
-      const marcado = !!state.conciliacionChecks[clave(origen, mo)];
+      const marcado = !!state.conciliacionChecks[clave(origenId, monedaId)];
       html += `
         <td class="conciliacion-celda">
           <span>${v.toFixed(2)}</span>
           <label class="check-conciliado${marcado ? " checked" : ""}">
-            <input type="checkbox" data-origen="${origen}" data-moneda="${mo}" ${marcado ? "checked" : ""} />
+            <input type="checkbox" data-origen-id="${origenId}" data-moneda-id="${monedaId}" ${marcado ? "checked" : ""} />
             <span class="checkmark">✓</span>
           </label>
         </td>`;
@@ -79,18 +87,19 @@ export function renderConciliacion() {
 
   tabla.querySelectorAll("input[type=\"checkbox\"]").forEach(chk => {
     chk.addEventListener("change", async () => {
-      const origen = chk.dataset.origen;
-      const moneda = chk.dataset.moneda;
+      // origen_id / moneda_id son uuid (texto), no números.
+      const origenId = chk.dataset.origenId;
+      const monedaId = chk.dataset.monedaId;
       const marcado = chk.checked;
-      state.conciliacionChecks[clave(origen, moneda)] = marcado;
+      state.conciliacionChecks[clave(origenId, monedaId)] = marcado;
       chk.closest("label").classList.toggle("checked", marcado);
       actualizarResumen();
 
       const { error } = await getClient()
         .from("conciliacion_checks")
         .upsert(
-          { origen, moneda, conciliado: marcado, actualizado_en: new Date().toISOString() },
-          { onConflict: "origen,moneda" }
+          { origen_id: origenId, moneda_id: monedaId, conciliado: marcado, actualizado_en: new Date().toISOString() },
+          { onConflict: "origen_id,moneda_id" }
         );
       if (error) {
         alert("No se pudo guardar el tilde: " + error.message);
@@ -103,19 +112,20 @@ export function renderConciliacion() {
 
 export function setupConciliacion() {
   document.getElementById("btnConciliarMes").addEventListener("click", async () => {
-    const { pivot, monedas } = calcularPivot();
+    const { pivot, monedaIds } = calcularPivot();
     const mes = mesActualTexto();
     const filas = [];
-    Object.keys(pivot).forEach(origen => {
-      monedas.forEach(mo => {
-        const v = pivot[origen][mo];
+    Object.keys(pivot).forEach(origenId => {
+      monedaIds.forEach(monedaId => {
+        const v = pivot[origenId][monedaId];
         if (v === undefined) return;
         filas.push({
           mes,
-          origen,
-          moneda: mo,
+          // origen_id / moneda_id son uuid (texto), no números.
+          origen_id: origenId,
+          moneda_id: monedaId,
           monto: v,
-          conciliado: !!state.conciliacionChecks[clave(origen, mo)],
+          conciliado: !!state.conciliacionChecks[clave(origenId, monedaId)],
         });
       });
     });
@@ -137,6 +147,8 @@ export function setupConciliacion() {
       return;
     }
 
+    // Se borran todas las filas de conciliacion_checks: así, al abrir el
+    // mes que viene, ningún casillero aparece tildado.
     const { error: errorReset } = await getClient().from("conciliacion_checks").delete().gte("id", 0);
     if (errorReset) {
       alert("La conciliación de " + mes + " quedó guardada, pero no se pudieron reiniciar los tildes: " + errorReset.message);
