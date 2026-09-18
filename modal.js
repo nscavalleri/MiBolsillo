@@ -1,6 +1,6 @@
-// Modal para agregar / editar un movimiento (gasto o ingreso). Moneda y
-// origen se guardan como moneda_id / origen_id (claves foráneas hacia
-// monedas y origenes).
+// Modal para agregar / editar un movimiento (gasto o ingreso). Concepto,
+// moneda y origen se guardan como concepto_id / moneda_id / origen_id
+// (claves foráneas hacia conceptos, monedas y origenes).
 
 import { state } from './state.js';
 import { getClient } from './config.js';
@@ -14,7 +14,7 @@ export function poblarSelects() {
   const selConcepto = document.getElementById("concepto");
   const selMoneda = document.getElementById("moneda");
   const selOrigen = document.getElementById("origen");
-  selConcepto.innerHTML = state.conceptos.filter(c => c.activo).map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join("");
+  selConcepto.innerHTML = state.conceptos.filter(c => c.activo).map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
   selMoneda.innerHTML = state.monedas.filter(m => m.activo).map(m => `<option value="${m.id}">${m.nombre}</option>`).join("");
   selOrigen.innerHTML = state.origenes.filter(o => o.activo).map(o => `<option value="${o.id}">${o.nombre}</option>`).join("");
 }
@@ -32,7 +32,7 @@ export function abrirModal(id) {
     document.getElementById("descripcion").value = m.descripcion || "";
     document.getElementById("monto").value = m.monto;
     poblarSelects();
-    document.getElementById("concepto").value = m.concepto;
+    document.getElementById("concepto").value = m.concepto_id;
     document.getElementById("moneda").value = m.moneda_id;
     document.getElementById("origen").value = m.origen_id;
   } else {
@@ -73,10 +73,10 @@ export function setupModal() {
     const payload = {
       fecha: document.getElementById("fecha").value,
       tipo: state.tipoActual,
-      concepto: document.getElementById("concepto").value,
       descripcion: document.getElementById("descripcion").value,
       monto: Number(document.getElementById("monto").value),
-      // moneda_id / origen_id son uuid (texto), no números: no se convierten.
+      // concepto_id / moneda_id / origen_id son uuid (texto), no números: no se convierten.
+      concepto_id: document.getElementById("concepto").value,
       moneda_id: document.getElementById("moneda").value,
       origen_id: document.getElementById("origen").value,
     };
