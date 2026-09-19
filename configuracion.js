@@ -55,16 +55,27 @@ export function renderConfigLista(tabla, items, contenedorId) {
 }
 
 export function setupAddItemRows() {
-  document.querySelectorAll(".add-item-row button").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const tabla = btn.dataset.tabla;
-      const input = document.getElementById(btn.dataset.input);
+  document.querySelectorAll(".add-item-row").forEach(row => {
+    const btn = row.querySelector("button");
+    const tabla = btn.dataset.tabla;
+    const input = document.getElementById(btn.dataset.input);
+
+    async function agregarItem() {
       const nombre = input.value.trim();
       if (!nombre) return;
       const { error } = await getClient().from(tabla).insert({ nombre });
       if (error) { alert("Error agregando: " + error.message); return; }
       input.value = "";
       await cargarTodo();
+    }
+
+    btn.addEventListener("click", agregarItem);
+    // Enter en el campo de texto agrega el ítem sin necesidad de hacer clic
+    // en el botón (igual para conceptos, monedas y orígenes).
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      agregarItem();
     });
   });
 }
