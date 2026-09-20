@@ -45,10 +45,21 @@ export function renderConfigLista(tabla, items, contenedorId) {
   });
   el.querySelectorAll("[data-eliminar]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      if (!confirm("¿Eliminar esta opción? Los movimientos ya cargados no se van a borrar.")) return;
+      if (!confirm("¿Eliminar esta opción? Si ya tiene movimientos asociados, no se va a poder borrar (podés desactivarla en su lugar).")) return;
       const [tab, id] = btn.dataset.eliminar.split(":");
       const { error } = await getClient().from(tab).delete().eq("id", id);
-      if (error) { alert("Error: " + error.message); return; }
+      if (error) {
+        // 23503 = violación de clave foránea: significa que este
+        // concepto/moneda/origen ya está usado en algún movimiento (o
+        // conciliación), así que la base de datos no deja borrarlo. En ese
+        // caso se avisa y se sugiere desactivarlo en vez de eliminarlo.
+        if (error.code === "23503") {
+          alert("No se puede eliminar: ya está usado en movimientos cargados. Desactivalo con el interruptor de la izquierda para que deje de aparecer como opción, sin perder el historial.");
+        } else {
+          alert("Error: " + error.message);
+        }
+        return;
+      }
       await cargarTodo();
     });
   });
