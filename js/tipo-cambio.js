@@ -1,13 +1,21 @@
-// Configuración > Tipo de cambio: para cada mes-año que tiene movimientos
-// cargados, permite ingresar a cuánto equivalía 1 unidad de cada moneda
-// (que no sea Euros) en euros, ese mes. Con el tiempo esto queda como el
-// histórico de tipos de cambio a euros; por ahora solo se guarda, todavía
-// no se usa para convertir nada automáticamente en ningún otro reporte.
+// Configuración > Tipo de cambio: una tabla con una fila por cada mes-año
+// que tiene movimientos cargados y una columna por cada moneda (menos
+// Euros: convertir euros a euros no aporta nada). En cada celda se ingresa
+// a cuánto equivalía 1 unidad de esa moneda en euros, ese mes. Con el
+// tiempo esto queda como el histórico de tipos de cambio a euros; por
+// ahora solo se guarda, todavía no se usa para convertir nada
+// automáticamente en ningún otro reporte.
 //
 // Se guarda en la tabla tipos_cambio (mes, moneda_id, valor_eur), con una
-// fila por combinación mes-moneda (columna UNIQUE en la base). Cada campo
-// se guarda solo al salir de él (mismo criterio que el resto de la app),
-// sin un botón "Guardar" aparte.
+// fila por combinación mes-moneda (columna UNIQUE en la base). Cada celda
+// se guarda sola al salir de ella (mismo criterio que el resto de la
+// app), sin un botón "Guardar" aparte.
+//
+// A diferencia de la tabla de Histórica (que solo lista las monedas
+// tildadas en "Monedas a incluir" de Distribución), acá aparecen todas
+// las monedas cargadas (menos Euros), tuvieron o no movimientos en un mes
+// puntual: así se puede completar el tipo de cambio de una moneda para un
+// mes aunque ese mes en particular no haya tenido ningún gasto en ella.
 
 import { state } from './state.js';
 import { getClient } from './config.js';
@@ -25,50 +33,41 @@ export function renderTipoCambio() {
   const cont = document.getElementById("tablaTipoCambio");
   if (!cont) return;
 
-  // Un bloque por cada mes-año que tenga al menos un movimiento cargado,
-  // del más reciente al más antiguo (mismo criterio que "Todos los
+  // Un mes por cada mes-año que tenga al menos un movimiento cargado, del
+  // más reciente al más antiguo (mismo criterio que "Todos los
   // movimientos").
   const meses = Array.from(new Set(state.movimientos.map(m => String(m.fecha).slice(0, 7))))
     .sort()
     .reverse();
 
+  const monedas = state.monedas
+    .filter(m => m.nombre.trim().toLowerCase() !== "euros")
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
   if (meses.length === 0) {
     cont.innerHTML = `<div class="empty">Todavía no hay movimientos cargados.</div>`;
     return;
   }
+  if (monedas.length === 0) {
+    cont.innerHTML = `<div class="empty">No hay ninguna moneda (además de Euros) cargada para convertir.</div>`;
+    return;
+  }
 
-  const bloques = meses.map(mes => {
-    // Solo las monedas que tuvieron movimientos ese mes en particular (así
-    // no aparecen columnas vacías para monedas que ese mes no se usaron), y
-    // sin Euros: convertir euros a euros no aporta nada.
-    const monedaIdsDelMes = new Set(
-      state.movimientos
-        .filter(m => String(m.fecha).slice(0, 7) === mes)
-        .map(m => String(m.moneda_id))
-    );
-    const monedas = state.monedas
-      .filter(m => monedaIdsDelMes.has(String(m.id)) && m.nombre.trim().toLowerCase() !== "euros")
-      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  let tabla = `<table class="pivot distrib-pivot tipo-cambio-tabla"><tr><th>Mes</th>` +
+    monedas.map(m => `<th>${m.nombre}</th>`).join("") + `</tr>`;
 
-    if (monedas.length === 0) return "";
+  meses.forEach(mes => {
+    tabla += `<tr><td>${formatoMesLegible(mes)}</td>`;
+    monedas.forEach(m => {
+      tabla += `<td><input type="number" step="0.000001" min="0" placeholder="0.00"
+        data-tc-mes="${mes}" data-tc-moneda="${m.id}"
+        value="${valorGuardado(mes, m.id)}" /></td>`;
+    });
+    tabla += `</tr>`;
+  });
+  tabla += `</table>`;
 
-    const campos = monedas.map(m => `
-      <div class="tipo-cambio-campo">
-        <label>${m.nombre}</label>
-        <input type="number" step="0.000001" min="0" placeholder="0.00"
-               data-tc-mes="${mes}" data-tc-moneda="${m.id}"
-               value="${valorGuardado(mes, m.id)}" />
-      </div>
-    `).join("");
-
-    return `
-      <div class="card">
-        <h4 style="margin-top:0;">${formatoMesLegible(mes)}</h4>
-        <div class="tipo-cambio-grid">${campos}</div>
-      </div>`;
-  }).join("");
-
-  cont.innerHTML = bloques || `<div class="empty">Ninguno de los meses cargados tiene monedas distintas de Euros para convertir.</div>`;
+  cont.innerHTML = `<div class="pivot-wrap">${tabla}</div>`;
 
   cont.querySelectorAll("[data-tc-mes]").forEach(input => {
     input.addEventListener("change", async () => {
