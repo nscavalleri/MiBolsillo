@@ -60,7 +60,32 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 
 <div id="sub-distribucion" style="display:none;">
-<div class="card"><p class="empty">Distribución por categoría — próximamente.</p></div>
+<div class="tabs subtabs" id="distribucionSubtabs">
+<button class="tab-btn active" data-distribsub="mensual">Mensual</button>
+<button class="tab-btn" data-distribsub="historica">Histórica</button>
+</div>
+
+<div id="distrib-mensual">
+<div class="card">
+<h3 style="margin-top:0;">Mes</h3>
+<label for="distribMes">Elegí el mes y año</label>
+<input type="month" id="distribMes" />
+</div>
+
+<div class="card">
+<h3 style="margin-top:0;">Conceptos a incluir</h3>
+<div id="distribConceptosCheckboxes"></div>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0;">Reporte del mes</h3>
+<div id="distribReporte"></div>
+</div>
+</div>
+
+<div id="distrib-historica" style="display:none;">
+<div class="card"><p class="empty">Histórica — próximamente.</p></div>
+</div>
 </div>
 </div>
 
