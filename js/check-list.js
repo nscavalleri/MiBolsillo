@@ -6,9 +6,11 @@
 // cada tilde se guarda solo apenas se toca, para que se recuerde entre
 // sesiones.
 //
-// conBotonesTodos agrega "Seleccionar todas" / "Deseleccionar todas"
-// arriba de la lista, para tildar o destildar todo de un tirón en vez de
-// ítem por ítem.
+// conBotonesTodos agrega un único checkbox "Todos" arriba de la lista:
+// tildado marca todos los ítems, destildado los destilda a todos, de un
+// tirón en vez de ítem por ítem. Si la selección está mezclada (algunos
+// tildados y otros no), se muestra en su estado "indeterminado" (el
+// tradicional guioncito) en vez de tildado o destildado.
 
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
@@ -29,14 +31,17 @@ export function renderCheckboxesTabla(tabla, items, contenedorId, vacioTexto, ca
     return;
   }
 
-  const botonesHtml = conBotonesTodos
-    ? `<div class="check-grid-acciones">
-         <button type="button" class="link-btn" data-accion="todas">Seleccionar todas</button>
-         <button type="button" class="link-btn" data-accion="ninguna">Deseleccionar todas</button>
-       </div>`
+  const todosMarcados = items.every(it => it[campo] !== false);
+  const algunoMarcado = items.some(it => it[campo] !== false);
+
+  const todosHtml = conBotonesTodos
+    ? `<label class="check-item check-item-todos">
+         <input type="checkbox" data-marcar-todos ${todosMarcados ? "checked" : ""} />
+         <span>Todos</span>
+       </label>`
     : "";
 
-  cont.innerHTML = botonesHtml + items.map(it => `
+  cont.innerHTML = todosHtml + items.map(it => `
     <label class="check-item">
       <input type="checkbox" data-incluir="${it.id}" ${it[campo] !== false ? "checked" : ""} />
       <span class="${it.activo ? "" : "inactivo"}">${it.nombre}</span>
@@ -57,9 +62,10 @@ export function renderCheckboxesTabla(tabla, items, contenedorId, vacioTexto, ca
   });
 
   if (conBotonesTodos) {
-    const btnTodas = cont.querySelector('[data-accion="todas"]');
-    const btnNinguna = cont.querySelector('[data-accion="ninguna"]');
-    if (btnTodas) btnTodas.addEventListener("click", () => marcarTodos(tabla, items, campo, true));
-    if (btnNinguna) btnNinguna.addEventListener("click", () => marcarTodos(tabla, items, campo, false));
+    const chkTodos = cont.querySelector("[data-marcar-todos]");
+    if (chkTodos) {
+      chkTodos.indeterminate = !todosMarcados && algunoMarcado;
+      chkTodos.addEventListener("change", () => marcarTodos(tabla, items, campo, chkTodos.checked));
+    }
   }
 }

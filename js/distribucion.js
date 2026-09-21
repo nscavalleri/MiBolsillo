@@ -98,10 +98,14 @@ function escribirMesSeleccionado(mesTexto) {
 // el número mostrado quedó sin esa parte). detalleRef (opcional, del tipo
 // "reporte:3" o "historico:3", ver registrarDetalle) agrega el botón "i"
 // que abre el popup con el detalle de esa celda.
-function celdaImporte(v, conSemaforo, incompleto, detalleRef) {
+// Se exporta para poder reutilizarla en Dashboard > Snapshot (columna
+// "Total (€)"): mismo criterio de color/advertencia que acá. tituloIncompleto
+// es opcional porque el texto del ⚠ menciona "este mes", que no aplica en
+// Snapshot (no está atado a un mes); Snapshot pasa su propio texto.
+export function celdaImporte(v, conSemaforo, incompleto, detalleRef, tituloIncompleto) {
   const semaforo = conSemaforo ? `<span class="semaforo semaforo-gris"></span>` : "";
   const marca = incompleto
-    ? `<span class="valor-incompleto" title="Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración &gt; Tipo de cambio">⚠</span>`
+    ? `<span class="valor-incompleto" title="${tituloIncompleto || "Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración > Tipo de cambio"}">⚠</span>`
     : "";
   const boton = detalleRef
     ? `<button type="button" class="btn-detalle" data-detalle="${detalleRef}" title="Ver el detalle de este total">i</button>`
