@@ -23,5 +23,12 @@ export const state = {
   // cada vez que se entra. Qué conceptos y monedas se incluyen en los
   // reportes no se guarda acá: son las columnas *.incluir_en_distribucion
   // (así se recuerdan entre sesiones, igual que "activo").
-  distribucion: { mes: "", ordenHistorico: "asc" },
+  // "convertirEuros" (tildar "Convertir todo a Euros" en Monedas a incluir)
+  // tampoco se guarda entre sesiones, igual que "ordenHistorico": arranca
+  // destildado cada vez que se entra.
+  distribucion: { mes: "", ordenHistorico: "asc", convertirEuros: false },
+  // Configuración > Tipo de cambio: una fila por cada combinación
+  // mes-moneda con un valor cargado (tabla tipos_cambio). La usa
+  // "Convertir todo a Euros" de Distribución para pasar todo a euros.
+  tiposCambio: [],
 };

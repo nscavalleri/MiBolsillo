@@ -92,11 +92,44 @@ function escribirMesSeleccionado(mesTexto) {
 // puede omitir con conSemaforo=false. El número (y el circulito, si va) se
 // arman adentro de un span propio (no en el <td> directamente): poner
 // display:flex en el <td> lo saca del layout de tabla y rompe las columnas.
-function celdaImporte(v, conSemaforo) {
+// incompleto=true agrega un ⚠ (usado por "Convertir todo a Euros" cuando a
+// alguna moneda de esa celda le falta el tipo de cambio de ese mes, así que
+// el número mostrado quedó sin esa parte).
+function celdaImporte(v, conSemaforo, incompleto) {
   const semaforo = conSemaforo ? `<span class="semaforo semaforo-gris"></span>` : "";
-  if (!v) return `<td class="valor-cero"><span class="valor-wrap"><span>–</span>${semaforo}</span></td>`;
+  const marca = incompleto
+    ? `<span class="valor-incompleto" title="Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración &gt; Tipo de cambio">⚠</span>`
+    : "";
+  if (!v) return `<td class="valor-cero"><span class="valor-wrap">${marca}<span>–</span>${semaforo}</span></td>`;
   const clase = v > 0 ? "valor-positivo" : "valor-negativo";
-  return `<td class="${clase}"><span class="valor-wrap"><span>${v.toFixed(2)}</span>${semaforo}</span></td>`;
+  return `<td class="${clase}"><span class="valor-wrap">${marca}<span>${v.toFixed(2)}</span>${semaforo}</span></td>`;
+}
+
+// true si esa moneda es "Euros" (por nombre, igual que en tipo-cambio.js):
+// convertir euros a euros es directo, no hace falta ningún tipo de cambio.
+function esEuros(monedaId) {
+  const m = state.monedas.find(x => String(x.id) === String(monedaId));
+  return !!m && m.nombre.trim().toLowerCase() === "euros";
+}
+
+// El tipo de cambio a euros de una moneda puntual, para un mes puntual
+// (tabla tipos_cambio, cargada en Configuración > Tipo de cambio). null si
+// todavía no se cargó ese mes para esa moneda.
+function tasaAEuros(mes, monedaId) {
+  const fila = state.tiposCambio.find(
+    tc => tc.mes === mes && String(tc.moneda_id) === String(monedaId)
+  );
+  return fila && fila.valor_eur != null ? Number(fila.valor_eur) : null;
+}
+
+// Convierte un importe (ya con signo, ingreso/egreso) de una moneda a
+// euros. ok=false cuando faltó el tipo de cambio y por lo tanto no se pudo
+// convertir (el importe se pierde, no se cuenta ni de más ni de menos).
+function convertirAEuros(mes, monedaId, monto) {
+  if (esEuros(monedaId)) return { valor: monto, ok: true };
+  const tasa = tasaAEuros(mes, monedaId);
+  if (tasa == null) return { valor: 0, ok: false };
+  return { valor: monto * tasa, ok: true };
 }
 
 // Arma la lista de tildes para "conceptos" o "monedas" (misma lógica para
@@ -142,6 +175,62 @@ function renderCheckboxesConceptos() {
 
 function renderCheckboxesMonedas() {
   renderCheckboxesTabla("monedas", state.monedas, "distribMonedasCheckboxes", "Todavía no hay monedas cargadas.");
+  // Mientras "Convertir todo a Euros" está tildado, estos tildes no tienen
+  // efecto (se usan todas las monedas, convertidas) — se deshabilitan para
+  // que se note, sin tocar lo que cada uno tenga guardado en la base.
+  const deshabilitado = state.distribucion.convertirEuros;
+  document.querySelectorAll('#distribMonedasCheckboxes input[type="checkbox"]').forEach(chk => {
+    chk.disabled = deshabilitado;
+  });
+  const cont = document.getElementById("distribMonedasCheckboxes");
+  if (cont) cont.classList.toggle("check-grid-deshabilitado", deshabilitado);
+}
+
+// Suma, por concepto, los importes de todas las monedas convertidos a
+// euros ese mes (se usa cuando "Convertir todo a Euros" está tildado: ahí
+// no importa qué monedas estén tildadas más abajo, entran todas). Devuelve
+// los totales y qué conceptos quedaron con alguna conversión incompleta
+// (les faltó el tipo de cambio de alguna moneda).
+function totalesEnEurosDelMes(mes, conceptoIdsIncluidos) {
+  const totales = {};
+  const incompletos = {};
+  state.movimientos.forEach(m => {
+    if (String(m.fecha).slice(0, 7) !== mes) return;
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    const signo = m.tipo === "ingreso" ? 1 : -1;
+    const montoOriginal = signo * Number(m.monto);
+    const { valor, ok } = convertirAEuros(mes, m.moneda_id, montoOriginal);
+    totales[m.concepto_id] = (totales[m.concepto_id] || 0) + valor;
+    if (!ok) incompletos[m.concepto_id] = true;
+  });
+  return { totales, incompletos };
+}
+
+function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
+  const { totales, incompletos } = totalesEnEurosDelMes(mes, conceptoIdsIncluidos);
+  const conceptosConDatos = state.conceptos
+    .filter(c => totales[c.id] !== undefined)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  if (conceptosConDatos.length === 0) {
+    cont.innerHTML = `<div class="empty">No hay movimientos en ese mes para los conceptos seleccionados.</div>`;
+    return;
+  }
+
+  let total = 0;
+  let totalIncompleto = false;
+  let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th><th>Total (€)</th></tr>`;
+  conceptosConDatos.forEach(c => {
+    const v = totales[c.id] || 0;
+    total += v;
+    if (incompletos[c.id]) totalIncompleto = true;
+    html += `<tr><td>${c.nombre}</td>${celdaImporte(v, true, !!incompletos[c.id])}</tr>`;
+  });
+  html += `<tr class="total-row"><td>Total</td>${celdaImporte(total, true, totalIncompleto)}</tr>`;
+  html += `</table></div>`;
+  html += `<p class="tipo-cambio-nota">Convertido a euros con los tipos de cambio de Configuración &gt; Tipo de cambio, para este mismo mes. ⚠ = falta cargar el tipo de cambio de alguna moneda ese mes, ese total está incompleto.</p>`;
+
+  cont.innerHTML = html;
 }
 
 function renderReporte() {
@@ -150,6 +239,12 @@ function renderReporte() {
   const conceptoIdsIncluidos = new Set(
     state.conceptos.filter(c => c.incluir_en_distribucion !== false).map(c => String(c.id))
   );
+
+  if (state.distribucion.convertirEuros) {
+    renderReporteEnEuros(cont, mes, conceptoIdsIncluidos);
+    return;
+  }
+
   const monedaIdsIncluidas = new Set(
     state.monedas.filter(m => m.incluir_en_distribucion !== false).map(m => String(m.id))
   );
@@ -270,18 +365,89 @@ function renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos
     </div>`;
 }
 
+// Igual que calcularHistoricoPorMoneda, pero para todas las monedas juntas
+// convertidas a euros (se usa con "Convertir todo a Euros" tildado): agrupa
+// por mes-año y por concepto, sumando el equivalente en euros de cada
+// moneda, y marca qué celdas mes-concepto quedaron con alguna conversión
+// incompleta por falta de tipo de cambio.
+function calcularHistoricoEnEuros(conceptoIdsIncluidos) {
+  const porMesConcepto = {};
+  const mesesUsados = new Set();
+  const incompletos = new Set(); // claves "mes|concepto_id"
+  state.movimientos.forEach(m => {
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    const mes = String(m.fecha).slice(0, 7);
+    const signo = m.tipo === "ingreso" ? 1 : -1;
+    const montoOriginal = signo * Number(m.monto);
+    const { valor, ok } = convertirAEuros(mes, m.moneda_id, montoOriginal);
+    if (!porMesConcepto[mes]) porMesConcepto[mes] = {};
+    porMesConcepto[mes][m.concepto_id] = (porMesConcepto[mes][m.concepto_id] || 0) + valor;
+    if (!ok) incompletos.add(mes + "|" + m.concepto_id);
+    mesesUsados.add(mes);
+  });
+  return { porMesConcepto, mesesUsados, incompletos };
+}
+
+function renderSeccionHistoricaEuros(conceptosIncluidos, conceptoIdsIncluidos, orden) {
+  const { porMesConcepto, mesesUsados, incompletos } = calcularHistoricoEnEuros(conceptoIdsIncluidos);
+  let listaMeses = Array.from(mesesUsados).sort();
+  if (orden === "desc") listaMeses.reverse();
+
+  if (listaMeses.length === 0) {
+    return `
+      <div class="card">
+        <details class="collapsible" open>
+          <summary>Total en Euros</summary>
+          <p class="empty">No hay movimientos para los conceptos seleccionados.</p>
+        </details>
+      </div>`;
+  }
+
+  let tabla = `<table class="pivot distrib-pivot"><tr><th>Mes</th>` +
+    conceptosIncluidos.map(c => `<th>${c.nombre}</th>`).join("") + `</tr>`;
+  listaMeses.forEach(mes => {
+    tabla += `<tr><td>${formatoMesLegible(mes)}</td>`;
+    conceptosIncluidos.forEach(c => {
+      const v = (porMesConcepto[mes] && porMesConcepto[mes][c.id]) || 0;
+      tabla += celdaImporte(v, false, incompletos.has(mes + "|" + c.id));
+    });
+    tabla += `</tr>`;
+  });
+  tabla += `</table>`;
+
+  return `
+    <div class="card">
+      <details class="collapsible" open>
+        <summary>Total en Euros</summary>
+        <div class="pivot-wrap">${tabla}</div>
+        <p class="tipo-cambio-nota">⚠ = falta cargar el tipo de cambio de alguna moneda para ese mes.</p>
+      </details>
+    </div>`;
+}
+
 function renderHistorico() {
   const cont = document.getElementById("distribHistoricoSecciones");
   const conceptosIncluidos = state.conceptos
     .filter(c => c.incluir_en_distribucion !== false)
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
   const conceptoIdsIncluidos = new Set(conceptosIncluidos.map(c => String(c.id)));
+
+  if (conceptosIncluidos.length === 0) {
+    cont.innerHTML = `<div class="card"><p class="empty">Elegí al menos un concepto arriba para armar el histórico.</p></div>`;
+    return;
+  }
+
+  if (state.distribucion.convertirEuros) {
+    cont.innerHTML = renderSeccionHistoricaEuros(conceptosIncluidos, conceptoIdsIncluidos, state.distribucion.ordenHistorico);
+    return;
+  }
+
   const monedasIncluidas = state.monedas
     .filter(m => m.incluir_en_distribucion !== false)
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-  if (conceptosIncluidos.length === 0 || monedasIncluidas.length === 0) {
-    cont.innerHTML = `<div class="card"><p class="empty">Elegí al menos un concepto y una moneda arriba para armar el histórico.</p></div>`;
+  if (monedasIncluidas.length === 0) {
+    cont.innerHTML = `<div class="card"><p class="empty">Elegí al menos una moneda arriba (o tildá "Convertir todo a Euros") para armar el histórico.</p></div>`;
     return;
   }
 
@@ -300,6 +466,8 @@ export function renderDistribucion() {
   escribirMesSeleccionado(state.distribucion.mes);
   const selOrden = document.getElementById("distribOrdenHistorico");
   if (selOrden) selOrden.value = state.distribucion.ordenHistorico;
+  const chkEuros = document.getElementById("distribConvertirEuros");
+  if (chkEuros) chkEuros.checked = state.distribucion.convertirEuros;
   renderCheckboxesConceptos();
   renderCheckboxesMonedas();
   renderReporte();
@@ -318,6 +486,13 @@ export function setupDistribucion() {
 
   document.getElementById("distribOrdenHistorico").addEventListener("change", (e) => {
     state.distribucion.ordenHistorico = e.target.value;
+    renderHistorico();
+  });
+
+  document.getElementById("distribConvertirEuros").addEventListener("change", (e) => {
+    state.distribucion.convertirEuros = e.target.checked;
+    renderCheckboxesMonedas();
+    renderReporte();
     renderHistorico();
   });
 }
