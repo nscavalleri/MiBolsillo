@@ -217,11 +217,10 @@ table.conciliacion-pivot td.conciliacion-vacia { color: var(--border); }
 .check-item input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
 .check-item span.inactivo { color: var(--muted); text-decoration: line-through; }
 
-table.distrib-pivot td.valor-positivo,
-table.distrib-pivot td.valor-negativo,
-table.distrib-pivot td.valor-cero {
-  display: flex; align-items: center; justify-content: flex-end; gap: 6px;
-}
+/* El número y el circulito van en un span interno (.valor-wrap), no en el
+   <td> directamente: display:flex en un <td> lo saca del layout de tabla y
+   hace que las columnas se apilen en una sola. */
+.valor-wrap { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; width: 100%; }
 table.distrib-pivot td.valor-positivo { color: var(--income); font-weight: 600; }
 table.distrib-pivot td.valor-negativo { color: var(--expense); font-weight: 600; }
 table.distrib-pivot td.valor-cero { color: var(--border); }
