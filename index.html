@@ -68,13 +68,18 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div id="distrib-mensual">
 <div class="card">
 <h3 style="margin-top:0;">Mes</h3>
-<label for="distribMes">Elegí el mes y año</label>
-<input type="month" id="distribMes" />
+<label for="distribMesNombre">Elegí el mes y año</label>
+<div class="mes-selector">
+<select id="distribMesNombre"></select>
+<select id="distribAnio"></select>
+</div>
 </div>
 
 <div class="card">
-<h3 style="margin-top:0;">Conceptos a incluir</h3>
-<div id="distribConceptosCheckboxes"></div>
+<details id="distribConceptosDetails">
+<summary>Conceptos a incluir</summary>
+<div id="distribConceptosCheckboxes" class="check-grid"></div>
+</details>
 </div>
 
 <div class="card">
