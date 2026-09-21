@@ -288,9 +288,12 @@ export function renderDistribucion() {
   // directamente desde el estado en cada render, en vez de preguntar si el
   // select "ya tiene algo cargado".
   escribirMesSeleccionado(state.distribucion.mes);
+  const selOrden = document.getElementById("distribOrdenHistorico");
+  if (selOrden) selOrden.value = state.distribucion.ordenHistorico;
   renderCheckboxesConceptos();
   renderCheckboxesMonedas();
   renderReporte();
+  renderHistorico();
 }
 
 export function setupDistribucion() {
@@ -301,5 +304,10 @@ export function setupDistribucion() {
       state.distribucion.mes = leerMesSeleccionado();
       renderReporte();
     });
+  });
+
+  document.getElementById("distribOrdenHistorico").addEventListener("change", (e) => {
+    state.distribucion.ordenHistorico = e.target.value;
+    renderHistorico();
   });
 }
