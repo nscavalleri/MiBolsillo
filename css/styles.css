@@ -226,6 +226,25 @@ table.distrib-pivot td.valor-negativo { color: var(--expense); font-weight: 600;
 table.distrib-pivot td.valor-cero { color: var(--border); }
 table.distrib-pivot tr.total-row td.valor-positivo,
 table.distrib-pivot tr.total-row td.valor-negativo { font-weight: 700; }
+table.distrib-pivot td:first-child, table.distrib-pivot th:first-child { white-space: nowrap; }
+
+/* Campo "Cantidad" y cualquier otro <input type="number">: sin flechitas de
+   incrementar/decrementar (que además, al pasar la rueda del mouse por
+   encima con el campo enfocado, sumaban o restaban sin querer). */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Configuración > Tipo de cambio */
+.tipo-cambio-grid { display: flex; flex-direction: column; gap: 10px; }
+.tipo-cambio-campo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tipo-cambio-campo label { margin: 0; flex-shrink: 0; font-size: 14px; color: var(--text); }
+.tipo-cambio-campo input { width: 130px; text-align: right; }
 
 /* Semáforo junto a cada importe: por ahora siempre gris (posición
    reservada); "rojo/amarillo/verde" quedan listos para cuando se compare
