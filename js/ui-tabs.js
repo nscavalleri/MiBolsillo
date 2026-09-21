@@ -43,5 +43,6 @@ export function setupAllTabs() {
     monedas: "configsub-monedas",
     origenes: "configsub-origenes",
     tipo_cambio: "configsub-tipo_cambio",
+    reservas: "configsub-reservas",
   });
 }

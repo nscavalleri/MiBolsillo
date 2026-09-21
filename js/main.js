@@ -8,6 +8,7 @@ import { setupAddItemRows } from './configuracion.js';
 import { setupModal } from './modal.js';
 import { setupConciliacion } from './conciliacion.js';
 import { setupDistribucion } from './distribucion.js';
+import { setupReservas } from './reservas.js';
 
 setupAllTabs();
 setupAuth();
@@ -16,6 +17,7 @@ setupAddItemRows();
 setupModal();
 setupConciliacion();
 setupDistribucion();
+setupReservas();
 
 // Al girar la rueda del mouse (o hacer scroll con el trackpad) sobre un
 // campo numérico enfocado, el navegador suma/resta de a uno por cada

@@ -31,4 +31,7 @@ export const state = {
   // mes-moneda con un valor cargado (tabla tipos_cambio). La usa
   // "Convertir todo a Euros" de Distribución para pasar todo a euros.
   tiposCambio: [],
+  // Configuración > Reservas: montos reservados en euros (nombre, cantidad
+  // y activo/inactivo), con su propio ABM (reservas.js).
+  reservas: [],
 };

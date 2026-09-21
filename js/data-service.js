@@ -17,6 +17,7 @@ import { poblarSelects } from './modal.js';
 import { renderConciliacion } from './conciliacion.js';
 import { renderDistribucion } from './distribucion.js';
 import { renderTipoCambio } from './tipo-cambio.js';
+import { renderReservas } from './reservas.js';
 
 function ordenarMovimientos(lista) {
   // Más nuevo primero: por fecha descendente y, si coinciden, por
@@ -30,16 +31,17 @@ function ordenarMovimientos(lista) {
 
 export async function cargarTodo() {
   const supabaseClient = getClient();
-  const [c, m, o, mv, cc, tc] = await Promise.all([
+  const [c, m, o, mv, cc, tc, r] = await Promise.all([
     supabaseClient.from("conceptos").select("*").order("nombre"),
     supabaseClient.from("monedas").select("*").order("nombre"),
     supabaseClient.from("origenes").select("*").order("nombre"),
     supabaseClient.from("movimientos").select("*").order("fecha", { ascending: false }).order("created_at", { ascending: false }),
     supabaseClient.from("conciliacion_checks").select("*"),
     supabaseClient.from("tipos_cambio").select("*"),
+    supabaseClient.from("reservas").select("*").order("nombre"),
   ]);
 
-  const errores = [c.error, m.error, o.error, mv.error, cc.error, tc.error].filter(Boolean);
+  const errores = [c.error, m.error, o.error, mv.error, cc.error, tc.error, r.error].filter(Boolean);
   const errEl = document.getElementById("loadError");
   if (errores.length > 0) {
     console.error("Error cargando datos de Supabase:", errores);
@@ -68,6 +70,7 @@ export async function cargarTodo() {
   });
 
   state.tiposCambio = tc.data || [];
+  state.reservas = r.data || [];
 
   renderTodo();
 }
@@ -83,4 +86,5 @@ function renderTodo() {
   renderConciliacion();
   renderDistribucion();
   renderTipoCambio();
+  renderReservas();
 }
