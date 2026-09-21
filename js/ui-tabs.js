@@ -42,5 +42,6 @@ export function setupAllTabs() {
     conceptos: "configsub-conceptos",
     monedas: "configsub-monedas",
     origenes: "configsub-origenes",
+    tipo_cambio: "configsub-tipo_cambio",
   });
 }

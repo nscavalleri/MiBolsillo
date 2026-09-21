@@ -38,6 +38,14 @@ const MESES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
+// Versión corta (3 letras), para mostrar el mes en columnas angostas como
+// la primera columna de la tabla de Histórica (con el nombre completo, un
+// mes como "Septiembre 2026" no entraba en una línea y se partía en dos).
+const MESES_CORTOS = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+];
+
 function mesActualTexto() {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
@@ -197,9 +205,11 @@ function renderReporte() {
   cont.innerHTML = html;
 }
 
-function formatoMesLegible(mesTexto) {
+// Se exporta para poder reutilizarla en Configuración > Tipo de cambio
+// (misma manera de mostrar un mes-año en poco espacio).
+export function formatoMesLegible(mesTexto) {
   const [anio, mes] = mesTexto.split("-");
-  return `${MESES[Number(mes) - 1]} ${anio}`;
+  return `${MESES_CORTOS[Number(mes) - 1]}-${anio}`;
 }
 
 // Para una moneda puntual: agrupa los movimientos de esa moneda (entre los
