@@ -94,15 +94,85 @@ function escribirMesSeleccionado(mesTexto) {
 // display:flex en el <td> lo saca del layout de tabla y rompe las columnas.
 // incompleto=true agrega un ⚠ (usado por "Convertir todo a Euros" cuando a
 // alguna moneda de esa celda le falta el tipo de cambio de ese mes, así que
-// el número mostrado quedó sin esa parte).
-function celdaImporte(v, conSemaforo, incompleto) {
+// el número mostrado quedó sin esa parte). detalleRef (opcional, del tipo
+// "reporte:3" o "historico:3", ver registrarDetalle) agrega el botón "i"
+// que abre el popup con el detalle de esa celda.
+function celdaImporte(v, conSemaforo, incompleto, detalleRef) {
   const semaforo = conSemaforo ? `<span class="semaforo semaforo-gris"></span>` : "";
   const marca = incompleto
     ? `<span class="valor-incompleto" title="Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración &gt; Tipo de cambio">⚠</span>`
     : "";
-  if (!v) return `<td class="valor-cero"><span class="valor-wrap">${marca}<span>–</span>${semaforo}</span></td>`;
+  const boton = detalleRef
+    ? `<button type="button" class="btn-detalle" data-detalle="${detalleRef}" title="Ver el detalle de este total">i</button>`
+    : "";
+  if (!v) return `<td class="valor-cero"><span class="valor-wrap">${marca}<span>–</span>${boton}${semaforo}</span></td>`;
   const clase = v > 0 ? "valor-positivo" : "valor-negativo";
-  return `<td class="${clase}"><span class="valor-wrap">${marca}<span>${v.toFixed(2)}</span>${semaforo}</span></td>`;
+  return `<td class="${clase}"><span class="valor-wrap">${marca}<span>${v.toFixed(2)}</span>${boton}${semaforo}</span></td>`;
+}
+
+// Registro de "detalle de celda", para el botón "i" y su popup. Mensual e
+// Histórica tienen cada uno su propia lista (se vacía al principio de cada
+// render de esa tabla en particular: renderReporte()/renderHistorico()
+// pueden dispararse por separado, por ejemplo al cambiar solo el mes o
+// solo el orden, así que cada una solo toca la suya).
+let detallesReporte = [];
+let detallesHistorico = [];
+
+function registrarDetalle(registro, prefijo, titulo, grupos) {
+  const id = registro.length;
+  registro.push({ titulo, grupos });
+  return `${prefijo}:${id}`;
+}
+
+function formatoFechaCorta(fecha) {
+  const partes = String(fecha).split("-");
+  return partes.length === 3 ? `${partes[2]}/${partes[1]}` : fecha;
+}
+
+// Una línea de detalle a partir de un movimiento puntual: fecha (+
+// descripción si tiene) e importe con signo, tal como está cargado (sin
+// convertir).
+function lineaMovimiento(m) {
+  const signo = m.tipo === "ingreso" ? "+" : "-";
+  return {
+    texto: `${formatoFechaCorta(m.fecha)}${m.descripcion ? " · " + m.descripcion : ""}`,
+    monto: `${signo}${Number(m.monto).toFixed(2)}`,
+  };
+}
+
+// Arma el detalle de un concepto en modo "Convertir todo a Euros": un
+// grupo por cada moneda que aportó a ese total, con sus movimientos, el
+// subtotal en esa moneda y cómo se convirtió a euros (o el aviso de que
+// falta el tipo de cambio de ese mes).
+function detalleConceptoEnEuros(registro, prefijo, titulo, movsPorMoneda, mes) {
+  const monedaIds = Object.keys(movsPorMoneda).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
+  const grupos = monedaIds.map(monedaId => {
+    const movs = movsPorMoneda[monedaId];
+    const subtotal = movs.reduce((acc, m) => acc + (m.tipo === "ingreso" ? 1 : -1) * Number(m.monto), 0);
+    let nota;
+    if (esEuros(monedaId)) {
+      nota = `Subtotal: ${subtotal.toFixed(2)} € (sin conversión)`;
+    } else {
+      const tasa = tasaAEuros(mes, monedaId);
+      nota = tasa == null
+        ? `Subtotal: ${subtotal.toFixed(2)} ${nombreMoneda(monedaId)} — falta el tipo de cambio de ${formatoMesLegible(mes)}, no se pudo convertir`
+        : `Subtotal: ${subtotal.toFixed(2)} ${nombreMoneda(monedaId)} × ${tasa} = ${(subtotal * tasa).toFixed(2)} €`;
+    }
+    return { etiqueta: nombreMoneda(monedaId), lineas: movs.map(lineaMovimiento), nota };
+  });
+  return registrarDetalle(registro, prefijo, titulo, grupos);
+}
+
+function mostrarDetalle(d) {
+  document.getElementById("detalleTitulo").textContent = d.titulo;
+  document.getElementById("detalleContenido").innerHTML = d.grupos.map(g => `
+    <div class="detalle-grupo">
+      ${g.etiqueta ? `<div class="detalle-grupo-titulo">${g.etiqueta}</div>` : ""}
+      ${g.lineas.map(l => `<div class="detalle-linea"><span>${l.texto}</span><span>${l.monto}</span></div>`).join("")}
+      ${g.nota ? `<div class="detalle-nota">${g.nota}</div>` : ""}
+    </div>
+  `).join("");
+  document.getElementById("detalleOverlay").classList.add("open");
 }
 
 // true si esa moneda es "Euros" (por nombre, igual que en tipo-cambio.js):
@@ -194,6 +264,7 @@ function renderCheckboxesMonedas() {
 function totalesEnEurosDelMes(mes, conceptoIdsIncluidos) {
   const totales = {};
   const incompletos = {};
+  const movsPorConcepto = {}; // concepto_id -> moneda_id -> [movimientos]
   state.movimientos.forEach(m => {
     if (String(m.fecha).slice(0, 7) !== mes) return;
     if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
@@ -202,12 +273,15 @@ function totalesEnEurosDelMes(mes, conceptoIdsIncluidos) {
     const { valor, ok } = convertirAEuros(mes, m.moneda_id, montoOriginal);
     totales[m.concepto_id] = (totales[m.concepto_id] || 0) + valor;
     if (!ok) incompletos[m.concepto_id] = true;
+    if (!movsPorConcepto[m.concepto_id]) movsPorConcepto[m.concepto_id] = {};
+    if (!movsPorConcepto[m.concepto_id][m.moneda_id]) movsPorConcepto[m.concepto_id][m.moneda_id] = [];
+    movsPorConcepto[m.concepto_id][m.moneda_id].push(m);
   });
-  return { totales, incompletos };
+  return { totales, incompletos, movsPorConcepto };
 }
 
 function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
-  const { totales, incompletos } = totalesEnEurosDelMes(mes, conceptoIdsIncluidos);
+  const { totales, incompletos, movsPorConcepto } = totalesEnEurosDelMes(mes, conceptoIdsIncluidos);
   const conceptosConDatos = state.conceptos
     .filter(c => totales[c.id] !== undefined)
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -219,21 +293,33 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
 
   let total = 0;
   let totalIncompleto = false;
+  const movsPorMonedaTotal = {};
   let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th><th>Total (€)</th></tr>`;
   conceptosConDatos.forEach(c => {
     const v = totales[c.id] || 0;
     total += v;
     if (incompletos[c.id]) totalIncompleto = true;
-    html += `<tr><td>${c.nombre}</td>${celdaImporte(v, true, !!incompletos[c.id])}</tr>`;
+    Object.entries(movsPorConcepto[c.id] || {}).forEach(([monedaId, movs]) => {
+      if (!movsPorMonedaTotal[monedaId]) movsPorMonedaTotal[monedaId] = [];
+      movsPorMonedaTotal[monedaId].push(...movs);
+    });
+    const detalleRef = detalleConceptoEnEuros(
+      detallesReporte, "reporte", `${c.nombre} — ${formatoMesLegible(mes)}`, movsPorConcepto[c.id] || {}, mes
+    );
+    html += `<tr><td>${c.nombre}</td>${celdaImporte(v, true, !!incompletos[c.id], detalleRef)}</tr>`;
   });
-  html += `<tr class="total-row"><td>Total</td>${celdaImporte(total, true, totalIncompleto)}</tr>`;
+  const detalleTotalRef = detalleConceptoEnEuros(
+    detallesReporte, "reporte", `Total — ${formatoMesLegible(mes)}`, movsPorMonedaTotal, mes
+  );
+  html += `<tr class="total-row"><td>Total</td>${celdaImporte(total, true, totalIncompleto, detalleTotalRef)}</tr>`;
   html += `</table></div>`;
-  html += `<p class="tipo-cambio-nota">Convertido a euros con los tipos de cambio de Configuración &gt; Tipo de cambio, para este mismo mes. ⚠ = falta cargar el tipo de cambio de alguna moneda ese mes, ese total está incompleto.</p>`;
+  html += `<p class="tipo-cambio-nota">Convertido a euros con los tipos de cambio de Configuración &gt; Tipo de cambio, para este mismo mes. ⚠ = falta cargar el tipo de cambio de alguna moneda ese mes, ese total está incompleto. Tocá el botón "i" de cada celda para ver el detalle.</p>`;
 
   cont.innerHTML = html;
 }
 
 function renderReporte() {
+  detallesReporte = [];
   const cont = document.getElementById("distribReporte");
   const mes = state.distribucion.mes || mesActualTexto();
   const conceptoIdsIncluidos = new Set(
@@ -251,8 +337,11 @@ function renderReporte() {
 
   // Se suma por concepto y, dentro de cada concepto, por moneda (así no se
   // mezclan importes de monedas distintas en un mismo número). El signo
-  // sale del tipo de cada movimiento: ingreso suma, egreso resta.
+  // sale del tipo de cada movimiento: ingreso suma, egreso resta. Se
+  // guardan también los movimientos de cada combinación concepto+moneda
+  // (movsPorConceptoMoneda) para el botón "i" de cada celda.
   const porConceptoMoneda = {};
+  const movsPorConceptoMoneda = {};
   const monedaIdsUsadas = new Set();
   state.movimientos.forEach(m => {
     if (String(m.fecha).slice(0, 7) !== mes) return;
@@ -262,6 +351,9 @@ function renderReporte() {
     const val = signo * Number(m.monto);
     if (!porConceptoMoneda[m.concepto_id]) porConceptoMoneda[m.concepto_id] = {};
     porConceptoMoneda[m.concepto_id][m.moneda_id] = (porConceptoMoneda[m.concepto_id][m.moneda_id] || 0) + val;
+    if (!movsPorConceptoMoneda[m.concepto_id]) movsPorConceptoMoneda[m.concepto_id] = {};
+    if (!movsPorConceptoMoneda[m.concepto_id][m.moneda_id]) movsPorConceptoMoneda[m.concepto_id][m.moneda_id] = [];
+    movsPorConceptoMoneda[m.concepto_id][m.moneda_id].push(m);
     monedaIdsUsadas.add(m.moneda_id);
   });
 
@@ -279,6 +371,7 @@ function renderReporte() {
   // llenar el reporte de filas en cero); los que no tuvieron simplemente no
   // aparecen.
   const totales = {};
+  const movsPorMonedaTotal = {};
   state.conceptos
     .filter(c => porConceptoMoneda[c.id])
     .sort((a, b) => a.nombre.localeCompare(b.nombre))
@@ -288,13 +381,33 @@ function renderReporte() {
       listaMonedaIds.forEach(monedaId => {
         const v = fila[monedaId] || 0;
         totales[monedaId] = (totales[monedaId] || 0) + v;
-        html += celdaImporte(v, true);
+        const movs = (movsPorConceptoMoneda[c.id] && movsPorConceptoMoneda[c.id][monedaId]) || [];
+        if (!movsPorMonedaTotal[monedaId]) movsPorMonedaTotal[monedaId] = [];
+        movsPorMonedaTotal[monedaId].push(...movs);
+        const detalleRef = movs.length
+          ? registrarDetalle(
+              detallesReporte, "reporte",
+              `${c.nombre} — ${nombreMoneda(monedaId)} — ${formatoMesLegible(mes)}`,
+              [{ etiqueta: null, lineas: movs.map(lineaMovimiento) }]
+            )
+          : null;
+        html += celdaImporte(v, true, false, detalleRef);
       });
       html += `</tr>`;
     });
 
   html += `<tr class="total-row"><td>Total</td>` +
-    listaMonedaIds.map(id => celdaImporte(totales[id] || 0, true)).join("") + `</tr>`;
+    listaMonedaIds.map(monedaId => {
+      const movs = movsPorMonedaTotal[monedaId] || [];
+      const detalleRef = movs.length
+        ? registrarDetalle(
+            detallesReporte, "reporte",
+            `Total ${nombreMoneda(monedaId)} — ${formatoMesLegible(mes)}`,
+            [{ etiqueta: null, lineas: movs.map(lineaMovimiento) }]
+          )
+        : null;
+      return celdaImporte(totales[monedaId] || 0, true, false, detalleRef);
+    }).join("") + `</tr>`;
   html += `</table></div>`;
 
   cont.innerHTML = html;
@@ -308,9 +421,11 @@ export function formatoMesLegible(mesTexto) {
 }
 
 // Para una moneda puntual: agrupa los movimientos de esa moneda (entre los
-// conceptos incluidos) por mes-año y por concepto.
+// conceptos incluidos) por mes-año y por concepto, y guarda esos mismos
+// movimientos aparte (movsPorMesConcepto) para el botón "i" de cada celda.
 function calcularHistoricoPorMoneda(monedaId, conceptoIdsIncluidos) {
   const porMesConcepto = {};
+  const movsPorMesConcepto = {};
   const mesesUsados = new Set();
   state.movimientos.forEach(m => {
     if (String(m.moneda_id) !== String(monedaId)) return;
@@ -320,9 +435,12 @@ function calcularHistoricoPorMoneda(monedaId, conceptoIdsIncluidos) {
     const val = signo * Number(m.monto);
     if (!porMesConcepto[mes]) porMesConcepto[mes] = {};
     porMesConcepto[mes][m.concepto_id] = (porMesConcepto[mes][m.concepto_id] || 0) + val;
+    if (!movsPorMesConcepto[mes]) movsPorMesConcepto[mes] = {};
+    if (!movsPorMesConcepto[mes][m.concepto_id]) movsPorMesConcepto[mes][m.concepto_id] = [];
+    movsPorMesConcepto[mes][m.concepto_id].push(m);
     mesesUsados.add(mes);
   });
-  return { porMesConcepto, mesesUsados };
+  return { porMesConcepto, movsPorMesConcepto, mesesUsados };
 }
 
 // Arma la sección (colapsable) de una moneda: una tabla con una fila por
@@ -330,7 +448,7 @@ function calcularHistoricoPorMoneda(monedaId, conceptoIdsIncluidos) {
 // conceptos tildados, tengan o no movimientos en esta moneda puntual, para
 // que las columnas sean las mismas en todas las secciones).
 function renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos, orden) {
-  const { porMesConcepto, mesesUsados } = calcularHistoricoPorMoneda(moneda.id, conceptoIdsIncluidos);
+  const { porMesConcepto, movsPorMesConcepto, mesesUsados } = calcularHistoricoPorMoneda(moneda.id, conceptoIdsIncluidos);
   let listaMeses = Array.from(mesesUsados).sort(); // "YYYY-MM" ordena bien como texto
   if (orden === "desc") listaMeses.reverse();
 
@@ -350,7 +468,15 @@ function renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos
     tabla += `<tr><td>${formatoMesLegible(mes)}</td>`;
     conceptosIncluidos.forEach(c => {
       const v = (porMesConcepto[mes] && porMesConcepto[mes][c.id]) || 0;
-      tabla += celdaImporte(v, false);
+      const movs = (movsPorMesConcepto[mes] && movsPorMesConcepto[mes][c.id]) || [];
+      const detalleRef = movs.length
+        ? registrarDetalle(
+            detallesHistorico, "historico",
+            `${c.nombre} — ${moneda.nombre} — ${formatoMesLegible(mes)}`,
+            [{ etiqueta: null, lineas: movs.map(lineaMovimiento) }]
+          )
+        : null;
+      tabla += celdaImporte(v, false, false, detalleRef);
     });
     tabla += `</tr>`;
   });
@@ -372,6 +498,7 @@ function renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos
 // incompleta por falta de tipo de cambio.
 function calcularHistoricoEnEuros(conceptoIdsIncluidos) {
   const porMesConcepto = {};
+  const movsPorMesConcepto = {}; // mes -> concepto_id -> moneda_id -> [movs]
   const mesesUsados = new Set();
   const incompletos = new Set(); // claves "mes|concepto_id"
   state.movimientos.forEach(m => {
@@ -383,13 +510,17 @@ function calcularHistoricoEnEuros(conceptoIdsIncluidos) {
     if (!porMesConcepto[mes]) porMesConcepto[mes] = {};
     porMesConcepto[mes][m.concepto_id] = (porMesConcepto[mes][m.concepto_id] || 0) + valor;
     if (!ok) incompletos.add(mes + "|" + m.concepto_id);
+    if (!movsPorMesConcepto[mes]) movsPorMesConcepto[mes] = {};
+    if (!movsPorMesConcepto[mes][m.concepto_id]) movsPorMesConcepto[mes][m.concepto_id] = {};
+    if (!movsPorMesConcepto[mes][m.concepto_id][m.moneda_id]) movsPorMesConcepto[mes][m.concepto_id][m.moneda_id] = [];
+    movsPorMesConcepto[mes][m.concepto_id][m.moneda_id].push(m);
     mesesUsados.add(mes);
   });
-  return { porMesConcepto, mesesUsados, incompletos };
+  return { porMesConcepto, movsPorMesConcepto, mesesUsados, incompletos };
 }
 
 function renderSeccionHistoricaEuros(conceptosIncluidos, conceptoIdsIncluidos, orden) {
-  const { porMesConcepto, mesesUsados, incompletos } = calcularHistoricoEnEuros(conceptoIdsIncluidos);
+  const { porMesConcepto, movsPorMesConcepto, mesesUsados, incompletos } = calcularHistoricoEnEuros(conceptoIdsIncluidos);
   let listaMeses = Array.from(mesesUsados).sort();
   if (orden === "desc") listaMeses.reverse();
 
@@ -409,7 +540,11 @@ function renderSeccionHistoricaEuros(conceptosIncluidos, conceptoIdsIncluidos, o
     tabla += `<tr><td>${formatoMesLegible(mes)}</td>`;
     conceptosIncluidos.forEach(c => {
       const v = (porMesConcepto[mes] && porMesConcepto[mes][c.id]) || 0;
-      tabla += celdaImporte(v, false, incompletos.has(mes + "|" + c.id));
+      const movsPorMoneda = (movsPorMesConcepto[mes] && movsPorMesConcepto[mes][c.id]) || {};
+      const detalleRef = Object.keys(movsPorMoneda).length
+        ? detalleConceptoEnEuros(detallesHistorico, "historico", `${c.nombre} — ${formatoMesLegible(mes)}`, movsPorMoneda, mes)
+        : null;
+      tabla += celdaImporte(v, false, incompletos.has(mes + "|" + c.id), detalleRef);
     });
     tabla += `</tr>`;
   });
@@ -420,12 +555,13 @@ function renderSeccionHistoricaEuros(conceptosIncluidos, conceptoIdsIncluidos, o
       <details class="collapsible" open>
         <summary>Total en Euros</summary>
         <div class="pivot-wrap">${tabla}</div>
-        <p class="tipo-cambio-nota">⚠ = falta cargar el tipo de cambio de alguna moneda para ese mes.</p>
+        <p class="tipo-cambio-nota">⚠ = falta cargar el tipo de cambio de alguna moneda para ese mes. Tocá el botón "i" de cada celda para ver el detalle.</p>
       </details>
     </div>`;
 }
 
 function renderHistorico() {
+  detallesHistorico = [];
   const cont = document.getElementById("distribHistoricoSecciones");
   const conceptosIncluidos = state.conceptos
     .filter(c => c.incluir_en_distribucion !== false)
@@ -494,5 +630,21 @@ export function setupDistribucion() {
     renderCheckboxesMonedas();
     renderReporte();
     renderHistorico();
+  });
+
+  // Botón "i" de cada celda de Mensual/Histórica: se delega en el
+  // document (los botones se recrean en cada render, no tendría sentido
+  // engancharles un listener uno por uno cada vez).
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-detalle]");
+    if (!btn) return;
+    const [prefijo, idTexto] = btn.dataset.detalle.split(":");
+    const fuente = prefijo === "historico" ? detallesHistorico : detallesReporte;
+    const d = fuente[Number(idTexto)];
+    if (d) mostrarDetalle(d);
+  });
+
+  document.getElementById("detalleClose").addEventListener("click", () => {
+    document.getElementById("detalleOverlay").classList.remove("open");
   });
 }
