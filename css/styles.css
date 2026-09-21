@@ -240,11 +240,17 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-/* Configuración > Tipo de cambio */
-.tipo-cambio-grid { display: flex; flex-direction: column; gap: 10px; }
-.tipo-cambio-campo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.tipo-cambio-campo label { margin: 0; flex-shrink: 0; font-size: 14px; color: var(--text); }
-.tipo-cambio-campo input { width: 130px; text-align: right; }
+/* Configuración > Tipo de cambio: tabla con un input editable por celda
+   (mes = fila, moneda = columna). */
+table.tipo-cambio-tabla td input[type="number"] {
+  width: 100%;
+  min-width: 72px;
+  padding: 4px 6px;
+  text-align: right;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
 
 /* Semáforo junto a cada importe: por ahora siempre gris (posición
    reservada); "rojo/amarillo/verde" quedan listos para cuando se compare
