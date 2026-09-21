@@ -98,7 +98,15 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 
 <div id="distrib-historica" style="display:none;">
-<div class="card"><p class="empty">Histórica — próximamente.</p></div>
+<div class="card">
+<label for="distribOrdenHistorico">Orden</label>
+<select id="distribOrdenHistorico">
+<option value="asc">Más antiguo primero</option>
+<option value="desc">Más reciente primero</option>
+</select>
+</div>
+
+<div id="distribHistoricoSecciones"></div>
 </div>
 </div>
 </div>
