@@ -172,8 +172,14 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
 input:checked + .slider { background: var(--accent); }
 input:checked + .slider:before { transform: translateX(16px); }
 .config-item .icon-btn { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 4px; }
+/* Monto de una reserva (Configuración > Reservas), entre el nombre y el
+   interruptor de activo/inactivo. */
+.reserva-monto { font-size: 14px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
 .add-item-row { display: flex; gap: 8px; margin-top: 12px; }
 .add-item-row input { flex: 1; }
+/* En la fila de "agregar" de Reservas, el campo de cantidad es numérico y
+   no necesita tanto ancho como el de nombre. */
+.add-item-row input[type="number"] { flex: 0 0 120px; }
 .add-item-row button {
   padding: 0 14px; border-radius: 8px; border: none; background: var(--accent); color: white; cursor: pointer;
 }
