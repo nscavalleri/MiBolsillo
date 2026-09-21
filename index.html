@@ -195,6 +195,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <button class="tab-btn" data-configsub="monedas">Monedas</button>
 <button class="tab-btn" data-configsub="origenes">Orígenes</button>
 <button class="tab-btn" data-configsub="tipo_cambio">Tipo de cambio</button>
+<button class="tab-btn" data-configsub="reservas">Reservas</button>
 </div>
 
 <div id="configsub-conceptos">
@@ -235,6 +236,18 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <h3 style="margin-top:0;">Tipo de cambio a Euros</h3>
 <p class="conciliacion-ayuda">Para cada mes con movimientos cargados, ingresá a cuánto equivalía 1 unidad de cada moneda en euros. Se guarda solo, apenas salís del campo.</p>
 <div id="tablaTipoCambio"></div>
+</div>
+</div>
+
+<div id="configsub-reservas" style="display:none;">
+<div class="card">
+<h3 style="margin-top:0;">Reservas</h3>
+<div id="listaReservas"></div>
+<div class="add-item-row">
+<input type="text" id="nuevaReservaNombre" placeholder="Nombre..." />
+<input type="number" id="nuevaReservaCantidad" step="0.01" min="0" placeholder="Cantidad (€)" />
+<button type="button" id="btnAgregarReserva">Agregar</button>
+</div>
 </div>
 </div>
 </div>
