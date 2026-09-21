@@ -65,6 +65,22 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <button class="tab-btn" data-distribsub="historica">Histórica</button>
 </div>
 
+<!-- Compartido entre Mensual e Histórica: qué conceptos y monedas entran
+     en los reportes de esta sección. -->
+<div class="card">
+<details class="collapsible">
+<summary>Conceptos a incluir</summary>
+<div id="distribConceptosCheckboxes" class="check-grid"></div>
+</details>
+</div>
+
+<div class="card">
+<details class="collapsible">
+<summary>Monedas a incluir</summary>
+<div id="distribMonedasCheckboxes" class="check-grid"></div>
+</details>
+</div>
+
 <div id="distrib-mensual">
 <div class="card">
 <h3 style="margin-top:0;">Mes</h3>
@@ -73,13 +89,6 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <select id="distribMesNombre"></select>
 <select id="distribAnio"></select>
 </div>
-</div>
-
-<div class="card">
-<details id="distribConceptosDetails">
-<summary>Conceptos a incluir</summary>
-<div id="distribConceptosCheckboxes" class="check-grid"></div>
-</details>
 </div>
 
 <div class="card">
