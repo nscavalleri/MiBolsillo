@@ -16,4 +16,9 @@ export const state = {
   // tabla conciliacion_checks para no perderlo si se recarga la página o se
   // sigue tildando otro día dentro del mismo mes.
   conciliacionChecks: {},
+  // Dashboard > Distribución > Mensual. "mes" se completa con el mes actual
+  // la primera vez que se renderiza. "conceptosExcluidos" guarda los ids (como
+  // texto) de los conceptos destildados; vacío = se muestran todos los
+  // conceptos (activos e inactivos) en el reporte.
+  distribucion: { mes: "", conceptosExcluidos: new Set() },
 };

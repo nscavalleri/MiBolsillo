@@ -29,6 +29,10 @@ export function setupAllTabs() {
     evolucion: "sub-evolucion",
     distribucion: "sub-distribucion",
   });
+  setupTabGroup("distribucionSubtabs", "distribsub", {
+    mensual: "distrib-mensual",
+    historica: "distrib-historica",
+  });
   setupTabGroup("gastosSubtabs", "subtab", {
     movimientos: "sub-movimientos",
     asignacion: "sub-asignacion",

@@ -7,6 +7,7 @@ import { setupFiltros } from './gastos.js';
 import { setupAddItemRows } from './configuracion.js';
 import { setupModal } from './modal.js';
 import { setupConciliacion } from './conciliacion.js';
+import { setupDistribucion } from './distribucion.js';
 
 setupAllTabs();
 setupAuth();
@@ -14,6 +15,7 @@ setupFiltros();
 setupAddItemRows();
 setupModal();
 setupConciliacion();
+setupDistribucion();
 
 if (initSupabase()) {
   getClient().auth.onAuthStateChange(() => mostrarSegunSesion());

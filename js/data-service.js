@@ -15,6 +15,7 @@ import { renderMovimientos, poblarFiltros } from './gastos.js';
 import { renderConfigLista } from './configuracion.js';
 import { poblarSelects } from './modal.js';
 import { renderConciliacion } from './conciliacion.js';
+import { renderDistribucion } from './distribucion.js';
 
 function ordenarMovimientos(lista) {
   // Más nuevo primero: por fecha descendente y, si coinciden, por
@@ -76,4 +77,5 @@ function renderTodo() {
   poblarSelects();
   poblarFiltros();
   renderConciliacion();
+  renderDistribucion();
 }
