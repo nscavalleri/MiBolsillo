@@ -67,7 +67,13 @@ export function renderConfigLista(tabla, items, contenedorId) {
 
 export function setupAddItemRows() {
   document.querySelectorAll(".add-item-row").forEach(row => {
-    const btn = row.querySelector("button");
+    const btn = row.querySelector("button[data-tabla]");
+    // La fila de "agregar" de Reservas también usa la clase .add-item-row
+    // (mismo estilo visual), pero se arma y se conecta aparte en
+    // reservas.js porque tiene un campo más (cantidad); acá se salta, si
+    // no explotaba tratando de leer data-tabla/data-input de un botón que
+    // no los tiene.
+    if (!btn) return;
     const tabla = btn.dataset.tabla;
     const input = document.getElementById(btn.dataset.input);
 
