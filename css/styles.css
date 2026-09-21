@@ -226,25 +226,17 @@ details.collapsible[open] summary { margin-bottom: 10px; }
 .check-item input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
 .check-item span.inactivo { color: var(--muted); text-decoration: line-through; }
 
-/* "Seleccionar todas" / "Deseleccionar todas": ocupan el ancho completo
-   (column-span: all) aunque la lista de abajo esté en dos columnas, así
-   quedan siempre arriba de todo en vez de mezcladas en la primera. */
-.check-grid-acciones {
+/* Checkbox "Todos": tilda/destilda toda la lista de un tirón. Ocupa el
+   ancho completo (column-span: all) aunque la lista de abajo esté en dos
+   columnas, y queda separado con un borde para que no se confunda con un
+   ítem más de la lista. */
+.check-item-todos {
   column-span: all;
-  display: flex;
-  gap: 16px;
+  font-weight: 600;
+  padding-bottom: 8px;
   margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
-.link-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 13px;
-  color: var(--accent);
-  cursor: pointer;
-  text-decoration: underline;
-}
-.link-btn:hover { opacity: 0.75; }
 
 /* "Convertir todo a Euros": separado de la lista de monedas, más
    destacado, porque cuando está tildado deja sin efecto a todas las de
