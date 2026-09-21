@@ -146,6 +146,15 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
 .modal-box h3 { margin-top: 0; }
 .modal-close { float: right; background: none; border: none; font-size: 20px; color: var(--muted); cursor: pointer; }
 
+/* El modal de detalle (popup del botón "i") es para mostrar información,
+   no un formulario para completar, así que en vez de la "hoja" pegada
+   abajo del todo (como el de Agregar gasto, pensado para el pulgar en el
+   celular), se muestra centrado y con las cuatro esquinas redondeadas.
+   Pegado abajo se veía cortado, sobre todo con contenido largo (varios
+   grupos de moneda) que llegaba hasta el borde de la pantalla. */
+#detalleOverlay { align-items: center; padding: 20px; }
+#detalleOverlay .modal-box { border-radius: 16px; max-height: 80vh; }
+
 /* Config lists */
 .config-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .config-item:last-child { border-bottom: none; }
@@ -216,6 +225,26 @@ details.collapsible[open] summary { margin-bottom: 10px; }
 }
 .check-item input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
 .check-item span.inactivo { color: var(--muted); text-decoration: line-through; }
+
+/* "Seleccionar todas" / "Deseleccionar todas": ocupan el ancho completo
+   (column-span: all) aunque la lista de abajo esté en dos columnas, así
+   quedan siempre arriba de todo en vez de mezcladas en la primera. */
+.check-grid-acciones {
+  column-span: all;
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.link-btn:hover { opacity: 0.75; }
 
 /* "Convertir todo a Euros": separado de la lista de monedas, más
    destacado, porque cuando está tildado deja sin efecto a todas las de
