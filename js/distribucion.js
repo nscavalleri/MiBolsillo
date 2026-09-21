@@ -1,7 +1,10 @@
 // Dashboard > Distribución > Mensual: reporte de gastos/ingresos del mes
 // elegido, sumarizado por concepto (y por moneda, si hay más de una en uso
 // ese mes). Cada concepto (activo o inactivo) tiene un tilde para elegir si
-// se incluye o no en el reporte; por defecto están todos incluidos.
+// se incluye o no en el reporte; por defecto están todos incluidos. Ese
+// tilde se guarda en conceptos.incluir_en_distribucion (columna agregada a
+// la tabla existente), así se recuerda entre sesiones en vez de reiniciarse
+// cada vez que se entra a la pantalla.
 // "Histórica" todavía no está implementada (queda en "próximamente", como
 // las demás secciones pendientes del dashboard).
 //
@@ -9,6 +12,8 @@
 // monedas.id; el nombre a mostrar se resuelve con lookups.js.
 
 import { state } from './state.js';
+import { getClient } from './config.js';
+import { cargarTodo } from './data-service.js';
 import { nombreMoneda } from './lookups.js';
 
 const MESES = [
@@ -58,34 +63,46 @@ function escribirMesSeleccionado(mesTexto) {
 // de la app: var(--income) / var(--expense)). Al lado va un circulito gris
 // a modo de posición reservada: más adelante se va a pintar de rojo,
 // amarillo o verde según si ese gasto quedó por arriba o por abajo del
-// promedio (todavía no calculado).
+// promedio (todavía no calculado). El número y el circulito van adentro de
+// un span propio (no en el <td> directamente): poner display:flex en el
+// <td> lo saca del layout de tabla y rompe las columnas.
 function celdaImporte(v) {
   const semaforo = `<span class="semaforo semaforo-gris"></span>`;
-  if (!v) return `<td class="valor-cero"><span>–</span>${semaforo}</td>`;
+  if (!v) return `<td class="valor-cero"><span class="valor-wrap"><span>–</span>${semaforo}</span></td>`;
   const clase = v > 0 ? "valor-positivo" : "valor-negativo";
-  return `<td class="${clase}"><span>${v.toFixed(2)}</span>${semaforo}</td>`;
+  return `<td class="${clase}"><span class="valor-wrap"><span>${v.toFixed(2)}</span>${semaforo}</span></td>`;
 }
 
+// c.incluir_en_distribucion viene de la base (columna nueva en conceptos,
+// ver ALTER TABLE); si todavía no existe esa columna llega undefined, y
+// undefined !== false se toma como "incluido" (mismo comportamiento que
+// hoy, hasta que se agregue la columna).
 function renderCheckboxesConceptos() {
   const cont = document.getElementById("distribConceptosCheckboxes");
   if (state.conceptos.length === 0) {
     cont.innerHTML = `<div class="empty">Todavía no hay conceptos cargados.</div>`;
     return;
   }
-  const excluidos = state.distribucion.conceptosExcluidos;
   cont.innerHTML = state.conceptos.map(c => `
     <label class="check-item">
-      <input type="checkbox" data-concepto-check="${c.id}" ${excluidos.has(String(c.id)) ? "" : "checked"} />
+      <input type="checkbox" data-concepto-check="${c.id}" ${c.incluir_en_distribucion !== false ? "checked" : ""} />
       <span class="${c.activo ? "" : "inactivo"}">${c.nombre}</span>
     </label>
   `).join("");
 
   cont.querySelectorAll("[data-concepto-check]").forEach(chk => {
-    chk.addEventListener("change", () => {
+    chk.addEventListener("change", async () => {
       const id = chk.dataset.conceptoCheck;
-      if (chk.checked) state.distribucion.conceptosExcluidos.delete(id);
-      else state.distribucion.conceptosExcluidos.add(id);
-      renderReporte();
+      const { error } = await getClient()
+        .from("conceptos")
+        .update({ incluir_en_distribucion: chk.checked })
+        .eq("id", id);
+      if (error) {
+        alert("No se pudo guardar: " + error.message);
+        chk.checked = !chk.checked;
+        return;
+      }
+      await cargarTodo();
     });
   });
 }
@@ -93,7 +110,9 @@ function renderCheckboxesConceptos() {
 function renderReporte() {
   const cont = document.getElementById("distribReporte");
   const mes = state.distribucion.mes || mesActualTexto();
-  const excluidos = state.distribucion.conceptosExcluidos;
+  const conceptoIdsIncluidos = new Set(
+    state.conceptos.filter(c => c.incluir_en_distribucion !== false).map(c => String(c.id))
+  );
 
   // Se suma por concepto y, dentro de cada concepto, por moneda (así no se
   // mezclan importes de monedas distintas en un mismo número). El signo
@@ -102,7 +121,7 @@ function renderReporte() {
   const monedaIdsUsadas = new Set();
   state.movimientos.forEach(m => {
     if (String(m.fecha).slice(0, 7) !== mes) return;
-    if (excluidos.has(String(m.concepto_id))) return;
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
     const signo = m.tipo === "ingreso" ? 1 : -1;
     const val = signo * Number(m.monto);
     if (!porConceptoMoneda[m.concepto_id]) porConceptoMoneda[m.concepto_id] = {};
@@ -147,10 +166,12 @@ function renderReporte() {
 
 export function renderDistribucion() {
   if (!state.distribucion.mes) state.distribucion.mes = mesActualTexto();
-  const selMes = document.getElementById("distribMesNombre");
-  // Solo se completa si los select todavía no tienen nada elegido (primer
-  // render), para no pisar el mes que ya haya elegido la usuaria.
-  if (selMes && !selMes.value) escribirMesSeleccionado(state.distribucion.mes);
+  // Un <select> sin nada elegido todavía no queda "vacío": el navegador
+  // hace propia la primera opción de la lista (por eso aparecía siempre
+  // "Enero" y el primer año del rango). Por eso acá se escribe el valor
+  // directamente desde el estado en cada render, en vez de preguntar si el
+  // select "ya tiene algo cargado".
+  escribirMesSeleccionado(state.distribucion.mes);
   renderCheckboxesConceptos();
   renderReporte();
 }
