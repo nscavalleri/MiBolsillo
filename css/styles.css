@@ -200,14 +200,42 @@ table.conciliacion-pivot td.conciliacion-vacia { color: var(--border); }
 .btn-conciliar:disabled { opacity: 0.6; cursor: default; }
 
 /* Distribución mensual */
-.check-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
+.mes-selector { display: flex; gap: 10px; }
+.mes-selector select { flex: 1; }
+
+#distribConceptosDetails summary {
+  font-size: 16px; font-weight: 600; cursor: pointer; list-style: revert;
+}
+#distribConceptosDetails[open] summary { margin-bottom: 10px; }
+
+.check-grid { column-count: 2; column-gap: 16px; }
+@media (max-width: 360px) { .check-grid { column-count: 1; } }
+.check-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px;
+  break-inside: avoid;
+}
 .check-item input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
 .check-item span.inactivo { color: var(--muted); text-decoration: line-through; }
+
+table.distrib-pivot td.valor-positivo,
+table.distrib-pivot td.valor-negativo,
+table.distrib-pivot td.valor-cero {
+  display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+}
 table.distrib-pivot td.valor-positivo { color: var(--income); font-weight: 600; }
 table.distrib-pivot td.valor-negativo { color: var(--expense); font-weight: 600; }
 table.distrib-pivot td.valor-cero { color: var(--border); }
 table.distrib-pivot tr.total-row td.valor-positivo,
 table.distrib-pivot tr.total-row td.valor-negativo { font-weight: 700; }
+
+/* Semáforo junto a cada importe: por ahora siempre gris (posición
+   reservada); "rojo/amarillo/verde" quedan listos para cuando se compare
+   cada gasto contra su promedio. */
+.semaforo { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.semaforo-gris { background: var(--border); }
+.semaforo-rojo { background: var(--expense); }
+.semaforo-amarillo { background: #f59e0b; }
+.semaforo-verde { background: var(--income); }
 
 .config-warning {
   background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
