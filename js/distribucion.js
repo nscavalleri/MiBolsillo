@@ -9,12 +9,21 @@
 // columnas agregadas a esas tablas existentes), así se recuerda entre
 // sesiones en vez de reiniciarse cada vez que se entra a la pantalla.
 //
-// "Mensual" ya arma el reporte del mes elegido, sumarizado por concepto (y
-// por moneda, si hay más de una en uso ese mes) a partir de esos mismos
-// tildes. "Histórica" todavía no está implementada (queda en
-// "próximamente", como las demás secciones pendientes del dashboard), pero
-// cuando se arme también va a partir de los mismos tildes de conceptos y
-// monedas.
+// "Mensual" arma el reporte del mes elegido, sumarizado por concepto (y por
+// moneda, si hay más de una en uso ese mes). "Histórica" arma, para cada
+// moneda seleccionada, una tabla con una fila por mes-año y una columna por
+// cada concepto seleccionado (sin semáforo: acá solo importa el número).
+// Ambas parten de los mismos tildes de conceptos y monedas.
+//
+// Todo se calcula al vuelo a partir de state.movimientos en cada render, en
+// vez de guardar una "foto" mensual como si fuera una conciliación. Se
+// eligió así porque si en algún momento se corrige un movimiento de un mes
+// viejo (un monto mal cargado, un concepto equivocado), el histórico tiene
+// que reflejar ese cambio de una; con una foto guardada quedaría desactua-
+// lizada hasta recalcularla a mano. Total de movimientos: mientras sea un
+// volumen personal (no decenas de miles), recalcular todo en el navegador
+// cada vez es instantáneo, así que no hace falta la complejidad extra de
+// guardar y mantener snapshots.
 //
 // concepto_id y moneda_id son claves foráneas hacia conceptos.id y
 // monedas.id; el nombre a mostrar se resuelve con lookups.js.
@@ -68,14 +77,15 @@ function escribirMesSeleccionado(mesTexto) {
 
 // Una celda de importe: verde si es mayor a cero, rojo si es menor, y un
 // guión gris si no hubo movimientos (mismo criterio de color que el resto
-// de la app: var(--income) / var(--expense)). Al lado va un circulito gris
-// a modo de posición reservada: más adelante se va a pintar de rojo,
-// amarillo o verde según si ese gasto quedó por arriba o por abajo del
-// promedio (todavía no calculado). El número y el circulito van adentro de
-// un span propio (no en el <td> directamente): poner display:flex en el
-// <td> lo saca del layout de tabla y rompe las columnas.
-function celdaImporte(v) {
-  const semaforo = `<span class="semaforo semaforo-gris"></span>`;
+// de la app: var(--income) / var(--expense)). En Mensual además va, al lado
+// del número, un circulito gris a modo de posición reservada (más adelante
+// se va a pintar de rojo, amarillo o verde según si ese gasto quedó por
+// arriba o por abajo del promedio); en Histórica no aplica, así que se
+// puede omitir con conSemaforo=false. El número (y el circulito, si va) se
+// arman adentro de un span propio (no en el <td> directamente): poner
+// display:flex en el <td> lo saca del layout de tabla y rompe las columnas.
+function celdaImporte(v, conSemaforo) {
+  const semaforo = conSemaforo ? `<span class="semaforo semaforo-gris"></span>` : "";
   if (!v) return `<td class="valor-cero"><span class="valor-wrap"><span>–</span>${semaforo}</span></td>`;
   const clase = v > 0 ? "valor-positivo" : "valor-negativo";
   return `<td class="${clase}"><span class="valor-wrap"><span>${v.toFixed(2)}</span>${semaforo}</span></td>`;
@@ -175,16 +185,99 @@ function renderReporte() {
       listaMonedaIds.forEach(monedaId => {
         const v = fila[monedaId] || 0;
         totales[monedaId] = (totales[monedaId] || 0) + v;
-        html += celdaImporte(v);
+        html += celdaImporte(v, true);
       });
       html += `</tr>`;
     });
 
   html += `<tr class="total-row"><td>Total</td>` +
-    listaMonedaIds.map(id => celdaImporte(totales[id] || 0)).join("") + `</tr>`;
+    listaMonedaIds.map(id => celdaImporte(totales[id] || 0, true)).join("") + `</tr>`;
   html += `</table></div>`;
 
   cont.innerHTML = html;
+}
+
+function formatoMesLegible(mesTexto) {
+  const [anio, mes] = mesTexto.split("-");
+  return `${MESES[Number(mes) - 1]} ${anio}`;
+}
+
+// Para una moneda puntual: agrupa los movimientos de esa moneda (entre los
+// conceptos incluidos) por mes-año y por concepto.
+function calcularHistoricoPorMoneda(monedaId, conceptoIdsIncluidos) {
+  const porMesConcepto = {};
+  const mesesUsados = new Set();
+  state.movimientos.forEach(m => {
+    if (String(m.moneda_id) !== String(monedaId)) return;
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    const mes = String(m.fecha).slice(0, 7);
+    const signo = m.tipo === "ingreso" ? 1 : -1;
+    const val = signo * Number(m.monto);
+    if (!porMesConcepto[mes]) porMesConcepto[mes] = {};
+    porMesConcepto[mes][m.concepto_id] = (porMesConcepto[mes][m.concepto_id] || 0) + val;
+    mesesUsados.add(mes);
+  });
+  return { porMesConcepto, mesesUsados };
+}
+
+// Arma la sección (colapsable) de una moneda: una tabla con una fila por
+// mes-año y una columna por cada concepto seleccionado (aparecen todos los
+// conceptos tildados, tengan o no movimientos en esta moneda puntual, para
+// que las columnas sean las mismas en todas las secciones).
+function renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos, orden) {
+  const { porMesConcepto, mesesUsados } = calcularHistoricoPorMoneda(moneda.id, conceptoIdsIncluidos);
+  let listaMeses = Array.from(mesesUsados).sort(); // "YYYY-MM" ordena bien como texto
+  if (orden === "desc") listaMeses.reverse();
+
+  if (listaMeses.length === 0) {
+    return `
+      <div class="card">
+        <details class="collapsible" open>
+          <summary>${moneda.nombre}</summary>
+          <p class="empty">No hay movimientos en ${moneda.nombre} para los conceptos seleccionados.</p>
+        </details>
+      </div>`;
+  }
+
+  let tabla = `<table class="pivot distrib-pivot"><tr><th>Mes</th>` +
+    conceptosIncluidos.map(c => `<th>${c.nombre}</th>`).join("") + `</tr>`;
+  listaMeses.forEach(mes => {
+    tabla += `<tr><td>${formatoMesLegible(mes)}</td>`;
+    conceptosIncluidos.forEach(c => {
+      const v = (porMesConcepto[mes] && porMesConcepto[mes][c.id]) || 0;
+      tabla += celdaImporte(v, false);
+    });
+    tabla += `</tr>`;
+  });
+  tabla += `</table>`;
+
+  return `
+    <div class="card">
+      <details class="collapsible" open>
+        <summary>${moneda.nombre}</summary>
+        <div class="pivot-wrap">${tabla}</div>
+      </details>
+    </div>`;
+}
+
+function renderHistorico() {
+  const cont = document.getElementById("distribHistoricoSecciones");
+  const conceptosIncluidos = state.conceptos
+    .filter(c => c.incluir_en_distribucion !== false)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const conceptoIdsIncluidos = new Set(conceptosIncluidos.map(c => String(c.id)));
+  const monedasIncluidas = state.monedas
+    .filter(m => m.incluir_en_distribucion !== false)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  if (conceptosIncluidos.length === 0 || monedasIncluidas.length === 0) {
+    cont.innerHTML = `<div class="card"><p class="empty">Elegí al menos un concepto y una moneda arriba para armar el histórico.</p></div>`;
+    return;
+  }
+
+  cont.innerHTML = monedasIncluidas
+    .map(moneda => renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos, state.distribucion.ordenHistorico))
+    .join("");
 }
 
 export function renderDistribucion() {

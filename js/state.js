@@ -16,9 +16,12 @@ export const state = {
   // tabla conciliacion_checks para no perderlo si se recarga la página o se
   // sigue tildando otro día dentro del mismo mes.
   conciliacionChecks: {},
-  // Dashboard > Distribución > Mensual. "mes" se completa con el mes actual
-  // la primera vez que se renderiza. Qué conceptos se incluyen en el reporte
-  // no se guarda acá: es la columna conceptos.incluir_en_distribucion (así
-  // se recuerda entre sesiones, igual que "activo").
-  distribucion: { mes: "" },
+  // Dashboard > Distribución. "mes" (para Mensual) se completa con el mes
+  // actual la primera vez que se renderiza. "ordenHistorico" es el orden de
+  // las filas en Histórica ("asc" = más antiguo primero, por defecto;
+  // "desc" = más reciente primero); no se guarda entre sesiones, se elige
+  // cada vez que se entra. Qué conceptos y monedas se incluyen en los
+  // reportes no se guarda acá: son las columnas *.incluir_en_distribucion
+  // (así se recuerdan entre sesiones, igual que "activo").
+  distribucion: { mes: "", ordenHistorico: "asc" },
 };
