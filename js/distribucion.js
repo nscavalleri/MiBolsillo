@@ -1,12 +1,20 @@
-// Dashboard > Distribución > Mensual: reporte de gastos/ingresos del mes
-// elegido, sumarizado por concepto (y por moneda, si hay más de una en uso
-// ese mes). Cada concepto (activo o inactivo) tiene un tilde para elegir si
-// se incluye o no en el reporte; por defecto están todos incluidos. Ese
-// tilde se guarda en conceptos.incluir_en_distribucion (columna agregada a
-// la tabla existente), así se recuerda entre sesiones en vez de reiniciarse
-// cada vez que se entra a la pantalla.
-// "Histórica" todavía no está implementada (queda en "próximamente", como
-// las demás secciones pendientes del dashboard).
+// Dashboard > Distribución: filtros y reporte por concepto/moneda.
+//
+// "Conceptos a incluir" y "Monedas a incluir" son compartidos entre Mensual
+// e Histórica (se ven arriba de las dos, no adentro de una sola), porque la
+// idea es elegir una sola vez qué conceptos y qué monedas importan y que
+// eso valga para cualquiera de las dos vistas. Cada tilde (activo/inactivo
+// para conceptos, cada moneda) se guarda al toque en su propia fila
+// (conceptos.incluir_en_distribucion / monedas.incluir_en_distribucion,
+// columnas agregadas a esas tablas existentes), así se recuerda entre
+// sesiones en vez de reiniciarse cada vez que se entra a la pantalla.
+//
+// "Mensual" ya arma el reporte del mes elegido, sumarizado por concepto (y
+// por moneda, si hay más de una en uso ese mes) a partir de esos mismos
+// tildes. "Histórica" todavía no está implementada (queda en
+// "próximamente", como las demás secciones pendientes del dashboard), pero
+// cuando se arme también va a partir de los mismos tildes de conceptos y
+// monedas.
 //
 // concepto_id y moneda_id son claves foráneas hacia conceptos.id y
 // monedas.id; el nombre a mostrar se resuelve con lookups.js.
@@ -73,28 +81,31 @@ function celdaImporte(v) {
   return `<td class="${clase}"><span class="valor-wrap"><span>${v.toFixed(2)}</span>${semaforo}</span></td>`;
 }
 
-// c.incluir_en_distribucion viene de la base (columna nueva en conceptos,
-// ver ALTER TABLE); si todavía no existe esa columna llega undefined, y
-// undefined !== false se toma como "incluido" (mismo comportamiento que
-// hoy, hasta que se agregue la columna).
-function renderCheckboxesConceptos() {
-  const cont = document.getElementById("distribConceptosCheckboxes");
-  if (state.conceptos.length === 0) {
-    cont.innerHTML = `<div class="empty">Todavía no hay conceptos cargados.</div>`;
+// Arma la lista de tildes para "conceptos" o "monedas" (misma lógica para
+// las dos, por eso la tabla se recibe como parámetro) y guarda cada cambio
+// al toque en incluir_en_distribucion, para que se recuerde entre sesiones.
+// it.incluir_en_distribucion viene de la base (columnas nuevas, ver ALTER
+// TABLE); si todavía no existen esas columnas llega undefined, y
+// undefined !== false se toma como "incluido" (mismo comportamiento que hoy,
+// hasta que se agreguen).
+function renderCheckboxesTabla(tabla, items, contenedorId, vacioTexto) {
+  const cont = document.getElementById(contenedorId);
+  if (items.length === 0) {
+    cont.innerHTML = `<div class="empty">${vacioTexto}</div>`;
     return;
   }
-  cont.innerHTML = state.conceptos.map(c => `
+  cont.innerHTML = items.map(it => `
     <label class="check-item">
-      <input type="checkbox" data-concepto-check="${c.id}" ${c.incluir_en_distribucion !== false ? "checked" : ""} />
-      <span class="${c.activo ? "" : "inactivo"}">${c.nombre}</span>
+      <input type="checkbox" data-incluir="${tabla}:${it.id}" ${it.incluir_en_distribucion !== false ? "checked" : ""} />
+      <span class="${it.activo ? "" : "inactivo"}">${it.nombre}</span>
     </label>
   `).join("");
 
-  cont.querySelectorAll("[data-concepto-check]").forEach(chk => {
+  cont.querySelectorAll("[data-incluir]").forEach(chk => {
     chk.addEventListener("change", async () => {
-      const id = chk.dataset.conceptoCheck;
+      const [tab, id] = chk.dataset.incluir.split(":");
       const { error } = await getClient()
-        .from("conceptos")
+        .from(tab)
         .update({ incluir_en_distribucion: chk.checked })
         .eq("id", id);
       if (error) {
@@ -107,11 +118,22 @@ function renderCheckboxesConceptos() {
   });
 }
 
+function renderCheckboxesConceptos() {
+  renderCheckboxesTabla("conceptos", state.conceptos, "distribConceptosCheckboxes", "Todavía no hay conceptos cargados.");
+}
+
+function renderCheckboxesMonedas() {
+  renderCheckboxesTabla("monedas", state.monedas, "distribMonedasCheckboxes", "Todavía no hay monedas cargadas.");
+}
+
 function renderReporte() {
   const cont = document.getElementById("distribReporte");
   const mes = state.distribucion.mes || mesActualTexto();
   const conceptoIdsIncluidos = new Set(
     state.conceptos.filter(c => c.incluir_en_distribucion !== false).map(c => String(c.id))
+  );
+  const monedaIdsIncluidas = new Set(
+    state.monedas.filter(m => m.incluir_en_distribucion !== false).map(m => String(m.id))
   );
 
   // Se suma por concepto y, dentro de cada concepto, por moneda (así no se
@@ -122,6 +144,7 @@ function renderReporte() {
   state.movimientos.forEach(m => {
     if (String(m.fecha).slice(0, 7) !== mes) return;
     if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    if (!monedaIdsIncluidas.has(String(m.moneda_id))) return;
     const signo = m.tipo === "ingreso" ? 1 : -1;
     const val = signo * Number(m.monto);
     if (!porConceptoMoneda[m.concepto_id]) porConceptoMoneda[m.concepto_id] = {};
@@ -130,7 +153,7 @@ function renderReporte() {
   });
 
   if (monedaIdsUsadas.size === 0) {
-    cont.innerHTML = `<div class="empty">No hay movimientos en ese mes para los conceptos seleccionados.</div>`;
+    cont.innerHTML = `<div class="empty">No hay movimientos en ese mes para los conceptos y monedas seleccionados.</div>`;
     return;
   }
 
@@ -173,6 +196,7 @@ export function renderDistribucion() {
   // select "ya tiene algo cargado".
   escribirMesSeleccionado(state.distribucion.mes);
   renderCheckboxesConceptos();
+  renderCheckboxesMonedas();
   renderReporte();
 }
 
