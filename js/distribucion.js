@@ -32,6 +32,7 @@ import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { nombreMoneda } from './lookups.js';
+import { renderCheckboxesTabla } from './check-list.js';
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -202,49 +203,21 @@ function convertirAEuros(mes, monedaId, monto) {
   return { valor: monto * tasa, ok: true };
 }
 
-// Arma la lista de tildes para "conceptos" o "monedas" (misma lógica para
-// las dos, por eso la tabla se recibe como parámetro) y guarda cada cambio
-// al toque en incluir_en_distribucion, para que se recuerde entre sesiones.
-// it.incluir_en_distribucion viene de la base (columnas nuevas, ver ALTER
-// TABLE); si todavía no existen esas columnas llega undefined, y
+// Arma la lista de tildes para "conceptos" o "monedas" (misma función,
+// compartida con Dashboard > Snapshot, ver check-list.js) y guarda cada
+// cambio al toque en incluir_en_distribucion, para que se recuerde entre
+// sesiones. it.incluir_en_distribucion viene de la base (columna agregada
+// con ALTER TABLE); si todavía no existe esa columna llega undefined, y
 // undefined !== false se toma como "incluido" (mismo comportamiento que hoy,
-// hasta que se agreguen).
-function renderCheckboxesTabla(tabla, items, contenedorId, vacioTexto) {
-  const cont = document.getElementById(contenedorId);
-  if (items.length === 0) {
-    cont.innerHTML = `<div class="empty">${vacioTexto}</div>`;
-    return;
-  }
-  cont.innerHTML = items.map(it => `
-    <label class="check-item">
-      <input type="checkbox" data-incluir="${tabla}:${it.id}" ${it.incluir_en_distribucion !== false ? "checked" : ""} />
-      <span class="${it.activo ? "" : "inactivo"}">${it.nombre}</span>
-    </label>
-  `).join("");
-
-  cont.querySelectorAll("[data-incluir]").forEach(chk => {
-    chk.addEventListener("change", async () => {
-      const [tab, id] = chk.dataset.incluir.split(":");
-      const { error } = await getClient()
-        .from(tab)
-        .update({ incluir_en_distribucion: chk.checked })
-        .eq("id", id);
-      if (error) {
-        alert("No se pudo guardar: " + error.message);
-        chk.checked = !chk.checked;
-        return;
-      }
-      await cargarTodo();
-    });
-  });
-}
-
+// hasta que se agregue). Conceptos suma además "Seleccionar todas" /
+// "Deseleccionar todas" (Monedas no la necesitaba, así que se dejó sin
+// esos botones).
 function renderCheckboxesConceptos() {
-  renderCheckboxesTabla("conceptos", state.conceptos, "distribConceptosCheckboxes", "Todavía no hay conceptos cargados.");
+  renderCheckboxesTabla("conceptos", state.conceptos, "distribConceptosCheckboxes", "Todavía no hay conceptos cargados.", "incluir_en_distribucion", true);
 }
 
 function renderCheckboxesMonedas() {
-  renderCheckboxesTabla("monedas", state.monedas, "distribMonedasCheckboxes", "Todavía no hay monedas cargadas.");
+  renderCheckboxesTabla("monedas", state.monedas, "distribMonedasCheckboxes", "Todavía no hay monedas cargadas.", "incluir_en_distribucion", false);
   // Mientras "Convertir todo a Euros" está tildado, estos tildes no tienen
   // efecto (se usan todas las monedas, convertidas) — se deshabilitan para
   // que se note, sin tocar lo que cada uno tenga guardado en la base.
