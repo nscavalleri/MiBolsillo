@@ -217,6 +217,22 @@ details.collapsible[open] summary { margin-bottom: 10px; }
 .check-item input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
 .check-item span.inactivo { color: var(--muted); text-decoration: line-through; }
 
+/* "Convertir todo a Euros": separado de la lista de monedas, más
+   destacado, porque cuando está tildado deja sin efecto a todas las de
+   abajo (que quedan atenuadas con check-grid-deshabilitado). */
+.check-item-euros {
+  font-weight: 600;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.check-grid-deshabilitado { opacity: 0.45; }
+
+/* Marca de advertencia en un importe convertido a euros al que le faltó
+   el tipo de cambio de alguna moneda ese mes (ver celdaImporte). */
+.valor-incompleto { color: #f59e0b; font-size: 12px; cursor: help; }
+.tipo-cambio-nota { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+
 /* El número y el circulito van en un span interno (.valor-wrap), no en el
    <td> directamente: display:flex en un <td> lo saca del layout de tabla y
    hace que las columnas se apilen en una sola. */
