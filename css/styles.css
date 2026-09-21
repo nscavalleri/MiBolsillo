@@ -272,6 +272,25 @@ table.tipo-cambio-tabla td input[type="number"] {
    reservada); "rojo/amarillo/verde" quedan listos para cuando se compare
    cada gasto contra su promedio. */
 .semaforo { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* Botón "i" de detalle en cada celda de Mensual/Histórica, y el popup que
+   abre (reutiliza .modal-overlay / .modal-box del modal de agregar gasto). */
+.btn-detalle {
+  width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); background: #fff; color: var(--muted);
+  font-size: 10px; font-style: italic; font-weight: 700; line-height: 1; cursor: pointer;
+}
+.btn-detalle:hover { background: var(--bg); color: var(--accent); border-color: var(--accent); }
+.detalle-grupo { margin-bottom: 14px; }
+.detalle-grupo:last-child { margin-bottom: 0; }
+.detalle-grupo-titulo { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.detalle-linea {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--border);
+}
+.detalle-linea:last-of-type { border-bottom: none; }
+.detalle-nota { font-size: 12px; color: var(--muted); margin-top: 6px; }
 .semaforo-gris { background: var(--border); }
 .semaforo-rojo { background: var(--expense); }
 .semaforo-amarillo { background: #f59e0b; }
