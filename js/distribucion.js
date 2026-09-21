@@ -11,18 +11,59 @@
 import { state } from './state.js';
 import { nombreMoneda } from './lookups.js';
 
+const MESES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
 function mesActualTexto() {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
 }
 
+// El <input type="month"> nativo muestra los nombres de mes según el idioma
+// del navegador/sistema operativo (por eso aparecía en inglés, sin forma
+// confiable de forzarlo). Para tenerlo siempre en español se arman dos
+// <select> propios (mes y año) en vez de depender del control nativo.
+function poblarSelectMes() {
+  const sel = document.getElementById("distribMesNombre");
+  sel.innerHTML = MESES.map((nombre, i) => {
+    const valor = String(i + 1).padStart(2, "0");
+    return `<option value="${valor}">${nombre}</option>`;
+  }).join("");
+}
+
+function poblarSelectAnio() {
+  const sel = document.getElementById("distribAnio");
+  const anioActual = new Date().getFullYear();
+  const anios = [];
+  for (let a = anioActual - 5; a <= anioActual + 1; a++) anios.push(a);
+  sel.innerHTML = anios.map(a => `<option value="${a}">${a}</option>`).join("");
+}
+
+function leerMesSeleccionado() {
+  const mes = document.getElementById("distribMesNombre").value;
+  const anio = document.getElementById("distribAnio").value;
+  return anio + "-" + mes;
+}
+
+function escribirMesSeleccionado(mesTexto) {
+  const [anio, mes] = mesTexto.split("-");
+  document.getElementById("distribMesNombre").value = mes;
+  document.getElementById("distribAnio").value = anio;
+}
+
 // Una celda de importe: verde si es mayor a cero, rojo si es menor, y un
 // guión gris si no hubo movimientos (mismo criterio de color que el resto
-// de la app: var(--income) / var(--expense)).
+// de la app: var(--income) / var(--expense)). Al lado va un circulito gris
+// a modo de posición reservada: más adelante se va a pintar de rojo,
+// amarillo o verde según si ese gasto quedó por arriba o por abajo del
+// promedio (todavía no calculado).
 function celdaImporte(v) {
-  if (!v) return `<td class="valor-cero">–</td>`;
+  const semaforo = `<span class="semaforo semaforo-gris"></span>`;
+  if (!v) return `<td class="valor-cero"><span>–</span>${semaforo}</td>`;
   const clase = v > 0 ? "valor-positivo" : "valor-negativo";
-  return `<td class="${clase}">${v.toFixed(2)}</td>`;
+  return `<td class="${clase}"><span>${v.toFixed(2)}</span>${semaforo}</td>`;
 }
 
 function renderCheckboxesConceptos() {
@@ -106,17 +147,21 @@ function renderReporte() {
 
 export function renderDistribucion() {
   if (!state.distribucion.mes) state.distribucion.mes = mesActualTexto();
-  const input = document.getElementById("distribMes");
-  // Solo se completa si todavía está vacío, para no pisar el mes que ya
-  // haya elegido la usuaria en renders posteriores.
-  if (input && !input.value) input.value = state.distribucion.mes;
+  const selMes = document.getElementById("distribMesNombre");
+  // Solo se completa si los select todavía no tienen nada elegido (primer
+  // render), para no pisar el mes que ya haya elegido la usuaria.
+  if (selMes && !selMes.value) escribirMesSeleccionado(state.distribucion.mes);
   renderCheckboxesConceptos();
   renderReporte();
 }
 
 export function setupDistribucion() {
-  document.getElementById("distribMes").addEventListener("change", (e) => {
-    state.distribucion.mes = e.target.value || mesActualTexto();
-    renderReporte();
+  poblarSelectMes();
+  poblarSelectAnio();
+  ["distribMesNombre", "distribAnio"].forEach(id => {
+    document.getElementById(id).addEventListener("change", () => {
+      state.distribucion.mes = leerMesSeleccionado();
+      renderReporte();
+    });
   });
 }
