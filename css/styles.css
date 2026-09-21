@@ -203,10 +203,10 @@ table.conciliacion-pivot td.conciliacion-vacia { color: var(--border); }
 .mes-selector { display: flex; gap: 10px; }
 .mes-selector select { flex: 1; }
 
-#distribConceptosDetails summary {
+details.collapsible summary {
   font-size: 16px; font-weight: 600; cursor: pointer; list-style: revert;
 }
-#distribConceptosDetails[open] summary { margin-bottom: 10px; }
+details.collapsible[open] summary { margin-bottom: 10px; }
 
 .check-grid { column-count: 2; column-gap: 16px; }
 @media (max-width: 360px) { .check-grid { column-count: 1; } }
