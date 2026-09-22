@@ -209,14 +209,18 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
    en todas las celdas: al principio aparecía solo al pasar el mouse por
    arriba, para no ensuciar la tabla, pero así no se veía y no había forma
    de descubrirlo (ni en el celular, donde no existe "pasar el mouse").
-   La forma es la de un botón de opción de toda la vida: aro gris cuando
+   La forma es la de un botón de opción de toda la vida: aro vacío cuando
    está apagado, círculo lleno cuando está encendido — el relleno sólido se
    distingue del aro de un vistazo, sin depender de ningún símbolo adentro
-   (un tilde blanco sobre el celeste de la app casi no se lee). */
+   (un tilde blanco sobre el celeste de la app casi no se lee).
+   El aro va en el celeste de la app, no en gris oscuro: con un aro por
+   celda son más de doscientos en pantalla, y en gris oscuro el contraste
+   era tan fuerte que la tabla cansaba la vista. El encendido sí va en el
+   celeste oscuro, para que se despegue de los demás — son pocos. */
 .asig-marca {
   position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
   width: 16px; height: 16px; padding: 0; border-radius: 50%;
-  border: 1.5px solid var(--muted); background: #fff;
+  border: 1.5px solid var(--accent); background: #fff;
   font-size: 0; line-height: 0; cursor: pointer; transition: background .12s, border-color .12s;
 }
 /* Zona de toque más grande que el dibujo, para poder darle con el dedo sin
