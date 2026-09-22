@@ -504,10 +504,56 @@ async function alternarRemanente(btn) {
   await cargarTodo();
 }
 
+function nombreReserva(reservaId) {
+  const reserva = state.reservas.find(r => String(r.id) === String(reservaId));
+  return reserva ? reserva.nombre : "esa reserva";
+}
+
+// En una fila que tiene una reserva marcada para quedarse con el remanente,
+// tocar cualquier otra celda le saca (o le devuelve) plata a esa reserva sin
+// que se vea, porque la plata de la cuenta es la que es: lo que entra en una
+// columna sale de la otra. Por eso, antes de guardar, se dice en palabras
+// qué se le quita a quién y se pide confirmación.
+//
+// El valor nuevo del remanente ya está calculado en pantalla (recalcular()
+// corre mientras se escribe), así que el anterior se deduce sumándole de
+// vuelta la diferencia en vez de recalcular todo otra vez.
+function confirmarCambioConRemanente(input, reservaRemanenteId, diferencia) {
+  const origenId = input.dataset.asigOrigen;
+  const span = document.querySelector(`[data-resto-origen="${origenId}"]`);
+  const remanenteNuevo = numero(span && span.textContent);
+  const remanenteAnterior = remanenteNuevo + diferencia;
+
+  const reserva = nombreReserva(input.dataset.asigReserva);
+  const remanente = nombreReserva(reservaRemanenteId);
+
+  const encabezado = diferencia > 0
+    ? `Vas a asignarle ${formato(diferencia)} € más a "${reserva}".\n\n` +
+      `Para eso hay que sacarle esos ${formato(diferencia)} € a "${remanente}", que se queda con lo que sobra de esta cuenta.`
+    : `Vas a sacarle ${formato(-diferencia)} € a "${reserva}".\n\n` +
+      `Esos ${formato(-diferencia)} € pasan a "${remanente}", que se queda con lo que sobra de esta cuenta.`;
+
+  return confirm(
+    `${encabezado}\n\n"${remanente}" pasa de ${formato(remanenteAnterior)} € a ${formato(remanenteNuevo)} €.\n\n¿Estás de acuerdo?`
+  );
+}
+
 async function guardarCelda(input) {
   const origen_id = input.dataset.asigOrigen;
   const reserva_id = input.dataset.asigReserva;
   const monto = input.value === "" ? 0 : numero(input.value);
+  const anterior = montoAsignado(origen_id, reserva_id);
+
+  // Salir de un campo sin haberlo cambiado no tiene que guardar ni preguntar
+  // nada (pasa todo el tiempo al recorrer la fila con Tab).
+  if (Math.abs(monto - anterior) < TOLERANCIA) return;
+
+  const reservaRemanenteId = remanenteDe(origen_id, reservasVisibles());
+  if (reservaRemanenteId && !confirmarCambioConRemanente(input, reservaRemanenteId, monto - anterior)) {
+    input.value = anterior || "";
+    recalcular();
+    return;
+  }
 
   const { error } = await getClient()
     .from("asignaciones")
