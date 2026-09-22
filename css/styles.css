@@ -267,6 +267,43 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
 .asig-rojo { color: var(--expense); }
 .asignacion-resumen td.inactivo { color: var(--muted); text-decoration: line-through; }
 
+/* Dashboard > Evolución */
+.evolucion-pivot .evo-mes { white-space: nowrap; font-weight: 600; }
+.evolucion-pivot .evo-total { white-space: nowrap; font-weight: 600; }
+.evolucion-pivot td { white-space: nowrap; }
+.evolucion-pivot .evo-acciones { text-align: center; }
+/* El botón "i" de un mes que ya tiene anotaciones se ve relleno, para
+   distinguir de un pantallazo cuáles meses ya se revisaron. */
+.btn-detalle.con-nota { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Modal de detalle de un mes. Es más ancho que los demás porque adentro
+   van dos listas de movimientos, una al lado de la otra. */
+.modal-box.modal-ancho { max-width: 860px; }
+.evo-filtros { margin-bottom: 4px; }
+.evo-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+@media (max-width: 620px) { .evo-columnas { grid-template-columns: 1fr; } }
+.evo-columna h4 {
+  margin: 0 0 6px; font-size: 13px; color: var(--muted);
+  border-bottom: 1px solid var(--border); padding-bottom: 6px;
+}
+.evo-mov {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.evo-mov:last-child { border-bottom: none; }
+.evo-mov input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
+.evo-mov-info { flex: 1; min-width: 0; }
+.evo-mov-concepto { display: block; font-size: 13px; font-weight: 600; }
+.evo-mov-detalle {
+  display: block; font-size: 11px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.evo-mov-monto { font-size: 13px; white-space: nowrap; }
+.evo-totales { margin-top: 16px; background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.evo-total-linea { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; padding: 3px 0; }
+.evo-total-linea span:last-child { font-weight: 600; white-space: nowrap; }
+.evo-total-diferencia { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: 600; }
+
 /* Movimientos list */
 .movimiento { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .movimiento:last-child { border-bottom: none; }
@@ -404,9 +441,13 @@ table.conciliacion-pivot td.conciliacion-vacia { color: var(--border); }
 }
 .check-conciliado.checked { background: var(--income); border-color: var(--income); }
 .check-conciliado.checked .checkmark { color: #fff; }
+/* Mismo fucsia que "+ Agregar gasto": los dos son "la acción principal de
+   esta pantalla". Antes estaba en verde (var(--income), el color de los
+   ingresos), que no es un color de la app sino el que significa "plata que
+   entra", y ahí no significaba nada. */
 .btn-conciliar {
   width: 100%; padding: 12px; border: none; border-radius: 8px; margin-top: 14px;
-  background: var(--income); color: white; font-size: 15px; font-weight: 600; cursor: pointer;
+  background: var(--brand-fucsia); color: white; font-size: 15px; font-weight: 600; cursor: pointer;
 }
 .btn-conciliar:disabled { opacity: 0.6; cursor: default; }
 
