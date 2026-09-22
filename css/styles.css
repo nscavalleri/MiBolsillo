@@ -331,6 +331,19 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
 .modal-box h3 { margin-top: 0; }
 .modal-close { float: right; background: none; border: none; font-size: 20px; color: var(--muted); cursor: pointer; }
 
+/* Cuerpo del modal de "¿estás de acuerdo?" (confirmar-modal.js). El renglón
+   del resumen es lo que se mira primero para decidir, así que va separado
+   del texto, con el antes tachadito y el después destacado. */
+.confirmar-linea { font-size: 14px; line-height: 1.5; margin: 0 0 10px; }
+.confirmar-resumen {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-top: 14px;
+}
+.confirmar-etiqueta { flex: 1; min-width: 80px; font-size: 14px; font-weight: 600; }
+.confirmar-antes { font-size: 13px; color: var(--muted); text-decoration: line-through; white-space: nowrap; }
+.confirmar-flecha { color: var(--muted); }
+.confirmar-despues { font-size: 15px; font-weight: 700; white-space: nowrap; }
+
 /* Config lists */
 .config-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .config-item:last-child { border-bottom: none; }
