@@ -453,8 +453,15 @@ input:checked + .slider:before { transform: translateX(16px); }
 }
 .conciliacion-resumen { font-size: 13px; color: var(--muted); white-space: nowrap; }
 .conciliacion-ayuda { font-size: 13px; color: var(--muted); margin: 4px 0 14px; }
-table.conciliacion-pivot td.conciliacion-celda {
-  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+/* OJO: el flex va en un span interno y NO en el <td>. Poner display:flex en
+   una celda de tabla la saca del layout de tabla, y entonces deja de
+   alinearse con las demás: una fila con dos celdas con valor se partía en
+   dos renglones (pasó con "Efectivo Cajita Agus", que tiene saldo en Euros
+   y en Oro). Es el mismo motivo por el que distribucion.js usa .valor-wrap. */
+table.conciliacion-pivot td.conciliacion-celda { white-space: nowrap; }
+.conciliacion-wrap {
+  display: inline-flex; align-items: center; justify-content: flex-end;
+  gap: 8px; width: 100%;
 }
 table.conciliacion-pivot td.conciliacion-vacia { color: var(--border); }
 .check-conciliado {
