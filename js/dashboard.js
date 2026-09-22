@@ -68,9 +68,13 @@ function totalEnEuros(totalesPorMoneda, listaMonedaIds) {
   return { total, incompleto };
 }
 
-export function renderPivot() {
-  renderCheckboxesConceptosSnapshot();
-
+// Arma el saldo por Origen x Moneda que muestra el Snapshot: recorre los
+// movimientos de los conceptos tildados en "Conceptos a incluir" y suma los
+// ingresos y resta los egresos. Se separó del render para que Gastos >
+// Asignación pueda reusar exactamente el mismo cálculo (ver
+// saldoEnEurosPorOrigen más abajo) en vez de tener su propia copia que
+// después se desincronice.
+function construirPivot() {
   const conceptoIdsIncluidos = new Set(
     state.conceptos.filter(c => c.incluir_en_snapshot !== false).map(c => String(c.id))
   );
@@ -85,7 +89,32 @@ export function renderPivot() {
     pivot[m.origen_id][m.moneda_id] = (pivot[m.origen_id][m.moneda_id] || 0) + val;
     monedaIdsUsadas.add(m.moneda_id);
   });
+
   const listaMonedaIds = Array.from(monedaIdsUsadas).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
+  const listaOrigenIds = Object.keys(pivot).sort((a, b) => nombreOrigen(a).localeCompare(nombreOrigen(b)));
+  return { pivot, listaMonedaIds, listaOrigenIds };
+}
+
+// La plata que hay hoy en cada cuenta, ya pasada a euros: es exactamente la
+// columna "Total (€)" del Snapshot, que es lo que Asignación reparte entre
+// las reservas. "incompleto" en una fila (y en el total) significa que a
+// alguna moneda de esa cuenta todavía no le cargaste el tipo de cambio, así
+// que ese total está incompleto (esa parte no se cuenta como cero).
+export function saldoEnEurosPorOrigen() {
+  const { pivot, listaMonedaIds, listaOrigenIds } = construirPivot();
+  let huboIncompleto = false;
+  const filas = listaOrigenIds.map(origenId => {
+    const { total, incompleto } = totalEnEuros(pivot[origenId], listaMonedaIds);
+    if (incompleto) huboIncompleto = true;
+    return { origenId, total, incompleto };
+  });
+  return { filas, incompleto: huboIncompleto };
+}
+
+export function renderPivot() {
+  renderCheckboxesConceptosSnapshot();
+
+  const { pivot, listaMonedaIds, listaOrigenIds } = construirPivot();
   const tabla = document.getElementById("pivotTable");
   const nota = document.getElementById("pivotNota");
 
@@ -103,7 +132,6 @@ export function renderPivot() {
   let html = "<tr><th>Origen</th>" + listaMonedaIds.map(id => `<th>${nombreMoneda(id)}</th>`).join("") + "<th>Total (€)</th></tr>";
   const totales = {};
   let huboIncompleto = false;
-  const listaOrigenIds = Object.keys(pivot).sort((a, b) => nombreOrigen(a).localeCompare(nombreOrigen(b)));
   listaOrigenIds.forEach(origenId => {
     html += `<tr><td>${nombreOrigen(origenId)}</td>`;
     listaMonedaIds.forEach(monedaId => {

@@ -45,6 +45,11 @@ export const state = {
   // Configuración > Reservas: montos reservados en euros (nombre, cantidad,
   // descripción opcional y activo/inactivo), con su propio ABM (reservas.js).
   reservas: [],
+  // Gastos > Asignación: cuánto de cada cuenta está destinado a cada
+  // reserva (tabla asignaciones: origen_id, reserva_id, monto en euros).
+  // Una fila por combinación cuenta-reserva; las combinaciones sin plata
+  // asignada simplemente no tienen fila.
+  asignaciones: [],
   // Preferencias generales de la app, guardadas en Supabase (tabla
   // configuracion_general: clave/valor) en vez del navegador, para que se
   // recuerden sin importar desde dónde entres. Por ahora tiene

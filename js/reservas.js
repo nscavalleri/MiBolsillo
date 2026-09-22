@@ -37,11 +37,39 @@ export function renderReservas() {
     </div>
   `).join("");
 
+  // Desactivar una reserva libera la plata que tenía asignada en Gastos >
+  // Asignación: se borran sus asignaciones, así ese dinero vuelve a
+  // aparecer como "Sin asignar" en cada cuenta y se puede repartir de
+  // nuevo. Si no se borraran, quedarían colgadas de una reserva que ya no
+  // se ve en ningún lado y los totales no cerrarían. Volver a activarla no
+  // las recupera: hay que asignar de nuevo (por eso se avisa antes).
   el.querySelectorAll("[data-toggle-reserva]").forEach(chk => {
     chk.addEventListener("change", async () => {
       const id = chk.dataset.toggleReserva;
-      const { error } = await getClient().from("reservas").update({ activo: chk.checked }).eq("id", id);
-      if (error) { alert("Error: " + error.message); return; }
+      const cliente = getClient();
+
+      if (!chk.checked) {
+        const tieneAsignaciones = state.asignaciones.some(
+          a => String(a.reserva_id) === String(id) && Number(a.monto) !== 0
+        );
+        if (tieneAsignaciones && !confirm(
+          "Esta reserva tiene plata asignada en Gastos > Asignación.\n\n" +
+          "Al desactivarla esa plata se libera y vuelve a quedar sin asignar. " +
+          "Si después la volvés a activar, vas a tener que asignarla de nuevo.\n\n¿Seguir?"
+        )) {
+          chk.checked = true;
+          return;
+        }
+      }
+
+      const { error } = await cliente.from("reservas").update({ activo: chk.checked }).eq("id", id);
+      if (error) { alert("Error: " + error.message); chk.checked = !chk.checked; return; }
+
+      if (!chk.checked) {
+        const { error: errorAsig } = await cliente.from("asignaciones").delete().eq("reserva_id", id);
+        if (errorAsig) { alert("Se desactivó la reserva pero no se pudo liberar la plata asignada: " + errorAsig.message); }
+      }
+
       await cargarTodo();
     });
   });
