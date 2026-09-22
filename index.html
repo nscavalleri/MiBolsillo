@@ -365,6 +365,18 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 </div>
 
+<!-- MODAL: "¿estás de acuerdo?" con el formato de la app, en vez del cartel
+     gris del navegador. Lo llena confirmar-modal.js. -->
+<div class="modal-overlay" id="confirmarOverlay">
+<div class="modal-box">
+<button class="modal-close" id="confirmarClose" type="button">✕</button>
+<h3 id="confirmarTitulo">¿Estás de acuerdo?</h3>
+<div id="confirmarTexto"></div>
+<button type="button" class="primary" id="confirmarSi">Sí, hacelo</button>
+<button type="button" class="secondary" id="confirmarNo">No, dejalo como estaba</button>
+</div>
+</div>
+
 <script type="module" src="js/main.js"></script>
 
 </body>
