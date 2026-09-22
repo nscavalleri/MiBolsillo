@@ -280,6 +280,14 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
    van dos listas de movimientos, una al lado de la otra. */
 .modal-box.modal-ancho { max-width: 860px; }
 .evo-filtros { margin-bottom: 4px; }
+/* El campo de búsqueda ocupa el ancho entero de la grilla de filtros: es el
+   que más se usa y el que necesita más lugar para leer lo que se escribió. */
+.filtro-ancho { grid-column: 1 / -1; }
+/* Flecha de "volver" del modal de Evolución, al lado de la ✕. */
+.modal-volver { font-size: 22px; line-height: 1; }
+.modal-volver:hover { color: var(--accent-oscuro); }
+.evo-comentarios { margin-top: 16px; }
+.evo-comentarios label { margin-top: 0; }
 /* La primera pantalla del modal muestra solo lo ya marcado; el encabezado de
    cada columna lleva su botón de "Agregar", que es lo que abre el buscador. */
 .evo-columna-titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
