@@ -150,6 +150,10 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div class="card">
 <h3 style="margin-top:0;">Filtros</h3>
 <div class="filtros-grid">
+<div class="filtro-ancho">
+<label for="filtroTexto">Buscar en la descripción</label>
+<input type="search" id="filtroTexto" placeholder="Ej: supermercado, cumple..." />
+</div>
 <div>
 <label for="filtroMes">Mes</label>
 <input type="month" id="filtroMes" />
@@ -382,7 +386,11 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
      mes fueron excepcionales, y una nota libre de qué pasó. -->
 <div class="modal-overlay" id="evolucionDetalleOverlay">
 <div class="modal-box modal-ancho">
-<button class="modal-close" id="evolucionDetalleClose" type="button">✕</button>
+<button class="modal-close" id="evolucionDetalleClose" type="button" title="Cerrar">✕</button>
+<!-- Va después de la ✕ en el HTML pero se ve a su izquierda: las dos
+     flotan a la derecha, así que la primera queda más al borde. Solo
+     aparece en la pantalla del buscador. -->
+<button class="modal-close modal-volver" id="evoVolverAtras" type="button" title="Volver" style="display:none;">←</button>
 <h3 id="evolucionDetalleTitulo">Movimientos excepcionales</h3>
 
 <!-- El modal tiene dos pantallas. La primera muestra SOLO lo que ya está
@@ -391,12 +399,24 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div id="evoVistaResumen">
 <div class="evo-columnas" id="evolucionDetalleListas"></div>
 <div class="evo-totales" id="evolucionDetalleTotales"></div>
-<label for="evolucionComentario">Comentarios adicionales</label>
-<textarea id="evolucionComentario" rows="4" placeholder="Qué pasó este mes..."></textarea>
+<div class="evo-columnas evo-comentarios">
+<div>
+<label for="evolucionComentarioIngresos">Comentarios sobre los ingresos</label>
+<textarea id="evolucionComentarioIngresos" rows="4" placeholder="Qué pasó con lo que entró este mes..."></textarea>
+</div>
+<div>
+<label for="evolucionComentarioEgresos">Comentarios sobre los egresos</label>
+<textarea id="evolucionComentarioEgresos" rows="4" placeholder="Qué pasó con lo que salió este mes..."></textarea>
+</div>
+</div>
 </div>
 
 <div id="evoVistaBuscar" style="display:none;">
 <div class="filtros-grid evo-filtros">
+<div class="filtro-ancho">
+<label for="evoFiltroTexto">Buscar en la descripción</label>
+<input type="search" id="evoFiltroTexto" placeholder="Ej: temu, cumple..." />
+</div>
 <div>
 <label for="evoFiltroConcepto">Concepto</label>
 <select id="evoFiltroConcepto"><option value="">Todos</option></select>
@@ -412,7 +432,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 <button class="secondary" id="evoLimpiarFiltros" type="button">Limpiar filtros</button>
 <div class="evo-resultados" id="evoResultados"></div>
-<button class="primary" id="evoVolver" type="button">Listo, volver</button>
+<button class="primary" id="evoVolver" type="button">Volver</button>
 </div>
 </div>
 </div>
