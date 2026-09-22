@@ -84,6 +84,21 @@ function claseRestante(resto) {
   return "asig-verde";
 }
 
+// Cuánto se propuso juntar una reserva (el campo "Cantidad reservada" que
+// se carga a mano en Configuración > Reservas).
+function objetivoDe(reservaId) {
+  const reserva = state.reservas.find(r => String(r.id) === String(reservaId));
+  return numero(reserva && reserva.cantidad_reservada);
+}
+
+// El texto que aparece al dejar el mouse encima de un total de reserva, para
+// no tener que ensanchar la columna con el objetivo escrito al lado.
+function textoObjetivo(objetivo, falta) {
+  if (falta > TOLERANCIA) return `Objetivo ${formato(objetivo)} € · faltan ${formato(falta)} €`;
+  if (falta < -TOLERANCIA) return `Objetivo ${formato(objetivo)} € · asignaste ${formato(-falta)} € de más`;
+  return `Objetivo ${formato(objetivo)} € · llegaste justo`;
+}
+
 // Clase de color para lo que le falta a una reserva para llegar a su
 // objetivo (cantidad_reservada).
 function claseFalta(falta) {
@@ -125,18 +140,18 @@ function devolverFoco(foco) {
 // Nadia): no se escribe a mano porque cambia solo cada vez que se toca
 // cualquier otra celda de la fila.
 //
-// El puntito de la esquina izquierda es el que marca/desmarca esa reserva
-// como la del remanente. Está escondido hasta que se pasa el mouse por
-// arriba (o siempre a medio tono en pantallas táctiles, donde no hay
-// "pasar el mouse"): son muchas celdas y tenerlo siempre a la vista en
-// todas ensuciaba la tabla.
+// El puntito de la izquierda es el que marca/desmarca esa reserva como la
+// del remanente. Se ve siempre, en todas las celdas: al principio aparecía
+// solo al pasar el mouse por arriba y así no había manera de descubrirlo.
+// No lleva ningún símbolo adentro; se distingue por el relleno (aro vacío =
+// apagado, círculo lleno = encendido).
 function celdaAsignacion(origenId, reservaId, remanenteId) {
   const esResto = remanenteId !== null && String(remanenteId) === String(reservaId);
   const marca = `<button type="button" class="asig-marca${esResto ? " activa" : ""}"
       data-marca-origen="${origenId}" data-marca-reserva="${reservaId}"
       title="${esResto
         ? "Acá va lo que sobre de esta cuenta. Tocá para que deje de ser así."
-        : "Marcar esta reserva para que se quede con lo que sobre de esta cuenta"}">${esResto ? "✓" : ""}</button>`;
+        : "Marcar esta reserva para que se quede con lo que sobre de esta cuenta"}"></button>`;
 
   const contenido = esResto
     ? `<span class="asig-resto-valor" data-resto-origen="${origenId}" data-resto-reserva="${reservaId}">0.00</span>`
@@ -361,12 +376,21 @@ function recalcular() {
     celdaGeneral.className = "asig-restante " + claseRestante(restanteGeneral);
   }
 
-  // Total de cada reserva, arriba de su columna y en la fila de totales.
-  tabla.querySelectorAll("[data-total-reserva]").forEach(el => {
-    el.textContent = formato(porReserva[el.dataset.totalReserva] || 0);
-  });
-  tabla.querySelectorAll("[data-total-columna]").forEach(el => {
-    el.textContent = formato(porReserva[el.dataset.totalColumna] || 0);
+  // Total de cada reserva, arriba de su columna y en la fila de totales,
+  // pintado con el mismo semáforo que el resumen de abajo (rojo si todavía
+  // no llegó al objetivo, verde si está justo, ámbar si se pasó): así se ve
+  // de una, sin tener que bajar hasta el resumen, cuáles reservas ya están
+  // cubiertas. El texto al pasar el mouse dice el objetivo y cuánto falta.
+  tabla.querySelectorAll("[data-total-reserva], [data-total-columna]").forEach(el => {
+    const reservaId = el.dataset.totalReserva || el.dataset.totalColumna;
+    const asignado = porReserva[reservaId] || 0;
+    const objetivo = objetivoDe(reservaId);
+    const falta = objetivo - asignado;
+    const claseBase = el.dataset.totalReserva ? "asig-reserva-total " : "asig-total-columna ";
+
+    el.textContent = formato(asignado);
+    el.className = claseBase + claseFalta(falta);
+    el.title = textoObjetivo(objetivo, falta);
   });
 
   // Resumen: cuánto le falta a cada reserva para llegar a su objetivo.
@@ -377,9 +401,7 @@ function recalcular() {
     const asignado = porReserva[reservaId] || 0;
     celda.textContent = formato(asignado);
 
-    const reserva = state.reservas.find(r => String(r.id) === String(reservaId));
-    const objetivo = numero(reserva && reserva.cantidad_reservada);
-    const falta = objetivo - asignado;
+    const falta = objetivoDe(reservaId) - asignado;
     const celdaFalta = resumen.querySelector(`[data-resumen-falta="${reservaId}"]`);
     if (celdaFalta) {
       celdaFalta.textContent = formato(falta);
