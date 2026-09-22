@@ -106,6 +106,47 @@ table.pivot th:first-child, table.pivot td:first-child { text-align: left; }
 table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text); border-bottom: none; }
 .pivot-wrap { overflow-x: auto; }
 
+/* Gastos > Asignación: cuentas en las filas, reservas en las columnas.
+   Como puede haber muchas reservas, la tabla se scrollea para el costado
+   (.pivot-wrap) pero las tres primeras columnas —cuenta, lo que tiene y lo
+   que queda sin repartir— quedan clavadas a la izquierda, así nunca se
+   pierde de vista de qué cuenta es la fila ni cuánto le falta repartir.
+   Los anchos fijos son justamente lo que permite calcular ese "left". */
+.asignacion-pivot { min-width: 100%; }
+.asignacion-pivot th, .asignacion-pivot td { background: var(--card); }
+.asignacion-pivot th:nth-child(1), .asignacion-pivot td:nth-child(1),
+.asignacion-pivot th:nth-child(2), .asignacion-pivot td:nth-child(2),
+.asignacion-pivot th:nth-child(3), .asignacion-pivot td:nth-child(3) {
+  position: sticky; z-index: 1;
+}
+.asignacion-pivot th:nth-child(1), .asignacion-pivot td:nth-child(1) {
+  left: 0; width: 104px; min-width: 104px; max-width: 104px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.asignacion-pivot th:nth-child(2), .asignacion-pivot td:nth-child(2) {
+  left: 104px; width: 82px; min-width: 82px; max-width: 82px;
+}
+.asignacion-pivot th:nth-child(3), .asignacion-pivot td:nth-child(3) {
+  left: 186px; width: 82px; min-width: 82px; max-width: 82px;
+  box-shadow: 1px 0 0 var(--border);
+}
+.asignacion-pivot th { vertical-align: bottom; z-index: 2; }
+.asig-reserva-nombre { font-size: 12px; white-space: nowrap; }
+.asig-reserva-nombre.inactivo { color: var(--muted); text-decoration: line-through; }
+.asig-reserva-total { font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 2px; }
+.asignacion-pivot td.asig-celda { padding: 4px 2px; }
+.asignacion-pivot td.asig-celda input {
+  width: 84px; padding: 6px 6px; font-size: 13px; text-align: right;
+}
+.asig-total-cuenta, .asig-total-columna { white-space: nowrap; }
+.asig-restante { font-weight: 600; white-space: nowrap; }
+/* Los tres estados, con el mismo significado en toda la pantalla:
+   verde = está justo, ámbar = falta repartir, rojo = no cierra. */
+.asig-verde { color: var(--income); }
+.asig-ambar { color: #b45309; }
+.asig-rojo { color: var(--expense); }
+.asignacion-resumen td.inactivo { color: var(--muted); text-decoration: line-through; }
+
 /* Movimientos list */
 .movimiento { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .movimiento:last-child { border-bottom: none; }
