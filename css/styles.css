@@ -138,7 +138,7 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
    un bloque más ancho en la pantalla hay que correrlo a la izquierda la
    diferencia entre las dos mitades. En celular no aplica nada de esto. */
 @media (min-width: 900px) {
-  #sub-asignacion {
+  #sub-asignacion, #sub-conciliacion {
     --ancho-asignacion: min(1400px, calc(100vw - 48px));
     width: var(--ancho-asignacion);
     margin-left: calc((var(--ancho-app) - 32px) / 2 - var(--ancho-asignacion) / 2);
@@ -446,6 +446,24 @@ input:checked + .slider:before { transform: translateX(16px); }
   padding: 0 14px; border-radius: 8px; border: none; background: var(--accent); color: white; cursor: pointer;
 }
 
+/* La tabla de Conciliación scrollea adentro suyo, igual que la de
+   Asignación y por el mismo motivo: un encabezado "pegajoso" se pega al
+   borde de lo que scrollea, así que si lo que scrollea fuera la página los
+   nombres de las monedas se irían hacia arriba igual. Con el recuadro
+   propio quedan clavados mientras se baja por la lista de cuentas. La
+   columna "Origen" queda clavada a la izquierda por el mismo motivo. */
+.conciliacion-scroll { max-height: calc(100vh - 300px); min-height: 220px; overflow: auto; }
+table.conciliacion-pivot th, table.conciliacion-pivot td { background: var(--card); }
+table.conciliacion-pivot thead th {
+  position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 0 var(--border);
+}
+table.conciliacion-pivot th:first-child, table.conciliacion-pivot td:first-child {
+  position: sticky; left: 0; z-index: 1; white-space: nowrap;
+}
+/* La celda de la esquina está fija en los dos sentidos, así que tiene que
+   tapar a las otras dos. */
+table.conciliacion-pivot thead th:first-child { z-index: 3; }
+
 /* Conciliación */
 .conciliacion-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -463,11 +481,15 @@ table.conciliacion-pivot td.conciliacion-celda { white-space: nowrap; }
   display: inline-flex; align-items: center; justify-content: flex-end;
   gap: 6px; width: 100%;
 }
-/* El icono de info de Conciliación no es un botón: solo muestra el texto al
-   pasar el mouse por encima. Por eso el cursor de "ayuda" en vez del de
-   mano, que prometería que al tocarlo pasa algo. */
-.btn-detalle.btn-info { cursor: help; }
-.btn-detalle.btn-info:hover { background: var(--bg); color: var(--accent-oscuro); border-color: var(--accent-oscuro); }
+/* La fecha de la última conciliación se muestra al pasar el mouse por encima
+   del propio saldo (antes había un icono "i" al lado, pero eran demasiadas
+   cosas en una celda tan chica). El subrayado punteado suave es la única
+   pista visual de que ahí hay algo para ver, y el cursor de "ayuda" en vez
+   del de mano evita prometer que al tocarlo pasa algo. */
+.valor-conciliacion {
+  cursor: help;
+  border-bottom: 1px dotted var(--border);
+}
 
 /* Resultado del cálculo de diferencia, adentro de su modal. */
 .dif-resultado {
