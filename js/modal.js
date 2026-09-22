@@ -39,7 +39,7 @@ export function poblarSelects() {
 
 export function abrirModal(id) {
   state.editandoId = id;
-  document.getElementById("modalTitulo").textContent = id ? "Editar movimiento" : "Agregar gasto";
+  document.getElementById("modalTitulo").textContent = id ? "Editar movimiento" : "Agregar movimiento";
   const form = document.getElementById("formMovimiento");
   form.reset();
 
