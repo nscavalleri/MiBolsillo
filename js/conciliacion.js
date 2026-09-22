@@ -18,18 +18,21 @@ import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { pedirConfirmacion } from './confirmar-modal.js';
 import { nombreOrigen, nombreMoneda } from './lookups.js';
-import { formatoMesLegible } from './distribucion.js';
 
 function clave(origenId, monedaId) {
   return origenId + "::" + monedaId;
 }
 
-// La última vez que se cerró el mes para esa combinación de origen y
-// moneda. Se elige por mes (que es el dato con sentido para Nadia) y, si dos
-// filas comparten mes, por la fecha en que se guardaron.
+// La última vez que este saldo se dio por conciliado de verdad. Solo cuentan
+// los cierres en los que el casillero estaba TILDADO: un mes que se cerró con
+// este casillero sin tildar no es una conciliación de esta cuenta, así que no
+// tiene por qué aparecer como "la última vez".
+// Se elige por mes (que es el dato con sentido) y, si dos filas comparten
+// mes, por la fecha en que se guardaron.
 function ultimaConciliacion(origenId, monedaId) {
   const filas = state.conciliaciones.filter(
-    c => String(c.origen_id) === String(origenId) && String(c.moneda_id) === String(monedaId)
+    c => c.conciliado &&
+         String(c.origen_id) === String(origenId) && String(c.moneda_id) === String(monedaId)
   );
   if (filas.length === 0) return null;
   return filas.reduce((a, b) => {
@@ -57,13 +60,10 @@ function mostrarUltimaConciliacion(origenId, monedaId) {
     `${nombreOrigen(origenId)} · ${nombreMoneda(monedaId)}`;
   document.getElementById("detalleContenido").innerHTML = ultima
     ? `<div class="detalle-grupo">
-         <div class="detalle-grupo-titulo">Última vez que cerraste el mes</div>
-         ${linea("Mes", formatoMesLegible(ultima.mes))}
-         ${linea("Saldo que quedó guardado", Number(ultima.monto).toFixed(2) + " " + nombreMoneda(monedaId))}
-         ${linea("¿Lo habías tildado?", ultima.conciliado ? "Sí" : "No")}
-         ${linea("Guardado el", fechaLegible(ultima.creado_en))}
+         ${linea("Última vez conciliado", fechaLegible(ultima.creado_en))}
+         ${linea("Saldo guardado", Number(ultima.monto).toFixed(2) + " " + nombreMoneda(monedaId))}
        </div>`
-    : `<div class="empty">Todavía no cerraste ningún mes para esta cuenta y moneda.</div>`;
+    : `<div class="empty">Todavía no conciliaste esta cuenta y moneda en ningún cierre de mes.</div>`;
 
   document.getElementById("detalleOverlay").classList.add("open");
 }
@@ -120,13 +120,15 @@ export function renderConciliacion() {
       const marcado = !!state.conciliacionChecks[clave(origenId, monedaId)];
       html += `
         <td class="conciliacion-celda">
-          <button type="button" class="btn-detalle" data-conc-origen="${origenId}" data-conc-moneda="${monedaId}"
-                  title="Ver cuándo conciliaste esto por última vez">i</button>
-          <span>${v.toFixed(2)}</span>
-          <label class="check-conciliado${marcado ? " checked" : ""}">
-            <input type="checkbox" data-origen-id="${origenId}" data-moneda-id="${monedaId}" ${marcado ? "checked" : ""} />
-            <span class="checkmark">✓</span>
-          </label>
+          <span class="conciliacion-wrap">
+            <button type="button" class="btn-detalle" data-conc-origen="${origenId}" data-conc-moneda="${monedaId}"
+                    title="Ver la última vez que conciliaste este saldo">i</button>
+            <span>${v.toFixed(2)}</span>
+            <label class="check-conciliado${marcado ? " checked" : ""}">
+              <input type="checkbox" data-origen-id="${origenId}" data-moneda-id="${monedaId}" ${marcado ? "checked" : ""} />
+              <span class="checkmark">✓</span>
+            </label>
+          </span>
         </td>`;
     });
     html += "</tr>";
