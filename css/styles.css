@@ -9,6 +9,12 @@
   --income: #16a34a;
   --expense: #dc2626;
   --radius: 12px;
+  /* Ancho de la app. Está pensada para el celular, así que en una pantalla
+     grande queda una columna centrada de este ancho en vez de estirarse.
+     Gastos > Asignación es la única excepción (ver más abajo) y calcula su
+     posición a partir de esta misma variable, así que si algún día se
+     cambia este número, aquello se acomoda solo. */
+  --ancho-app: 520px;
 }
 * { box-sizing: border-box; }
 body {
@@ -39,7 +45,7 @@ header button.logout {
   color: var(--muted);
   cursor: pointer;
 }
-main { max-width: 520px; margin: 0 auto; padding: 16px; }
+main { max-width: var(--ancho-app); margin: 0 auto; padding: 16px; }
 
 .card {
   background: var(--card);
@@ -108,38 +114,69 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
 
 /* Gastos > Asignación: cuentas en las filas, reservas en las columnas.
    Como puede haber muchas reservas, la tabla se scrollea para el costado
-   (.pivot-wrap) pero las tres primeras columnas —cuenta, lo que tiene y lo
-   que queda sin repartir— quedan clavadas a la izquierda, así nunca se
-   pierde de vista de qué cuenta es la fila ni cuánto le falta repartir.
-   Los anchos fijos son justamente lo que permite calcular ese "left". */
+   (.pivot-wrap) pero las DOS primeras columnas —la cuenta con su plata, y
+   lo que le queda sin repartir— quedan clavadas a la izquierda, así nunca
+   se pierde de vista de qué cuenta es la fila ni cuánto le falta. Son dos y
+   no tres a propósito: la plata de la cuenta va como segunda línea adentro
+   de la celda del nombre, porque tres columnas fijas se comían casi toda la
+   pantalla de un celular y no entraba ninguna reserva. Los anchos fijos son
+   justamente lo que permite calcular el "left" de la segunda. */
+/* Única excepción al ancho de la app: en una pantalla grande, Asignación se
+   sale de la columna de 520px y usa todo el ancho disponible, porque es la
+   pantalla donde más columnas hay que ver de una (con el ancho normal
+   entraban 3 reservas; así entran una docena). La cuenta: el contenedor
+   centrado tiene (--ancho-app - 32px) de ancho útil, así que para centrar
+   un bloque más ancho en la pantalla hay que correrlo a la izquierda la
+   diferencia entre las dos mitades. En celular no aplica nada de esto. */
+@media (min-width: 900px) {
+  #sub-asignacion {
+    --ancho-asignacion: min(1400px, calc(100vw - 48px));
+    width: var(--ancho-asignacion);
+    margin-left: calc((var(--ancho-app) - 32px) / 2 - var(--ancho-asignacion) / 2);
+  }
+}
+
+.asignacion-wrap { cursor: grab; overscroll-behavior-x: contain; }
+.asignacion-wrap.arrastrando { cursor: grabbing; user-select: none; }
+.asignacion-wrap input { cursor: auto; }
 .asignacion-pivot { min-width: 100%; }
 .asignacion-pivot th, .asignacion-pivot td { background: var(--card); }
 .asignacion-pivot th:nth-child(1), .asignacion-pivot td:nth-child(1),
-.asignacion-pivot th:nth-child(2), .asignacion-pivot td:nth-child(2),
-.asignacion-pivot th:nth-child(3), .asignacion-pivot td:nth-child(3) {
+.asignacion-pivot th:nth-child(2), .asignacion-pivot td:nth-child(2) {
   position: sticky; z-index: 1;
 }
 .asignacion-pivot th:nth-child(1), .asignacion-pivot td:nth-child(1) {
-  left: 0; width: 104px; min-width: 104px; max-width: 104px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  left: 0; width: 108px; min-width: 108px; max-width: 108px;
 }
 .asignacion-pivot th:nth-child(2), .asignacion-pivot td:nth-child(2) {
-  left: 104px; width: 82px; min-width: 82px; max-width: 82px;
-}
-.asignacion-pivot th:nth-child(3), .asignacion-pivot td:nth-child(3) {
-  left: 186px; width: 82px; min-width: 82px; max-width: 82px;
+  left: 108px; width: 78px; min-width: 78px; max-width: 78px;
   box-shadow: 1px 0 0 var(--border);
 }
 .asignacion-pivot th { vertical-align: bottom; z-index: 2; }
+.asig-cuenta-nombre {
+  font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.asig-cuenta-total { font-size: 11px; color: var(--muted); margin-top: 1px; white-space: nowrap; }
 .asig-reserva-nombre { font-size: 12px; white-space: nowrap; }
-.asig-reserva-nombre.inactivo { color: var(--muted); text-decoration: line-through; }
 .asig-reserva-total { font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 2px; }
 .asignacion-pivot td.asig-celda { padding: 4px 2px; }
 .asignacion-pivot td.asig-celda input {
   width: 84px; padding: 6px 6px; font-size: 13px; text-align: right;
 }
-.asig-total-cuenta, .asig-total-columna { white-space: nowrap; }
+.asig-total-columna { white-space: nowrap; }
 .asig-restante { font-weight: 600; white-space: nowrap; }
+/* En pantallas chicas se achica todo un poco para que, además de las dos
+   columnas fijas, entren dos reservas en pantalla en vez de una. */
+@media (max-width: 560px) {
+  .asignacion-pivot th:nth-child(1), .asignacion-pivot td:nth-child(1) {
+    width: 92px; min-width: 92px; max-width: 92px;
+  }
+  .asignacion-pivot th:nth-child(2), .asignacion-pivot td:nth-child(2) {
+    left: 92px; width: 70px; min-width: 70px; max-width: 70px;
+  }
+  .asignacion-pivot td.asig-celda input { width: 70px; padding: 6px 4px; }
+  .asig-cuenta-nombre { font-size: 12px; }
+}
 /* Los tres estados, con el mismo significado en toda la pantalla:
    verde = está justo, ámbar = falta repartir, rojo = no cierra. */
 .asig-verde { color: var(--income); }
