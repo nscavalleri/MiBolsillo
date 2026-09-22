@@ -18,9 +18,54 @@ import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { pedirConfirmacion } from './confirmar-modal.js';
 import { nombreOrigen, nombreMoneda } from './lookups.js';
+import { formatoMesLegible } from './distribucion.js';
 
 function clave(origenId, monedaId) {
   return origenId + "::" + monedaId;
+}
+
+// La última vez que se cerró el mes para esa combinación de origen y
+// moneda. Se elige por mes (que es el dato con sentido para Nadia) y, si dos
+// filas comparten mes, por la fecha en que se guardaron.
+function ultimaConciliacion(origenId, monedaId) {
+  const filas = state.conciliaciones.filter(
+    c => String(c.origen_id) === String(origenId) && String(c.moneda_id) === String(monedaId)
+  );
+  if (filas.length === 0) return null;
+  return filas.reduce((a, b) => {
+    if (a.mes !== b.mes) return b.mes > a.mes ? b : a;
+    return String(b.creado_en || "") > String(a.creado_en || "") ? b : a;
+  });
+}
+
+function fechaLegible(timestamp) {
+  if (!timestamp) return "–";
+  const d = new Date(timestamp);
+  if (Number.isNaN(d.getTime())) return "–";
+  return String(d.getDate()).padStart(2, "0") + "/" +
+    String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+}
+
+// Abre el popup compartido (el mismo .modal-overlay que usa el botón "i" de
+// Distribución) con la foto del último cierre de esa celda.
+function mostrarUltimaConciliacion(origenId, monedaId) {
+  const ultima = ultimaConciliacion(origenId, monedaId);
+  const linea = (etiqueta, valor) =>
+    `<div class="detalle-linea"><span>${etiqueta}</span><span>${valor}</span></div>`;
+
+  document.getElementById("detalleTitulo").textContent =
+    `${nombreOrigen(origenId)} · ${nombreMoneda(monedaId)}`;
+  document.getElementById("detalleContenido").innerHTML = ultima
+    ? `<div class="detalle-grupo">
+         <div class="detalle-grupo-titulo">Última vez que cerraste el mes</div>
+         ${linea("Mes", formatoMesLegible(ultima.mes))}
+         ${linea("Saldo que quedó guardado", Number(ultima.monto).toFixed(2) + " " + nombreMoneda(monedaId))}
+         ${linea("¿Lo habías tildado?", ultima.conciliado ? "Sí" : "No")}
+         ${linea("Guardado el", fechaLegible(ultima.creado_en))}
+       </div>`
+    : `<div class="empty">Todavía no cerraste ningún mes para esta cuenta y moneda.</div>`;
+
+  document.getElementById("detalleOverlay").classList.add("open");
 }
 
 function calcularPivot() {
@@ -75,6 +120,8 @@ export function renderConciliacion() {
       const marcado = !!state.conciliacionChecks[clave(origenId, monedaId)];
       html += `
         <td class="conciliacion-celda">
+          <button type="button" class="btn-detalle" data-conc-origen="${origenId}" data-conc-moneda="${monedaId}"
+                  title="Ver cuándo conciliaste esto por última vez">i</button>
           <span>${v.toFixed(2)}</span>
           <label class="check-conciliado${marcado ? " checked" : ""}">
             <input type="checkbox" data-origen-id="${origenId}" data-moneda-id="${monedaId}" ${marcado ? "checked" : ""} />
@@ -85,6 +132,11 @@ export function renderConciliacion() {
     html += "</tr>";
   });
   tabla.innerHTML = html;
+
+  tabla.querySelectorAll("[data-conc-origen]").forEach(btn => {
+    btn.addEventListener("click", () =>
+      mostrarUltimaConciliacion(btn.dataset.concOrigen, btn.dataset.concMoneda));
+  });
 
   tabla.querySelectorAll("input[type=\"checkbox\"]").forEach(chk => {
     chk.addEventListener("change", async () => {

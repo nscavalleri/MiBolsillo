@@ -33,7 +33,7 @@ function ordenarMovimientos(lista) {
 
 export async function cargarTodo() {
   const supabaseClient = getClient();
-  const [c, m, o, mv, cc, tc, r, cg, asig, evo] = await Promise.all([
+  const [c, m, o, mv, cc, tc, r, cg, asig, evo, conc] = await Promise.all([
     supabaseClient.from("conceptos").select("*").order("nombre"),
     supabaseClient.from("monedas").select("*").order("nombre"),
     supabaseClient.from("origenes").select("*").order("nombre"),
@@ -44,9 +44,10 @@ export async function cargarTodo() {
     supabaseClient.from("configuracion_general").select("*"),
     supabaseClient.from("asignaciones").select("*"),
     supabaseClient.from("evolucion_comentarios").select("*"),
+    supabaseClient.from("conciliaciones").select("*"),
   ]);
 
-  const errores = [c.error, m.error, o.error, mv.error, cc.error, tc.error, r.error, cg.error, asig.error, evo.error].filter(Boolean);
+  const errores = [c.error, m.error, o.error, mv.error, cc.error, tc.error, r.error, cg.error, asig.error, evo.error, conc.error].filter(Boolean);
   const errEl = document.getElementById("loadError");
   if (errores.length > 0) {
     console.error("Error cargando datos de Supabase:", errores);
@@ -78,6 +79,7 @@ export async function cargarTodo() {
   state.reservas = r.data || [];
   state.asignaciones = asig.data || [];
   state.evolucionComentarios = evo.data || [];
+  state.conciliaciones = conc.data || [];
 
   // Preferencias generales (clave/valor), indexadas por clave para que sea
   // fácil de leer (state.configuracionGeneral.convertir_euros); acá se

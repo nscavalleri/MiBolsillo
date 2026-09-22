@@ -50,6 +50,12 @@ export const state = {
   // Una fila por combinación cuenta-reserva; las combinaciones sin plata
   // asignada simplemente no tienen fila.
   asignaciones: [],
+  // Gastos > Conciliación: el histórico de meses ya cerrados (tabla
+  // conciliaciones). Es la foto que quedó guardada de cada cierre: mes,
+  // saldo, si estaba tildado y cuándo se guardó. No se usa para calcular
+  // nada, solo para mostrar cuándo fue la última vez que se concilió cada
+  // combinación de origen y moneda.
+  conciliaciones: [],
   // Dashboard > Evolución: la nota libre de cada mes (tabla
   // evolucion_comentarios: mes/comentario). Qué movimientos son
   // "excepcionales" no vive acá: es la columna movimientos.excepcional, así
