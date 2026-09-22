@@ -193,17 +193,25 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
    del objetivo (ver recalcular en asignacion.js), por eso va en negrita: es
    un dato que se mira de reojo mientras se reparte, no un pie de página. */
 .asig-reserva-total { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; }
-.asignacion-pivot td.asig-celda { padding: 4px 2px; position: relative; }
+/* El espacio a los costados separa una columna de la otra: sin él, el
+   circulito de la marca quedaba a la misma distancia del número de su celda
+   que del recuadro de la celda de al lado, y se leía como si fuera de esa. */
+.asignacion-pivot td.asig-celda { padding: 4px 5px; position: relative; }
+/* El hueco de la derecha es donde se apoya el circulito de la marca: va
+   pegado al número de su propia celda, no al principio de la celda, porque
+   con los números alineados a la derecha una marca al principio quedaba más
+   cerca del número de la celda anterior que del suyo y parecía de esa. */
 .asignacion-pivot td.asig-celda input {
-  width: 84px; padding: 6px 6px 6px 22px; font-size: 13px; text-align: right;
+  width: 84px; padding: 6px 22px 6px 6px; font-size: 13px; text-align: right;
 }
 /* La celda que se queda con lo que sobra de la fila: gris y sin campo para
    escribir, porque el número se calcula solo (igual que las celdas grises
    de la planilla que Nadia usaba antes). */
 .asignacion-pivot td.asig-celda-resto { background: #f1f3f5; }
 .asig-resto-valor {
-  display: inline-block; width: 84px; padding: 6px 6px 6px 22px;
+  display: inline-block; width: 84px; padding: 6px 22px 6px 6px;
   font-size: 13px; text-align: right; font-weight: 600; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* El puntito que marca esa celda como "acá va lo que sobre". Se ve SIEMPRE,
    en todas las celdas: al principio aparecía solo al pasar el mouse por
@@ -213,12 +221,13 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
    está apagado, círculo lleno cuando está encendido — el relleno sólido se
    distingue del aro de un vistazo, sin depender de ningún símbolo adentro
    (un tilde blanco sobre el celeste de la app casi no se lee).
-   El aro va en el celeste de la app, no en gris oscuro: con un aro por
-   celda son más de doscientos en pantalla, y en gris oscuro el contraste
-   era tan fuerte que la tabla cansaba la vista. El encendido sí va en el
-   celeste oscuro, para que se despegue de los demás — son pocos. */
+   Encendido y apagado son el mismo celeste de la app: lo que los distingue
+   es el relleno, no el color (probamos un celeste más oscuro para el
+   encendido y se notaba como "otro color", que confundía). Gris oscuro
+   tampoco: con un aro por celda son más de doscientos en pantalla y el
+   contraste era tan fuerte que la tabla cansaba la vista. */
 .asig-marca {
-  position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
   width: 16px; height: 16px; padding: 0; border-radius: 50%;
   border: 1.5px solid var(--accent); background: #fff;
   font-size: 0; line-height: 0; cursor: pointer; transition: background .12s, border-color .12s;
@@ -228,8 +237,7 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
 .asig-marca::after { content: ""; position: absolute; inset: -7px; }
 .asig-marca:hover { border-color: var(--accent-oscuro); background: #e8fbfd; }
 .asig-marca.activa, .asig-marca.activa:hover {
-  background: var(--accent-oscuro); border-color: var(--accent-oscuro);
-  box-shadow: 0 0 0 2px rgba(7, 114, 126, 0.22);
+  background: var(--accent); border-color: var(--accent);
 }
 .asig-total-columna { white-space: nowrap; }
 .asig-restante { font-weight: 600; white-space: nowrap; }
@@ -242,7 +250,10 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
   .asignacion-pivot th:nth-child(2), .asignacion-pivot td:nth-child(2) {
     left: 92px; width: 70px; min-width: 70px; max-width: 70px;
   }
-  .asignacion-pivot td.asig-celda input { width: 70px; padding: 6px 4px; }
+  .asignacion-pivot td.asig-celda { padding: 4px 4px; }
+  .asignacion-pivot td.asig-celda input,
+  .asig-resto-valor { width: 70px; padding: 6px 20px 6px 4px; }
+  .asig-marca { right: 6px; }
   .asig-cuenta-nombre { font-size: 12px; }
 }
 /* Los tres estados, con el mismo significado en toda la pantalla:
