@@ -148,8 +148,6 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
    al borde de lo que scrollea, y si lo que scrollea fuera la página entera
    la fila se iría hacia arriba igual. De paso, la barra de desplazamiento
    horizontal queda siempre al pie de la tabla y no abajo de todo. */
-.ayuda-plegable { margin-bottom: 10px; }
-.ayuda-plegable .conciliacion-ayuda { margin: 0; }
 .asignacion-wrap {
   cursor: grab;
   overscroll-behavior-x: contain;
