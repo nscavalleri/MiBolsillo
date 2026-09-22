@@ -461,8 +461,20 @@ input:checked + .slider:before { transform: translateX(16px); }
 table.conciliacion-pivot td.conciliacion-celda { white-space: nowrap; }
 .conciliacion-wrap {
   display: inline-flex; align-items: center; justify-content: flex-end;
-  gap: 8px; width: 100%;
+  gap: 6px; width: 100%;
 }
+/* El icono de info de Conciliación no es un botón: solo muestra el texto al
+   pasar el mouse por encima. Por eso el cursor de "ayuda" en vez del de
+   mano, que prometería que al tocarlo pasa algo. */
+.btn-detalle.btn-info { cursor: help; }
+.btn-detalle.btn-info:hover { background: var(--bg); color: var(--accent-oscuro); border-color: var(--accent-oscuro); }
+
+/* Resultado del cálculo de diferencia, adentro de su modal. */
+.dif-resultado {
+  font-size: 14px; font-weight: 600; line-height: 1.5;
+  background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-top: 14px;
+}
+.dif-resultado + .detalle-grupo { margin-top: 14px; }
 table.conciliacion-pivot td.conciliacion-vacia { color: var(--border); }
 .check-conciliado {
   position: relative; display: inline-flex; align-items: center; justify-content: center;
