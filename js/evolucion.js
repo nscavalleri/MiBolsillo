@@ -33,10 +33,15 @@ const UMBRAL_POR_DEFECTO = 5;
 
 // Mes que se está mirando en el modal de detalle, o null si está cerrado.
 let mesAbierto = null;
-// Filtros del modal: los mismos criterios que Gastos > Movimientos, menos
-// el mes (que ya lo fija la fila desde la que se abrió). Se reinician cada
-// vez que se abre el modal.
-let filtrosModal = { tipo: "", concepto: "", origen: "", moneda: "" };
+// Cuál de las dos pantallas del modal se está mostrando: "resumen" (solo lo
+// ya marcado) o "buscar" (los filtros y los candidatos a agregar).
+let vistaModal = "resumen";
+// Desde qué columna se tocó "Agregar": eso fija el tipo de lo que se busca,
+// así que el tipo no es un filtro más.
+let tipoBuscado = "ingreso";
+// Filtros del buscador: los mismos criterios que Gastos > Movimientos, menos
+// el mes (que lo fija la fila) y menos el tipo (que lo fija la columna).
+let filtrosModal = { concepto: "", origen: "", moneda: "" };
 
 function numero(v) {
   const n = Number(v);
@@ -198,11 +203,17 @@ export function renderEvolucion() {
 }
 
 // --- El modal de detalle de un mes -----------------------------------------
+//
+// Tiene dos pantallas adentro. La primera ("resumen") muestra SOLO los
+// movimientos ya marcados como excepcionales, las sumas y el comentario: es
+// la foto del mes, sin ruido. La segunda ("buscar") aparece recién al tocar
+// "Agregar" en una de las dos columnas, y ahí sí están los filtros y la
+// lista de candidatos. Fue un pedido explícito: ver la lista entera de
+// movimientos del mes en la pantalla principal tapaba lo importante.
 
 function abrirDetalleMes(mes) {
   mesAbierto = mes;
-  filtrosModal = { tipo: "", concepto: "", origen: "", moneda: "" };
-  poblarFiltrosModal();
+  vistaModal = "resumen";
   renderDetalleMes();
   document.getElementById("evolucionDetalleOverlay").classList.add("open");
 }
@@ -210,6 +221,7 @@ function abrirDetalleMes(mes) {
 function cerrarDetalleMes() {
   document.getElementById("evolucionDetalleOverlay").classList.remove("open");
   mesAbierto = null;
+  vistaModal = "resumen";
 }
 
 function poblarFiltrosModal() {
@@ -218,23 +230,11 @@ function poblarFiltrosModal() {
   document.getElementById("evoFiltroConcepto").innerHTML = opciones(state.conceptos);
   document.getElementById("evoFiltroOrigen").innerHTML = opciones(state.origenes);
   document.getElementById("evoFiltroMoneda").innerHTML = opciones(state.monedas);
-  document.getElementById("evoFiltroTipo").value = "";
-  document.getElementById("evoFiltroConcepto").value = "";
-  document.getElementById("evoFiltroOrigen").value = "";
-  document.getElementById("evoFiltroMoneda").value = "";
 }
 
-// Los movimientos del mes que se está mirando, pasados por los filtros del
-// modal. El mes no es un filtro: lo fija la fila desde la que se abrió.
-function movimientosDelMes() {
-  return state.movimientos.filter(m => {
-    if (String(m.fecha).slice(0, 7) !== mesAbierto) return false;
-    if (filtrosModal.tipo && m.tipo !== filtrosModal.tipo) return false;
-    if (filtrosModal.concepto && String(m.concepto_id) !== filtrosModal.concepto) return false;
-    if (filtrosModal.origen && String(m.origen_id) !== filtrosModal.origen) return false;
-    if (filtrosModal.moneda && String(m.moneda_id) !== filtrosModal.moneda) return false;
-    return true;
-  });
+function movimientosDelMes(tipo) {
+  return state.movimientos.filter(m =>
+    String(m.fecha).slice(0, 7) === mesAbierto && m.tipo === tipo);
 }
 
 // Suma en euros de los movimientos marcados como excepcionales de un tipo.
@@ -244,56 +244,62 @@ function movimientosDelMes() {
 function totalExcepcionales(tipo) {
   let total = 0;
   let incompleto = false;
-  state.movimientos
-    .filter(m => String(m.fecha).slice(0, 7) === mesAbierto && m.excepcional && m.tipo === tipo)
-    .forEach(m => {
-      const { valor, ok } = convertirAEuros(mesAbierto, m.moneda_id, Number(m.monto));
-      total += valor;
-      if (!ok) incompleto = true;
-    });
+  movimientosDelMes(tipo).filter(m => m.excepcional).forEach(m => {
+    const { valor, ok } = convertirAEuros(mesAbierto, m.moneda_id, Number(m.monto));
+    total += valor;
+    if (!ok) incompleto = true;
+  });
   return { total, incompleto };
 }
 
-function filaMovimiento(m) {
-  return `<label class="evo-mov">
-    <input type="checkbox" data-evo-excepcional="${m.id}" ${m.excepcional ? "checked" : ""} />
-    <span class="evo-mov-info">
+function datosMovimiento(m) {
+  return `<span class="evo-mov-info">
       <span class="evo-mov-concepto">${nombreConcepto(m.concepto_id)}</span>
       <span class="evo-mov-detalle">${m.fecha} · ${nombreOrigen(m.origen_id)}${m.descripcion ? " · " + m.descripcion : ""}</span>
     </span>
-    <span class="evo-mov-monto">${formato(m.monto)} ${nombreMoneda(m.moneda_id)}</span>
-  </label>`;
+    <span class="evo-mov-monto">${formato(m.monto)} ${nombreMoneda(m.moneda_id)}</span>`;
 }
 
-function renderDetalleMes() {
+export function renderDetalleMes() {
   if (!mesAbierto) return;
-  document.getElementById("evolucionDetalleTitulo").textContent = formatoMesLegible(mesAbierto);
+  const enResumen = vistaModal === "resumen";
+  document.getElementById("evoVistaResumen").style.display = enResumen ? "block" : "none";
+  document.getElementById("evoVistaBuscar").style.display = enResumen ? "none" : "block";
+  if (enResumen) renderResumenMes();
+  else renderBuscador();
+}
 
-  const movimientos = movimientosDelMes();
-  const ingresos = movimientos.filter(m => m.tipo === "ingreso");
-  const egresos = movimientos.filter(m => m.tipo === "egreso");
+function renderResumenMes() {
+  document.getElementById("evolucionDetalleTitulo").textContent =
+    `Movimientos excepcionales de ${formatoMesLegible(mesAbierto)}`;
 
-  const columna = (titulo, lista) => `
-    <div class="evo-columna">
-      <h4>${titulo}</h4>
+  const columna = (titulo, tipo) => {
+    const lista = movimientosDelMes(tipo).filter(m => m.excepcional);
+    return `<div class="evo-columna">
+      <div class="evo-columna-titulo">
+        <h4>${titulo}</h4>
+        <button type="button" class="evo-agregar" data-evo-agregar="${tipo}">+ Agregar</button>
+      </div>
       ${lista.length === 0
-        ? `<div class="empty">Ningún movimiento con estos filtros.</div>`
-        : lista.map(filaMovimiento).join("")}
+        ? `<div class="empty">Todavía no agregaste ninguno.</div>`
+        : lista.map(m => `<div class="evo-mov">
+            ${datosMovimiento(m)}
+            <button type="button" class="evo-quitar" data-evo-quitar="${m.id}" title="Sacarlo de los excepcionales">✕</button>
+          </div>`).join("")}
     </div>`;
+  };
 
   document.getElementById("evolucionDetalleListas").innerHTML =
-    columna("Ingresos", ingresos) + columna("Egresos", egresos);
+    columna("Ingresos", "ingreso") + columna("Egresos", "egreso");
 
   const sumaIngresos = totalExcepcionales("ingreso");
   const sumaEgresos = totalExcepcionales("egreso");
   const diferencia = sumaIngresos.total - sumaEgresos.total;
-  const aviso = (sumaIngresos.incompleto || sumaEgresos.incompleto)
-    ? ` <span class="valor-incompleto" title="Falta el tipo de cambio de alguna moneda para este mes, así que esta suma está incompleta">⚠</span>`
-    : "";
+  const aviso = `<span class="valor-incompleto" title="Falta el tipo de cambio de alguna moneda para este mes, así que esta suma está incompleta">⚠</span> `;
 
   document.getElementById("evolucionDetalleTotales").innerHTML = `
-    <div class="evo-total-linea"><span>Ingresos excepcionales</span><span class="asig-verde">${formato(sumaIngresos.total)} €${sumaIngresos.incompleto ? aviso : ""}</span></div>
-    <div class="evo-total-linea"><span>Egresos excepcionales</span><span class="asig-rojo">${formato(sumaEgresos.total)} €${sumaEgresos.incompleto ? aviso : ""}</span></div>
+    <div class="evo-total-linea"><span>Ingresos excepcionales</span><span class="asig-verde">${sumaIngresos.incompleto ? aviso : ""}${formato(sumaIngresos.total)} €</span></div>
+    <div class="evo-total-linea"><span>Egresos excepcionales</span><span class="asig-rojo">${sumaEgresos.incompleto ? aviso : ""}${formato(sumaEgresos.total)} €</span></div>
     <div class="evo-total-linea evo-total-diferencia">
       <span>Diferencia</span>
       <span class="${diferencia >= 0 ? "asig-verde" : "asig-rojo"}">${formato(diferencia)} €</span>
@@ -304,20 +310,50 @@ function renderDetalleMes() {
   // re-render en medio de la escritura borraría lo tipeado.
   if (document.activeElement !== textarea) textarea.value = comentarioDe(mesAbierto);
 
-  document.getElementById("evolucionDetalleListas")
-    .querySelectorAll("[data-evo-excepcional]")
-    .forEach(chk => chk.addEventListener("change", () => marcarExcepcional(chk)));
+  document.querySelectorAll("[data-evo-agregar]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      tipoBuscado = btn.dataset.evoAgregar;
+      vistaModal = "buscar";
+      filtrosModal = { concepto: "", origen: "", moneda: "" };
+      poblarFiltrosModal();
+      renderDetalleMes();
+    });
+  });
+  document.querySelectorAll("[data-evo-quitar]").forEach(btn => {
+    btn.addEventListener("click", () => marcarExcepcional(btn.dataset.evoQuitar, false));
+  });
 }
 
-async function marcarExcepcional(chk) {
-  const id = chk.dataset.evoExcepcional;
+function renderBuscador() {
+  document.getElementById("evolucionDetalleTitulo").textContent =
+    `Agregar ${tipoBuscado === "ingreso" ? "ingresos" : "egresos"} de ${formatoMesLegible(mesAbierto)}`;
+
+  // Solo los que todavía no están agregados: una vez que se agrega uno,
+  // desaparece de la lista y ya está del otro lado.
+  const candidatos = movimientosDelMes(tipoBuscado).filter(m => {
+    if (m.excepcional) return false;
+    if (filtrosModal.concepto && String(m.concepto_id) !== filtrosModal.concepto) return false;
+    if (filtrosModal.origen && String(m.origen_id) !== filtrosModal.origen) return false;
+    if (filtrosModal.moneda && String(m.moneda_id) !== filtrosModal.moneda) return false;
+    return true;
+  });
+
+  document.getElementById("evoResultados").innerHTML = candidatos.length === 0
+    ? `<div class="empty">No quedan ${tipoBuscado === "ingreso" ? "ingresos" : "egresos"} de este mes para agregar con estos filtros.</div>`
+    : candidatos.map(m => `<button type="button" class="evo-mov evo-candidato" data-evo-sumar="${m.id}">
+        ${datosMovimiento(m)}
+        <span class="evo-mas">+</span>
+      </button>`).join("");
+
+  document.getElementById("evoResultados").querySelectorAll("[data-evo-sumar]").forEach(btn => {
+    btn.addEventListener("click", () => marcarExcepcional(btn.dataset.evoSumar, true));
+  });
+}
+
+async function marcarExcepcional(id, valor) {
   const { error } = await getClient()
-    .from("movimientos").update({ excepcional: chk.checked }).eq("id", id);
-  if (error) {
-    alert("No se pudo guardar: " + error.message);
-    chk.checked = !chk.checked;
-    return;
-  }
+    .from("movimientos").update({ excepcional: valor }).eq("id", id);
+  if (error) { alert("No se pudo guardar: " + error.message); return; }
   await cargarTodo();
 }
 
@@ -340,10 +376,14 @@ export function setupEvolucion() {
   document.getElementById("evolucionDetalleClose").addEventListener("click", cerrarDetalleMes);
   overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrarDetalleMes(); });
 
-  ["evoFiltroTipo", "evoFiltroConcepto", "evoFiltroOrigen", "evoFiltroMoneda"].forEach(id => {
+  document.getElementById("evoVolver").addEventListener("click", () => {
+    vistaModal = "resumen";
+    renderDetalleMes();
+  });
+
+  ["evoFiltroConcepto", "evoFiltroOrigen", "evoFiltroMoneda"].forEach(id => {
     document.getElementById(id).addEventListener("change", () => {
       filtrosModal = {
-        tipo: document.getElementById("evoFiltroTipo").value,
         concepto: document.getElementById("evoFiltroConcepto").value,
         origen: document.getElementById("evoFiltroOrigen").value,
         moneda: document.getElementById("evoFiltroMoneda").value,
@@ -353,8 +393,10 @@ export function setupEvolucion() {
   });
 
   document.getElementById("evoLimpiarFiltros").addEventListener("click", () => {
-    poblarFiltrosModal();
-    filtrosModal = { tipo: "", concepto: "", origen: "", moneda: "" };
+    ["evoFiltroConcepto", "evoFiltroOrigen", "evoFiltroMoneda"].forEach(id => {
+      document.getElementById(id).value = "";
+    });
+    filtrosModal = { concepto: "", origen: "", moneda: "" };
     renderDetalleMes();
   });
 
