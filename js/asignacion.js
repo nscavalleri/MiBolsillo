@@ -47,6 +47,18 @@ function formato(v) {
   return numero(v).toFixed(2);
 }
 
+// La reserva que se queda con el remanente de una cuenta: lo que sobra
+// después de repartir a mano el resto de esa fila. Se guarda en
+// origenes.reserva_remanente_id (una sola por cuenta, o ninguna). Si apunta
+// a una reserva que ya no está a la vista (se desactivó o se borró), se
+// trata como si no hubiera ninguna, para no contar plata invisible.
+function remanenteDe(origenId, reservasVisibles) {
+  const origen = state.origenes.find(o => String(o.id) === String(origenId));
+  if (!origen || origen.reserva_remanente_id == null) return null;
+  const existe = reservasVisibles.some(r => String(r.id) === String(origen.reserva_remanente_id));
+  return existe ? String(origen.reserva_remanente_id) : null;
+}
+
 function montoAsignado(origenId, reservaId) {
   const fila = state.asignaciones.find(
     a => String(a.origen_id) === String(origenId) && String(a.reserva_id) === String(reservaId)
@@ -104,6 +116,35 @@ function devolverFoco(foco) {
   if (!input) return;
   if (foco.valor !== input.value) input.value = foco.valor;
   input.focus();
+}
+
+// Una celda de la tabla. Normalmente es un campo para escribir cuánto va de
+// esa cuenta a esa reserva. Pero si esa es la reserva marcada para quedarse
+// con el remanente de la fila, en vez del campo se muestra el número
+// calculado sobre fondo gris (como las celdas grises de la planilla de
+// Nadia): no se escribe a mano porque cambia solo cada vez que se toca
+// cualquier otra celda de la fila.
+//
+// El puntito de la esquina izquierda es el que marca/desmarca esa reserva
+// como la del remanente. Está escondido hasta que se pasa el mouse por
+// arriba (o siempre a medio tono en pantallas táctiles, donde no hay
+// "pasar el mouse"): son muchas celdas y tenerlo siempre a la vista en
+// todas ensuciaba la tabla.
+function celdaAsignacion(origenId, reservaId, remanenteId) {
+  const esResto = remanenteId !== null && String(remanenteId) === String(reservaId);
+  const marca = `<button type="button" class="asig-marca${esResto ? " activa" : ""}"
+      data-marca-origen="${origenId}" data-marca-reserva="${reservaId}"
+      title="${esResto
+        ? "Acá va lo que sobre de esta cuenta. Tocá para que deje de ser así."
+        : "Marcar esta reserva para que se quede con lo que sobre de esta cuenta"}">${esResto ? "✓" : ""}</button>`;
+
+  const contenido = esResto
+    ? `<span class="asig-resto-valor" data-resto-origen="${origenId}" data-resto-reserva="${reservaId}">0.00</span>`
+    : `<input type="number" step="0.01" placeholder="0"
+              data-asig-origen="${origenId}" data-asig-reserva="${reservaId}"
+              value="${montoAsignado(origenId, reservaId) || ""}" />`;
+
+  return `<td class="asig-celda${esResto ? " asig-celda-resto" : ""}">${marca}${contenido}</td>`;
 }
 
 export function renderAsignacion() {
@@ -166,12 +207,7 @@ export function renderAsignacion() {
         <div class="asig-cuenta-total">${formato(f.total)} €</div>
       </td>
       <td class="asig-restante" data-restante="${f.origenId}" data-total="${f.total}">0.00</td>
-      ${reservas.map(r => `
-        <td class="asig-celda">
-          <input type="number" step="0.01" placeholder="0"
-                 data-asig-origen="${f.origenId}" data-asig-reserva="${r.id}"
-                 value="${montoAsignado(f.origenId, r.id) || ""}" />
-        </td>`).join("")}
+      ${reservas.map(r => celdaAsignacion(f.origenId, r.id, remanenteDe(f.origenId, reservas))).join("")}
     </tr>`;
   });
 
@@ -205,6 +241,10 @@ export function renderAsignacion() {
   tabla.querySelectorAll("[data-asig-origen]").forEach(input => {
     input.addEventListener("input", recalcular);
     input.addEventListener("change", () => guardarCelda(input));
+  });
+
+  tabla.querySelectorAll("[data-marca-origen]").forEach(btn => {
+    btn.addEventListener("click", () => alternarRemanente(btn));
   });
 
   habilitarArrastre();
@@ -280,12 +320,37 @@ function recalcular() {
     porReserva[r] = (porReserva[r] || 0) + valor;
   });
 
+  // Las celdas de remanente se calculan DESPUÉS de sumar lo escrito a mano
+  // (son justamente "lo que sobra de eso") y antes de todo lo demás, porque
+  // esa plata cuenta igual que la escrita: suma para su reserva y deja la
+  // fila en cero. Si da negativo es que se repartió de más, y se marca en
+  // rojo acá y también en "Sin asignar", para que el aviso se vea sin tener
+  // que scrollear hasta la columna del remanente.
+  const remanentePorOrigen = {};
+  tabla.querySelectorAll("[data-resto-origen]").forEach(span => {
+    const origenId = span.dataset.restoOrigen;
+    const reservaId = span.dataset.restoReserva;
+    const celdaResto = tabla.querySelector(`[data-restante="${origenId}"]`);
+    const total = numero(celdaResto && celdaResto.dataset.total);
+    const sobra = total - (porOrigen[origenId] || 0);
+
+    span.textContent = formato(sobra);
+    span.className = "asig-resto-valor" + (sobra < -TOLERANCIA ? " asig-rojo" : "");
+    remanentePorOrigen[origenId] = sobra;
+    porOrigen[origenId] = (porOrigen[origenId] || 0) + sobra;
+    porReserva[reservaId] = (porReserva[reservaId] || 0) + sobra;
+  });
+
   // Sin asignar de cada cuenta = lo que tiene menos lo repartido.
   let restanteGeneral = 0;
   tabla.querySelectorAll("[data-restante]").forEach(celda => {
     const origenId = celda.dataset.restante;
     const total = numero(celda.dataset.total);
-    const resto = total - (porOrigen[origenId] || 0);
+    let resto = total - (porOrigen[origenId] || 0);
+    // En una fila con remanente, "Sin asignar" siempre da cero (el remanente
+    // se lleva lo que sobre). Lo único que interesa mostrar ahí es el caso
+    // en que se repartió de más.
+    if (origenId in remanentePorOrigen) resto = Math.min(remanentePorOrigen[origenId], 0);
     restanteGeneral += resto;
     celda.textContent = formato(resto);
     celda.className = "asig-restante " + claseRestante(resto);
@@ -339,6 +404,35 @@ function actualizarEnMemoria(origen_id, reserva_id, monto) {
   );
   if (fila) fila.monto = monto;
   else state.asignaciones.push({ origen_id, reserva_id, monto });
+}
+
+// Marcar o desmarcar la reserva que se queda con el remanente de una
+// cuenta. Acá sí se recarga todo (a diferencia de guardar una celda): no es
+// un número que se escribe de a poco sino un cambio de forma de la tabla —
+// esa celda pasa a ser un campo o un número calculado.
+//
+// Al marcarla se borra lo que hubiera escrito a mano en esa misma celda: si
+// no, esa plata se contaría dos veces (una como monto guardado y otra como
+// remanente calculado).
+async function alternarRemanente(btn) {
+  const origen_id = btn.dataset.marcaOrigen;
+  const reserva_id = btn.dataset.marcaReserva;
+  const yaEstaba = btn.classList.contains("activa");
+  const cliente = getClient();
+
+  const { error } = await cliente
+    .from("origenes")
+    .update({ reserva_remanente_id: yaEstaba ? null : reserva_id })
+    .eq("id", origen_id);
+  if (error) { alert("No se pudo guardar: " + error.message); return; }
+
+  if (!yaEstaba) {
+    const { error: errorBorrado } = await cliente
+      .from("asignaciones").delete().eq("origen_id", origen_id).eq("reserva_id", reserva_id);
+    if (errorBorrado) { alert("No se pudo limpiar el monto anterior de esa celda: " + errorBorrado.message); }
+  }
+
+  await cargarTodo();
 }
 
 async function guardarCelda(input) {

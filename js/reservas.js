@@ -52,10 +52,14 @@ export function renderReservas() {
         const tieneAsignaciones = state.asignaciones.some(
           a => String(a.reserva_id) === String(id) && Number(a.monto) !== 0
         );
-        if (tieneAsignaciones && !confirm(
-          "Esta reserva tiene plata asignada en Gastos > Asignación.\n\n" +
-          "Al desactivarla esa plata se libera y vuelve a quedar sin asignar. " +
-          "Si después la volvés a activar, vas a tener que asignarla de nuevo.\n\n¿Seguir?"
+        const esRemanenteDeAlguna = state.origenes.some(
+          o => String(o.reserva_remanente_id) === String(id)
+        );
+        if ((tieneAsignaciones || esRemanenteDeAlguna) && !confirm(
+          "Esta reserva se está usando en Gastos > Asignación.\n\n" +
+          "Al desactivarla esa plata se libera y vuelve a quedar sin asignar, y las cuentas " +
+          "que le mandaban lo que les sobraba dejan de hacerlo. Si después la volvés a activar, " +
+          "vas a tener que configurarlo de nuevo.\n\n¿Seguir?"
         )) {
           chk.checked = true;
           return;
@@ -68,6 +72,11 @@ export function renderReservas() {
       if (!chk.checked) {
         const { error: errorAsig } = await cliente.from("asignaciones").delete().eq("reserva_id", id);
         if (errorAsig) { alert("Se desactivó la reserva pero no se pudo liberar la plata asignada: " + errorAsig.message); }
+        // Las cuentas que mandaban su remanente a esta reserva dejan de
+        // tener remanente automático, si no apuntarían a algo invisible.
+        const { error: errorRem } = await cliente
+          .from("origenes").update({ reserva_remanente_id: null }).eq("reserva_remanente_id", id);
+        if (errorRem) { alert("Se desactivó la reserva pero quedó marcada como destino del sobrante de alguna cuenta: " + errorRem.message); }
       }
 
       await cargarTodo();
