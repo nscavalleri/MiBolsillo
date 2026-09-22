@@ -383,19 +383,20 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div class="modal-overlay" id="evolucionDetalleOverlay">
 <div class="modal-box modal-ancho">
 <button class="modal-close" id="evolucionDetalleClose" type="button">✕</button>
-<h3 id="evolucionDetalleTitulo">Mes</h3>
+<h3 id="evolucionDetalleTitulo">Movimientos excepcionales</h3>
 
-<p class="conciliacion-ayuda">Tildá los movimientos que fueron excepcionales: los que explican por qué este mes se salió de lo normal.</p>
-
-<div class="filtros-grid evo-filtros">
-<div>
-<label for="evoFiltroTipo">Tipo</label>
-<select id="evoFiltroTipo">
-<option value="">Todos</option>
-<option value="ingreso">Ingreso</option>
-<option value="egreso">Egreso</option>
-</select>
+<!-- El modal tiene dos pantallas. La primera muestra SOLO lo que ya está
+     marcado como excepcional; la segunda es el buscador, y aparece recién
+     al tocar "Agregar" en una de las dos columnas. -->
+<div id="evoVistaResumen">
+<div class="evo-columnas" id="evolucionDetalleListas"></div>
+<div class="evo-totales" id="evolucionDetalleTotales"></div>
+<label for="evolucionComentario">Comentarios adicionales</label>
+<textarea id="evolucionComentario" rows="4" placeholder="Qué pasó este mes..."></textarea>
 </div>
+
+<div id="evoVistaBuscar" style="display:none;">
+<div class="filtros-grid evo-filtros">
 <div>
 <label for="evoFiltroConcepto">Concepto</label>
 <select id="evoFiltroConcepto"><option value="">Todos</option></select>
@@ -410,13 +411,9 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 </div>
 <button class="secondary" id="evoLimpiarFiltros" type="button">Limpiar filtros</button>
-
-<div class="evo-columnas" id="evolucionDetalleListas"></div>
-
-<div class="evo-totales" id="evolucionDetalleTotales"></div>
-
-<label for="evolucionComentario">Comentarios adicionales</label>
-<textarea id="evolucionComentario" rows="4" placeholder="Qué pasó este mes..."></textarea>
+<div class="evo-resultados" id="evoResultados"></div>
+<button class="primary" id="evoVolver" type="button">Listo, volver</button>
+</div>
 </div>
 </div>
 
