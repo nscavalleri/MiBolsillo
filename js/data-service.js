@@ -19,6 +19,7 @@ import { renderDistribucion } from './distribucion.js';
 import { renderTipoCambio } from './tipo-cambio.js';
 import { renderReservas } from './reservas.js';
 import { renderAsignacion } from './asignacion.js';
+import { renderEvolucion } from './evolucion.js';
 
 function ordenarMovimientos(lista) {
   // Más nuevo primero: por fecha descendente y, si coinciden, por
@@ -32,7 +33,7 @@ function ordenarMovimientos(lista) {
 
 export async function cargarTodo() {
   const supabaseClient = getClient();
-  const [c, m, o, mv, cc, tc, r, cg, asig] = await Promise.all([
+  const [c, m, o, mv, cc, tc, r, cg, asig, evo] = await Promise.all([
     supabaseClient.from("conceptos").select("*").order("nombre"),
     supabaseClient.from("monedas").select("*").order("nombre"),
     supabaseClient.from("origenes").select("*").order("nombre"),
@@ -42,9 +43,10 @@ export async function cargarTodo() {
     supabaseClient.from("reservas").select("*").order("nombre"),
     supabaseClient.from("configuracion_general").select("*"),
     supabaseClient.from("asignaciones").select("*"),
+    supabaseClient.from("evolucion_comentarios").select("*"),
   ]);
 
-  const errores = [c.error, m.error, o.error, mv.error, cc.error, tc.error, r.error, cg.error, asig.error].filter(Boolean);
+  const errores = [c.error, m.error, o.error, mv.error, cc.error, tc.error, r.error, cg.error, asig.error, evo.error].filter(Boolean);
   const errEl = document.getElementById("loadError");
   if (errores.length > 0) {
     console.error("Error cargando datos de Supabase:", errores);
@@ -75,6 +77,7 @@ export async function cargarTodo() {
   state.tiposCambio = tc.data || [];
   state.reservas = r.data || [];
   state.asignaciones = asig.data || [];
+  state.evolucionComentarios = evo.data || [];
 
   // Preferencias generales (clave/valor), indexadas por clave para que sea
   // fácil de leer (state.configuracionGeneral.convertir_euros); acá se
@@ -109,4 +112,5 @@ function renderTodo() {
   renderTipoCambio();
   renderReservas();
   renderAsignacion();
+  renderEvolucion();
 }

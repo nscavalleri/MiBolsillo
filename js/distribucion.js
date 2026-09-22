@@ -182,7 +182,10 @@ function mostrarDetalle(d) {
 
 // true si esa moneda es "Euros" (por nombre, igual que en tipo-cambio.js):
 // convertir euros a euros es directo, no hace falta ningún tipo de cambio.
-function esEuros(monedaId) {
+// Se exporta para que Dashboard > Evolución use exactamente el mismo
+// criterio de "qué es un euro" y la misma conversión mes a mes, en vez de
+// tener su propia copia que después se desincronice.
+export function esEuros(monedaId) {
   const m = state.monedas.find(x => String(x.id) === String(monedaId));
   return !!m && m.nombre.trim().toLowerCase() === "euros";
 }
@@ -200,7 +203,7 @@ function tasaAEuros(mes, monedaId) {
 // Convierte un importe (ya con signo, ingreso/egreso) de una moneda a
 // euros. ok=false cuando faltó el tipo de cambio y por lo tanto no se pudo
 // convertir (el importe se pierde, no se cuenta ni de más ni de menos).
-function convertirAEuros(mes, monedaId, monto) {
+export function convertirAEuros(mes, monedaId, monto) {
   if (esEuros(monedaId)) return { valor: monto, ok: true };
   const tasa = tasaAEuros(mes, monedaId);
   if (tasa == null) return { valor: 0, ok: false };

@@ -50,6 +50,11 @@ export const state = {
   // Una fila por combinación cuenta-reserva; las combinaciones sin plata
   // asignada simplemente no tienen fila.
   asignaciones: [],
+  // Dashboard > Evolución: la nota libre de cada mes (tabla
+  // evolucion_comentarios: mes/comentario). Qué movimientos son
+  // "excepcionales" no vive acá: es la columna movimientos.excepcional, así
+  // que viaja con cada movimiento.
+  evolucionComentarios: [],
   // Preferencias generales de la app, guardadas en Supabase (tabla
   // configuracion_general: clave/valor) en vez del navegador, para que se
   // recuerden sin importar desde dónde entres. Por ahora tiene
