@@ -133,27 +133,24 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
 .tipo-toggle button.active[data-tipo="ingreso"] { background: var(--income); color: white; border-color: var(--income); }
 .tipo-toggle button.active[data-tipo="egreso"] { background: var(--expense); color: white; border-color: var(--expense); }
 
-/* Modal */
+/* Modal: todos (Agregar gasto, Editar concepto/moneda/origen/reserva,
+   Detalle de una celda) se muestran centrados y con las cuatro esquinas
+   redondeadas, no como una "hoja" pegada abajo del todo — pegados abajo
+   quedaban con el borde inferior justo en el borde de la ventana, sin
+   esquinas ni sombra ahí, así que se veían como una ventana cortada en vez
+   de un cuadro de diálogo (pasaba más notorio cuanto más corta la ventana
+   del navegador, o con contenido largo que llegaba hasta abajo). */
 .modal-overlay {
   display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-  z-index: 30; align-items: flex-end; justify-content: center;
+  z-index: 30; align-items: center; justify-content: center; padding: 20px;
 }
 .modal-overlay.open { display: flex; }
 .modal-box {
-  background: var(--card); width: 100%; max-width: 520px; border-radius: 16px 16px 0 0;
-  padding: 20px 16px 24px; max-height: 90vh; overflow-y: auto;
+  background: var(--card); width: 100%; max-width: 520px; border-radius: 16px;
+  padding: 20px 16px 24px; max-height: 80vh; overflow-y: auto;
 }
 .modal-box h3 { margin-top: 0; }
 .modal-close { float: right; background: none; border: none; font-size: 20px; color: var(--muted); cursor: pointer; }
-
-/* El modal de detalle (popup del botón "i") es para mostrar información,
-   no un formulario para completar, así que en vez de la "hoja" pegada
-   abajo del todo (como el de Agregar gasto, pensado para el pulgar en el
-   celular), se muestra centrado y con las cuatro esquinas redondeadas.
-   Pegado abajo se veía cortado, sobre todo con contenido largo (varios
-   grupos de moneda) que llegaba hasta el borde de la pantalla. */
-#detalleOverlay { align-items: center; padding: 20px; }
-#detalleOverlay .modal-box { border-radius: 16px; max-height: 80vh; }
 
 /* Config lists */
 .config-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
