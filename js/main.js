@@ -9,6 +9,7 @@ import { setupModal } from './modal.js';
 import { setupConciliacion } from './conciliacion.js';
 import { setupDistribucion } from './distribucion.js';
 import { setupReservas } from './reservas.js';
+import { setupEditarModal } from './editar-modal.js';
 
 setupAllTabs();
 setupAuth();
@@ -18,6 +19,7 @@ setupModal();
 setupConciliacion();
 setupDistribucion();
 setupReservas();
+setupEditarModal();
 
 // Al girar la rueda del mouse (o hacer scroll con el trackpad) sobre un
 // campo numérico enfocado, el navegador suma/resta de a uno por cada

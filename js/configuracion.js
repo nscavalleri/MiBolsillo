@@ -3,6 +3,11 @@
 
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
+import { abrirModalEditar } from './editar-modal.js';
+
+// Título lindo para el modal de editar, según la tabla ("Editar concepto",
+// no "Editar conceptos").
+const TITULO_EDITAR = { conceptos: "Editar concepto", monedas: "Editar moneda", origenes: "Editar origen" };
 
 export function renderConfigLista(tabla, items, contenedorId) {
   const el = document.getElementById(contenedorId);
@@ -31,16 +36,11 @@ export function renderConfigLista(tabla, items, contenedorId) {
     });
   });
   el.querySelectorAll("[data-editar-item]").forEach(btn => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const [tab, id] = btn.dataset.editarItem.split(":");
       const actual = items.find(x => String(x.id) === String(id));
-      const nuevoNombre = prompt("Nuevo nombre:", actual ? actual.nombre : "");
-      if (nuevoNombre === null) return;
-      const nombreLimpio = nuevoNombre.trim();
-      if (!nombreLimpio) return;
-      const { error } = await getClient().from(tab).update({ nombre: nombreLimpio }).eq("id", id);
-      if (error) { alert("Error editando: " + error.message); return; }
-      await cargarTodo();
+      if (!actual) return;
+      abrirModalEditar({ tabla: tab, id, nombre: actual.nombre, titulo: TITULO_EDITAR[tab] });
     });
   });
   el.querySelectorAll("[data-eliminar]").forEach(btn => {

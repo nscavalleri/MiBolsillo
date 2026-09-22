@@ -31,7 +31,7 @@ function ordenarMovimientos(lista) {
 
 export async function cargarTodo() {
   const supabaseClient = getClient();
-  const [c, m, o, mv, cc, tc, r] = await Promise.all([
+  const [c, m, o, mv, cc, tc, r, cg] = await Promise.all([
     supabaseClient.from("conceptos").select("*").order("nombre"),
     supabaseClient.from("monedas").select("*").order("nombre"),
     supabaseClient.from("origenes").select("*").order("nombre"),
@@ -39,9 +39,10 @@ export async function cargarTodo() {
     supabaseClient.from("conciliacion_checks").select("*"),
     supabaseClient.from("tipos_cambio").select("*"),
     supabaseClient.from("reservas").select("*").order("nombre"),
+    supabaseClient.from("configuracion_general").select("*"),
   ]);
 
-  const errores = [c.error, m.error, o.error, mv.error, cc.error, tc.error, r.error].filter(Boolean);
+  const errores = [c.error, m.error, o.error, mv.error, cc.error, tc.error, r.error, cg.error].filter(Boolean);
   const errEl = document.getElementById("loadError");
   if (errores.length > 0) {
     console.error("Error cargando datos de Supabase:", errores);
@@ -71,6 +72,17 @@ export async function cargarTodo() {
 
   state.tiposCambio = tc.data || [];
   state.reservas = r.data || [];
+
+  // Preferencias generales (clave/valor), indexadas por clave para que sea
+  // fácil de leer (state.configuracionGeneral.convertir_euros); acá se
+  // deriva además "convertirEuros" de Distribución a partir de esta tabla,
+  // en vez del navegador, para que se recuerde sin importar desde dónde
+  // entres.
+  state.configuracionGeneral = {};
+  (cg.data || []).forEach(row => {
+    state.configuracionGeneral[row.clave] = row.valor;
+  });
+  state.distribucion.convertirEuros = state.configuracionGeneral.convertir_euros === "true";
 
   renderTodo();
 }

@@ -7,6 +7,7 @@
 import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
+import { abrirModalEditar } from './editar-modal.js';
 
 export function renderReservas() {
   const el = document.getElementById("listaReservas");
@@ -39,34 +40,21 @@ export function renderReservas() {
     });
   });
 
-  // Editar pide el nombre y la cantidad en dos prompts seguidos (mismo
-  // estilo simple que usa configuracion.js para renombrar), en vez de
-  // armar un formulario aparte solo para esto.
+  // Editar abre el modal compartido (editar-modal.js) con el campo extra
+  // de cantidad habilitado, en vez de dos prompt() seguidos.
   el.querySelectorAll("[data-editar-reserva]").forEach(btn => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const id = btn.dataset.editarReserva;
       const actual = state.reservas.find(x => String(x.id) === String(id));
       if (!actual) return;
-
-      const nuevoNombre = prompt("Nombre:", actual.nombre);
-      if (nuevoNombre === null) return;
-      const nombreLimpio = nuevoNombre.trim();
-      if (!nombreLimpio) return;
-
-      const nuevaCantidadTexto = prompt("Cantidad reservada (€):", Number(actual.cantidad_reservada || 0));
-      if (nuevaCantidadTexto === null) return;
-      const nuevaCantidad = Number(String(nuevaCantidadTexto).replace(",", "."));
-      if (Number.isNaN(nuevaCantidad) || nuevaCantidad < 0) {
-        alert("La cantidad tiene que ser un número mayor o igual a 0.");
-        return;
-      }
-
-      const { error } = await getClient()
-        .from("reservas")
-        .update({ nombre: nombreLimpio, cantidad_reservada: nuevaCantidad })
-        .eq("id", id);
-      if (error) { alert("Error editando: " + error.message); return; }
-      await cargarTodo();
+      abrirModalEditar({
+        tabla: "reservas",
+        id,
+        nombre: actual.nombre,
+        cantidad: actual.cantidad_reservada,
+        campoCantidad: "cantidad_reservada",
+        titulo: "Editar reserva",
+      });
     });
   });
 

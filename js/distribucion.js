@@ -602,11 +602,22 @@ export function setupDistribucion() {
     renderHistorico();
   });
 
-  document.getElementById("distribConvertirEuros").addEventListener("change", (e) => {
-    state.distribucion.convertirEuros = e.target.checked;
-    renderCheckboxesMonedas();
-    renderReporte();
-    renderHistorico();
+  // Se guarda en configuracion_general (Supabase) en vez del navegador,
+  // para que se recuerde sin importar desde qué dispositivo entres. Mismo
+  // criterio que el resto de la app: se guarda y recién después se
+  // recarga todo con cargarTodo() (que es quien pisa
+  // state.distribucion.convertirEuros con lo recién guardado).
+  document.getElementById("distribConvertirEuros").addEventListener("change", async (e) => {
+    const valor = e.target.checked;
+    const { error } = await getClient()
+      .from("configuracion_general")
+      .upsert({ clave: "convertir_euros", valor: String(valor) }, { onConflict: "clave" });
+    if (error) {
+      alert("No se pudo guardar: " + error.message);
+      e.target.checked = !valor;
+      return;
+    }
+    await cargarTodo();
   });
 
   // Botón "i" de cada celda de Mensual/Histórica: se delega en el
