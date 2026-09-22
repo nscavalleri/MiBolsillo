@@ -184,6 +184,9 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
 .asignacion-pivot td:nth-child(2) { box-shadow: 1px 0 0 var(--border); }
 .asignacion-pivot thead th:nth-child(2) { box-shadow: 1px 0 0 var(--border), 0 1px 0 var(--border); }
 .asignacion-pivot th { vertical-align: bottom; }
+/* Celda en la que está el cursor: se pintan de gris su cuenta (izquierda) y
+   su reserva (arriba), como en una planilla de cálculo. */
+.asignacion-pivot .asig-resaltado { background: #e6eaef; }
 .asig-cuenta-nombre {
   font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
