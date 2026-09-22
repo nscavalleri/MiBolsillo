@@ -184,9 +184,35 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
 .asig-cuenta-total { font-size: 11px; color: var(--muted); margin-top: 1px; white-space: nowrap; }
 .asig-reserva-nombre { font-size: 12px; white-space: nowrap; }
 .asig-reserva-total { font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 2px; }
-.asignacion-pivot td.asig-celda { padding: 4px 2px; }
+.asignacion-pivot td.asig-celda { padding: 4px 2px; position: relative; }
 .asignacion-pivot td.asig-celda input {
-  width: 84px; padding: 6px 6px; font-size: 13px; text-align: right;
+  width: 84px; padding: 6px 6px 6px 22px; font-size: 13px; text-align: right;
+}
+/* La celda que se queda con lo que sobra de la fila: gris y sin campo para
+   escribir, porque el número se calcula solo (igual que las celdas grises
+   de la planilla que Nadia usaba antes). */
+.asignacion-pivot td.asig-celda-resto { background: #f1f3f5; }
+.asig-resto-valor {
+  display: inline-block; width: 84px; padding: 6px 6px 6px 22px;
+  font-size: 13px; text-align: right; font-weight: 600; color: var(--muted);
+}
+/* El puntito que marca esa celda. Escondido hasta que se pasa el mouse por
+   la celda (son muchísimas celdas y tenerlos todos a la vista ensuciaba la
+   tabla), salvo el que está activo, que se ve siempre. En pantallas
+   táctiles no existe "pasar el mouse", así que ahí se ven a medio tono. */
+.asig-marca {
+  position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  width: 15px; height: 15px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--border); background: #fff; color: var(--muted);
+  font-size: 9px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s;
+}
+.asignacion-pivot td.asig-celda:hover .asig-marca,
+.asig-marca:focus-visible,
+.asig-marca.activa { opacity: 1; }
+.asig-marca:hover { border-color: var(--accent); color: var(--accent); }
+.asig-marca.activa { background: var(--accent); border-color: var(--accent); color: #fff; }
+@media (hover: none) {
+  .asig-marca { opacity: 0.4; }
 }
 .asig-total-columna { white-space: nowrap; }
 .asig-restante { font-weight: 600; white-space: nowrap; }
