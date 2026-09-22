@@ -145,7 +145,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 
 <div id="sub-movimientos">
-<button class="btn-agregar" id="btnAgregar">+ Agregar gasto</button>
+<button class="btn-agregar" id="btnAgregar">+ Agregar</button>
 
 <div class="card">
 <h3 style="margin-top:0;">Filtros</h3>
@@ -315,7 +315,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div class="modal-overlay" id="modalOverlay">
 <div class="modal-box">
 <button class="modal-close" id="modalClose">✕</button>
-<h3 id="modalTitulo">Agregar gasto</h3>
+<h3 id="modalTitulo">Agregar movimiento</h3>
 <form id="formMovimiento">
 <input type="hidden" id="movId" />
 
@@ -434,6 +434,29 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div class="evo-resultados" id="evoResultados"></div>
 <button class="primary" id="evoVolver" type="button">Volver</button>
 </div>
+</div>
+</div>
+
+<!-- MODAL: calcular y registrar la diferencia entre lo que la app tiene
+     registrado para una cuenta+moneda y lo que hay de verdad. -->
+<div class="modal-overlay" id="diferenciaOverlay">
+<div class="modal-box">
+<button class="modal-close" id="diferenciaClose" type="button" title="Cerrar">✕</button>
+<h3>Calcular diferencia</h3>
+<p class="conciliacion-ayuda" id="diferenciaSubtitulo"></p>
+
+<div class="confirmar-resumen">
+<span class="confirmar-etiqueta">Registrado en la app</span>
+<span class="confirmar-despues" id="diferenciaRegistrado">–</span>
+</div>
+
+<label for="diferenciaReal">¿Cuánto tenés en realidad?</label>
+<input type="number" id="diferenciaReal" step="0.01" placeholder="0.00" />
+<button class="secondary" id="btnCalcularDiferencia" type="button">Calcular diferencia</button>
+
+<div id="diferenciaResultado"></div>
+
+<button class="primary" id="btnRegistrarDiferencia" type="button" style="display:none;">Registrar diferencia</button>
 </div>
 </div>
 
