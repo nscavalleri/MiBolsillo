@@ -19,3 +19,13 @@ export function nombreConcepto(id) {
   const c = state.conceptos.find(x => String(x.id) === String(id));
   return c ? c.nombre : "(concepto eliminado)";
 }
+
+// Compara textos como los compararía una persona: sin distinguir mayúsculas
+// de minúsculas ni acentos, así buscar "agustin" encuentra "Agustín" y
+// buscar "COCA" encuentra "Coca cola". Lo usan el buscador de Gastos >
+// Movimientos y el de movimientos excepcionales de Evolución.
+export function contieneTexto(textoDondeBuscar, loBuscado) {
+  const limpiar = (t) => String(t || "").toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return limpiar(textoDondeBuscar).includes(limpiar(loBuscado));
+}

@@ -7,7 +7,7 @@ import { state } from './state.js';
 import { getClient } from './config.js';
 import { abrirModal } from './modal.js';
 import { cargarTodo } from './data-service.js';
-import { nombreOrigen, nombreMoneda, nombreConcepto } from './lookups.js';
+import { nombreOrigen, nombreMoneda, nombreConcepto, contieneTexto } from './lookups.js';
 import { pedirConfirmacion } from './confirmar-modal.js';
 
 export function aplicarFiltros(lista) {
@@ -18,6 +18,9 @@ export function aplicarFiltros(lista) {
     if (f.concepto && String(m.concepto_id) !== f.concepto) return false;
     if (f.origen && String(m.origen_id) !== f.origen) return false;
     if (f.moneda && String(m.moneda_id) !== f.moneda) return false;
+    // Busca dentro de la descripción del movimiento, sin distinguir
+    // mayúsculas ni acentos.
+    if (f.texto && !contieneTexto(m.descripcion, f.texto)) return false;
     return true;
   });
 }
@@ -162,6 +165,15 @@ async function borrarMovimiento(id) {
 }
 
 export function setupFiltros() {
+  // El campo de texto se escucha con "input" y no con "change": filtra
+  // mientras se escribe, sin tener que salir del campo ni apretar Enter
+  // (no toca la base, así que no cuesta nada).
+  document.getElementById("filtroTexto").addEventListener("input", () => {
+    state.filtros.texto = document.getElementById("filtroTexto").value;
+    state.paginacion.pagina = 1;
+    renderMovimientos();
+  });
+
   ["filtroMes", "filtroTipo", "filtroConcepto", "filtroOrigen", "filtroMoneda"].forEach(id => {
     document.getElementById(id).addEventListener("change", () => {
       state.filtros.mes = document.getElementById("filtroMes").value;
@@ -178,7 +190,8 @@ export function setupFiltros() {
   });
 
   document.getElementById("btnLimpiarFiltros").addEventListener("click", () => {
-    state.filtros = { mes: "", tipo: "", concepto: "", origen: "", moneda: "" };
+    state.filtros = { texto: "", mes: "", tipo: "", concepto: "", origen: "", moneda: "" };
+    document.getElementById("filtroTexto").value = "";
     document.getElementById("filtroMes").value = "";
     document.getElementById("filtroTipo").value = "";
     document.getElementById("filtroConcepto").value = "";

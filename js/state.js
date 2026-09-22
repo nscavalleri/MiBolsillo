@@ -10,7 +10,7 @@ export const state = {
   movimientos: [],
   tipoActual: "egreso",
   editandoId: null,
-  filtros: { mes: "", tipo: "", concepto: "", origen: "", moneda: "" },
+  filtros: { texto: "", mes: "", tipo: "", concepto: "", origen: "", moneda: "" },
   // Gastos > Movimientos: paginación de la lista. "porPagina" (10, 50 o
   // 100) arranca en 10 acá, pero cargarTodo() lo pisa enseguida con lo
   // último guardado en la tabla configuracion_general (clave

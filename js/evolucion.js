@@ -25,7 +25,7 @@
 import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
-import { nombreOrigen, nombreMoneda, nombreConcepto } from './lookups.js';
+import { nombreOrigen, nombreMoneda, nombreConcepto, contieneTexto } from './lookups.js';
 import { renderCheckboxesTabla } from './check-list.js';
 import { formatoMesLegible, convertirAEuros } from './distribucion.js';
 
@@ -41,7 +41,7 @@ let vistaModal = "resumen";
 let tipoBuscado = "ingreso";
 // Filtros del buscador: los mismos criterios que Gastos > Movimientos, menos
 // el mes (que lo fija la fila) y menos el tipo (que lo fija la columna).
-let filtrosModal = { concepto: "", origen: "", moneda: "" };
+let filtrosModal = { texto: "", concepto: "", origen: "", moneda: "" };
 
 function numero(v) {
   const n = Number(v);
@@ -65,9 +65,17 @@ function conceptosIncluidos() {
   );
 }
 
-function comentarioDe(mes) {
+// Hay dos comentarios por mes, uno para los ingresos y otro para los
+// egresos (columnas comentario_ingresos / comentario_egresos).
+function comentarioDe(mes, tipo) {
   const fila = state.evolucionComentarios.find(c => c.mes === mes);
-  return fila && fila.comentario != null ? fila.comentario : "";
+  if (!fila) return "";
+  const valor = tipo === "ingreso" ? fila.comentario_ingresos : fila.comentario_egresos;
+  return valor != null ? valor : "";
+}
+
+function tieneComentarios(mes) {
+  return comentarioDe(mes, "ingreso").trim() !== "" || comentarioDe(mes, "egreso").trim() !== "";
 }
 
 // Verde si creció más que el umbral, ámbar si quedó igual o creció menos,
@@ -173,7 +181,7 @@ export function renderEvolucion() {
 
   filas.forEach(f => {
     const clase = claseVariacion(f.porcentaje);
-    const tieneNota = comentarioDe(f.mes).trim() !== "" ||
+    const tieneNota = tieneComentarios(f.mes) ||
       state.movimientos.some(m => String(m.fecha).slice(0, 7) === f.mes && m.excepcional);
 
     html += `<tr>
@@ -265,6 +273,9 @@ export function renderDetalleMes() {
   const enResumen = vistaModal === "resumen";
   document.getElementById("evoVistaResumen").style.display = enResumen ? "block" : "none";
   document.getElementById("evoVistaBuscar").style.display = enResumen ? "none" : "block";
+  // La flecha de volver solo tiene sentido en el buscador; en el resumen la
+  // única salida es la ✕.
+  document.getElementById("evoVolverAtras").style.display = enResumen ? "none" : "block";
   if (enResumen) renderResumenMes();
   else renderBuscador();
 }
@@ -305,17 +316,20 @@ function renderResumenMes() {
       <span class="${diferencia >= 0 ? "asig-verde" : "asig-rojo"}">${formato(diferencia)} €</span>
     </div>`;
 
-  const textarea = document.getElementById("evolucionComentario");
   // Solo se pisa el texto si no se está escribiendo justo en él: si no, un
   // re-render en medio de la escritura borraría lo tipeado.
-  if (document.activeElement !== textarea) textarea.value = comentarioDe(mesAbierto);
+  [["evolucionComentarioIngresos", "ingreso"], ["evolucionComentarioEgresos", "egreso"]].forEach(([id, tipo]) => {
+    const textarea = document.getElementById(id);
+    if (document.activeElement !== textarea) textarea.value = comentarioDe(mesAbierto, tipo);
+  });
 
   document.querySelectorAll("[data-evo-agregar]").forEach(btn => {
     btn.addEventListener("click", () => {
       tipoBuscado = btn.dataset.evoAgregar;
       vistaModal = "buscar";
-      filtrosModal = { concepto: "", origen: "", moneda: "" };
+      filtrosModal = { texto: "", concepto: "", origen: "", moneda: "" };
       poblarFiltrosModal();
+      document.getElementById("evoFiltroTexto").value = "";
       renderDetalleMes();
     });
   });
@@ -335,6 +349,7 @@ function renderBuscador() {
     if (filtrosModal.concepto && String(m.concepto_id) !== filtrosModal.concepto) return false;
     if (filtrosModal.origen && String(m.origen_id) !== filtrosModal.origen) return false;
     if (filtrosModal.moneda && String(m.moneda_id) !== filtrosModal.moneda) return false;
+    if (filtrosModal.texto && !contieneTexto(m.descripcion, filtrosModal.texto)) return false;
     return true;
   });
 
@@ -357,14 +372,18 @@ async function marcarExcepcional(id, valor) {
   await cargarTodo();
 }
 
-async function guardarComentario() {
+async function guardarComentario(tipo) {
   if (!mesAbierto) return;
-  const texto = document.getElementById("evolucionComentario").value.trim();
-  if (texto === comentarioDe(mesAbierto)) return;
+  const id = tipo === "ingreso" ? "evolucionComentarioIngresos" : "evolucionComentarioEgresos";
+  const texto = document.getElementById(id).value.trim();
+  if (texto === comentarioDe(mesAbierto, tipo)) return;
 
+  // Se manda solo la columna que cambió: así guardar el comentario de los
+  // ingresos no pisa el de los egresos ni al revés.
+  const campo = tipo === "ingreso" ? "comentario_ingresos" : "comentario_egresos";
   const { error } = await getClient()
     .from("evolucion_comentarios")
-    .upsert({ mes: mesAbierto, comentario: texto === "" ? null : texto }, { onConflict: "mes" });
+    .upsert({ mes: mesAbierto, [campo]: texto === "" ? null : texto }, { onConflict: "mes" });
   if (error) { alert("No se pudo guardar el comentario: " + error.message); return; }
   await cargarTodo();
 }
@@ -376,14 +395,20 @@ export function setupEvolucion() {
   document.getElementById("evolucionDetalleClose").addEventListener("click", cerrarDetalleMes);
   overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrarDetalleMes(); });
 
-  document.getElementById("evoVolver").addEventListener("click", () => {
-    vistaModal = "resumen";
+  const volverAlResumen = () => { vistaModal = "resumen"; renderDetalleMes(); };
+  document.getElementById("evoVolver").addEventListener("click", volverAlResumen);
+  document.getElementById("evoVolverAtras").addEventListener("click", volverAlResumen);
+
+  // Igual que en Gastos > Movimientos: filtra mientras se escribe.
+  document.getElementById("evoFiltroTexto").addEventListener("input", () => {
+    filtrosModal.texto = document.getElementById("evoFiltroTexto").value;
     renderDetalleMes();
   });
 
   ["evoFiltroConcepto", "evoFiltroOrigen", "evoFiltroMoneda"].forEach(id => {
     document.getElementById(id).addEventListener("change", () => {
       filtrosModal = {
+        texto: document.getElementById("evoFiltroTexto").value,
         concepto: document.getElementById("evoFiltroConcepto").value,
         origen: document.getElementById("evoFiltroOrigen").value,
         moneda: document.getElementById("evoFiltroMoneda").value,
@@ -393,13 +418,16 @@ export function setupEvolucion() {
   });
 
   document.getElementById("evoLimpiarFiltros").addEventListener("click", () => {
-    ["evoFiltroConcepto", "evoFiltroOrigen", "evoFiltroMoneda"].forEach(id => {
+    ["evoFiltroTexto", "evoFiltroConcepto", "evoFiltroOrigen", "evoFiltroMoneda"].forEach(id => {
       document.getElementById(id).value = "";
     });
-    filtrosModal = { concepto: "", origen: "", moneda: "" };
+    filtrosModal = { texto: "", concepto: "", origen: "", moneda: "" };
     renderDetalleMes();
   });
 
-  // El comentario se guarda al salir del campo, como el resto de la app.
-  document.getElementById("evolucionComentario").addEventListener("change", guardarComentario);
+  // Los comentarios se guardan al salir del campo, como el resto de la app.
+  document.getElementById("evolucionComentarioIngresos")
+    .addEventListener("change", () => guardarComentario("ingreso"));
+  document.getElementById("evolucionComentarioEgresos")
+    .addEventListener("change", () => guardarComentario("egreso"));
 }
