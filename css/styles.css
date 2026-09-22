@@ -280,12 +280,33 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
    van dos listas de movimientos, una al lado de la otra. */
 .modal-box.modal-ancho { max-width: 860px; }
 .evo-filtros { margin-bottom: 4px; }
+/* La primera pantalla del modal muestra solo lo ya marcado; el encabezado de
+   cada columna lleva su botón de "Agregar", que es lo que abre el buscador. */
+.evo-columna-titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.evo-agregar {
+  border: 1px solid var(--accent); background: #fff; color: var(--accent-oscuro);
+  border-radius: 8px; padding: 3px 10px; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; margin-bottom: 6px;
+}
+.evo-agregar:hover { background: #e8fbfd; }
+.evo-quitar {
+  background: none; border: none; color: var(--muted); font-size: 14px;
+  cursor: pointer; padding: 2px 4px; flex-shrink: 0;
+}
+.evo-quitar:hover { color: var(--expense); }
+/* Los resultados del buscador son botones: tocar uno lo agrega y lo saca de
+   la lista. Se les quita la pinta de botón para que se lean como una lista. */
+.evo-resultados { margin-top: 12px; max-height: 320px; overflow-y: auto; }
+.evo-candidato {
+  width: 100%; text-align: left; background: none; border: none;
+  border-bottom: 1px solid var(--border); cursor: pointer; font: inherit;
+}
+.evo-candidato:hover { background: var(--bg); }
+.evo-mas { color: var(--accent-oscuro); font-size: 16px; font-weight: 700; flex-shrink: 0; }
 .evo-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
 @media (max-width: 620px) { .evo-columnas { grid-template-columns: 1fr; } }
-.evo-columna h4 {
-  margin: 0 0 6px; font-size: 13px; color: var(--muted);
-  border-bottom: 1px solid var(--border); padding-bottom: 6px;
-}
+.evo-columna h4 { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.evo-columna-titulo { border-bottom: 1px solid var(--border); margin-bottom: 8px; }
 .evo-mov {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 0; border-bottom: 1px solid var(--border); cursor: pointer;
