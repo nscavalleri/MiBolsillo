@@ -275,8 +275,43 @@ export function renderAsignacion() {
   });
 
   habilitarArrastre();
+  habilitarResaltado();
   devolverFoco(foco);
   recalcular();
+}
+
+// Al pararse en una celda para escribir, se pintan de gris el nombre de la
+// cuenta (a la izquierda) y el nombre de la reserva (arriba), como hacen las
+// planillas de cálculo. En una tabla de este ancho, sin eso es muy fácil
+// perder de vista a qué cuenta y a qué reserva corresponde la celda en la
+// que se está escribiendo.
+//
+// Los listeners van sobre la tabla y no sobre cada campo (focusin/focusout
+// burbujean, a diferencia de focus/blur), y se enganchan una sola vez: la
+// tabla en sí no se vuelve a crear en cada render, solo su contenido.
+function habilitarResaltado() {
+  const tabla = document.getElementById("asignacionTable");
+  if (!tabla || tabla.dataset.resaltadoListo) return;
+  tabla.dataset.resaltadoListo = "1";
+
+  tabla.addEventListener("focusin", (e) => {
+    limpiarResaltado(tabla);
+    const celda = e.target.closest ? e.target.closest("td.asig-celda") : null;
+    if (!celda) return;
+
+    const fila = celda.parentElement;
+    const columna = Array.prototype.indexOf.call(fila.children, celda);
+    const encabezado = tabla.querySelectorAll("thead th")[columna];
+
+    if (fila.children[0]) fila.children[0].classList.add("asig-resaltado");
+    if (encabezado) encabezado.classList.add("asig-resaltado");
+  });
+
+  tabla.addEventListener("focusout", () => limpiarResaltado(tabla));
+}
+
+function limpiarResaltado(tabla) {
+  tabla.querySelectorAll(".asig-resaltado").forEach(el => el.classList.remove("asig-resaltado"));
 }
 
 // Arrastrar la tabla para el costado con el mouse, como si se empujara una
