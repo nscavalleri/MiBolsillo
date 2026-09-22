@@ -1,325 +1,94 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Mi bolsillo</title>
-<link rel="stylesheet" href="css/styles.css" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Supermercado</title>
+    <meta name="theme-color" content="#FF6061" />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <!-- Pantalla de ingreso -->
+    <div id="pantalla-login" class="pantalla-login">
+      <div class="login-card">
+        <h1 class="login-titulo">🛒 Supermercado</h1>
+        <p class="texto-ayuda" id="login-subtitulo">Elegí tu nombre e ingresá el código</p>
+        <div id="login-mensaje" class="mensaje-box"></div>
 
-<div id="configWarning" class="config-warning" style="display:none;">
-Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en config.js.
-</div>
+        <form id="form-login" class="form-vertical">
+          <label>
+            Usuario
+            <select id="login-usuario" required>
+              <option value="" disabled selected>Elegí tu nombre</option>
+              <option value="Nadia">Nadia</option>
+              <option value="Leo">Leo</option>
+            </select>
+          </label>
+          <label>
+            Código
+            <input
+              type="password"
+              id="login-codigo"
+              required
+              inputmode="numeric"
+              autocomplete="off"
+            />
+          </label>
+          <button type="submit" class="btn btn--primario btn--ancho">Ingresar</button>
+        </form>
+      </div>
+    </div>
 
-<div id="loadError" class="load-error" style="display:none;"></div>
+    <!-- Pantalla principal de la app -->
+    <div id="pantalla-app" class="pantalla-app oculto">
+      <!-- La barra rosa ocupa todo el ancho, pero su contenido se centra con
+           el mismo ancho máximo que el resto de la app (.header-app__inner). -->
+      <header class="header-app">
+        <div class="header-app__inner">
+          <h1>🛒 Supermercado</h1>
+          <div class="header-app__acciones">
+            <span id="header-usuario" class="header-app__usuario"></span>
+            <button id="btn-logout" class="btn btn--secundario btn--chico" type="button">Cerrar sesión</button>
+          </div>
+        </div>
+      </header>
 
-<div id="loginView" style="display:none;">
-<h2>💰 Mi bolsillo</h2>
-<div class="card">
-<label for="loginEmail">Email</label>
-<input type="email" id="loginEmail" autocomplete="username" />
-<label for="loginPassword">Contraseña</label>
-<input type="password" id="loginPassword" autocomplete="current-password" />
-<button class="primary" id="btnLogin">Iniciar sesión</button>
-<div id="loginError"></div>
-</div>
-</div>
+      <nav class="tabs">
+        <button id="btn-tab-lista" class="tab-btn tab-btn--activo" type="button">Lista</button>
+        <button id="btn-tab-menu" class="tab-btn" type="button">Menú</button>
+        <button id="btn-tab-configuracion" class="tab-btn" type="button">Configuración</button>
+      </nav>
 
-<div id="appView" style="display:none;">
-<header>
-<h1>💰 Mi bolsillo</h1>
-<button class="logout" id="btnLogout">Salir</button>
-</header>
+      <section id="tab-lista" class="tab-panel">
+        <nav class="subtabs">
+          <button id="btn-subtab-presencial" class="subtab-btn subtab-btn--activo" type="button">
+            Presencial
+          </button>
+          <button id="btn-subtab-online" class="subtab-btn" type="button">Online</button>
+        </nav>
+        <div id="lista-presencial" class="subtab-panel"></div>
+        <div id="lista-online" class="subtab-panel oculto"></div>
+      </section>
 
-<main>
-<div class="tabs" id="mainTabs">
-<button class="tab-btn" data-maintab="dashboard">Dashboard</button>
-<button class="tab-btn active" data-maintab="gastos">Gastos</button>
-<button class="tab-btn" data-maintab="configuracion">Configuración</button>
-</div>
+      <!-- Menú semanal: se dibuja entero desde js/menu.js -->
+      <section id="tab-menu" class="tab-panel oculto"></section>
 
-<!-- ============ DASHBOARD ============ -->
-<div id="section-dashboard" style="display:none;">
-<div class="tabs subtabs" id="dashboardSubtabs">
-<button class="tab-btn active" data-subtab="snapshot">Snapshot</button>
-<button class="tab-btn" data-subtab="evolucion">Evolución</button>
-<button class="tab-btn" data-subtab="distribucion">Distribución</button>
-</div>
+      <section id="tab-configuracion" class="tab-panel oculto">
+        <nav class="subtabs">
+          <button id="btn-subtab-productos" class="subtab-btn subtab-btn--activo" type="button">
+            Productos
+          </button>
+          <button id="btn-subtab-supermercados" class="subtab-btn" type="button">Supermercados</button>
+          <button id="btn-subtab-tipos-producto" class="subtab-btn" type="button">Tipos de producto</button>
+          <button id="btn-subtab-menu" class="subtab-btn" type="button">Menú</button>
+        </nav>
+        <div id="config-productos" class="subtab-panel"></div>
+        <div id="config-supermercados" class="subtab-panel oculto"></div>
+        <div id="config-tipos-producto" class="subtab-panel oculto"></div>
+        <div id="config-menu" class="subtab-panel oculto"></div>
+      </section>
+    </div>
 
-<div id="sub-snapshot">
-<div class="card">
-<details class="collapsible">
-<summary>Conceptos a incluir</summary>
-<div id="snapshotConceptosCheckboxes" class="check-grid"></div>
-</details>
-</div>
-
-<div class="card">
-<h3 style="margin-top:0;">Resumen por cuenta y moneda</h3>
-<div class="pivot-wrap"><table class="pivot" id="pivotTable"></table></div>
-<p class="tipo-cambio-nota" id="pivotNota" style="display:none;">⚠ = todavía no cargaste el tipo de cambio de alguna moneda en Configuración &gt; Tipo de cambio, ese Total (€) está incompleto. La conversión usa el tipo de cambio más reciente que tengas cargado para cada moneda.</p>
-</div>
-</div>
-
-<div id="sub-evolucion" style="display:none;">
-<div class="card"><p class="empty">Evolución en el tiempo — próximamente.</p></div>
-</div>
-
-<div id="sub-distribucion" style="display:none;">
-<div class="tabs subtabs" id="distribucionSubtabs">
-<button class="tab-btn active" data-distribsub="mensual">Mensual</button>
-<button class="tab-btn" data-distribsub="historica">Histórica</button>
-</div>
-
-<!-- Compartido entre Mensual e Histórica: qué conceptos y monedas entran
-     en los reportes de esta sección. -->
-<div class="card">
-<details class="collapsible">
-<summary>Conceptos a incluir</summary>
-<div id="distribConceptosCheckboxes" class="check-grid"></div>
-</details>
-</div>
-
-<div class="card">
-<details class="collapsible">
-<summary>Monedas a incluir</summary>
-<label class="check-item check-item-euros">
-<input type="checkbox" id="distribConvertirEuros" />
-<span>Convertir todo a Euros</span>
-</label>
-<div id="distribMonedasCheckboxes" class="check-grid"></div>
-</details>
-</div>
-
-<div id="distrib-mensual">
-<div class="card">
-<h3 style="margin-top:0;">Mes</h3>
-<label for="distribMesNombre">Elegí el mes y año</label>
-<div class="mes-selector">
-<select id="distribMesNombre"></select>
-<select id="distribAnio"></select>
-</div>
-</div>
-
-<div class="card">
-<h3 style="margin-top:0;">Reporte del mes</h3>
-<div id="distribReporte"></div>
-</div>
-</div>
-
-<div id="distrib-historica" style="display:none;">
-<div class="card">
-<label for="distribOrdenHistorico">Orden</label>
-<select id="distribOrdenHistorico">
-<option value="asc">Más antiguo primero</option>
-<option value="desc">Más reciente primero</option>
-</select>
-</div>
-
-<div id="distribHistoricoSecciones"></div>
-</div>
-</div>
-</div>
-
-<!-- ============ GASTOS ============ -->
-<div id="section-gastos">
-<div class="tabs subtabs" id="gastosSubtabs">
-<button class="tab-btn active" data-subtab="movimientos">Movimientos</button>
-<button class="tab-btn" data-subtab="asignacion">Asignación</button>
-<button class="tab-btn" data-subtab="conciliacion">Conciliación</button>
-</div>
-
-<div id="sub-movimientos">
-<button class="btn-agregar" id="btnAgregar">+ Agregar gasto</button>
-
-<div class="card">
-<h3 style="margin-top:0;">Filtros</h3>
-<div class="filtros-grid">
-<div>
-<label for="filtroMes">Mes</label>
-<input type="month" id="filtroMes" />
-</div>
-<div>
-<label for="filtroTipo">Tipo</label>
-<select id="filtroTipo">
-<option value="">Todos</option>
-<option value="ingreso">Ingreso</option>
-<option value="egreso">Egreso</option>
-</select>
-</div>
-<div>
-<label for="filtroConcepto">Concepto</label>
-<select id="filtroConcepto"><option value="">Todos</option></select>
-</div>
-<div>
-<label for="filtroOrigen">Origen</label>
-<select id="filtroOrigen"><option value="">Todos</option></select>
-</div>
-<div>
-<label for="filtroMoneda">Moneda</label>
-<select id="filtroMoneda"><option value="">Todos</option></select>
-</div>
-</div>
-<button class="secondary" id="btnLimpiarFiltros" type="button">Limpiar filtros</button>
-</div>
-
-<div class="card">
-<h3 style="margin-top:0;">Todos los movimientos</h3>
-<div id="listaMovimientos"></div>
-</div>
-</div>
-
-<div id="sub-asignacion" style="display:none;">
-<div class="card"><p class="empty">Asignación — próximamente.</p></div>
-</div>
-
-<div id="sub-conciliacion" style="display:none;">
-<div class="card">
-<div class="conciliacion-header">
-<h3 style="margin-top:0;">Conciliación del mes</h3>
-<span class="conciliacion-resumen" id="conciliacionResumen"></span>
-</div>
-<p class="conciliacion-ayuda">Tildá cada casillero a medida que verificás que el saldo coincide con tu extracto. Cuando termines, tocá "Conciliar mes" para dejar guardada la foto de este mes y empezar de cero el que viene.</p>
-<div class="pivot-wrap"><table class="pivot conciliacion-pivot" id="conciliacionTable"></table></div>
-<button class="btn-conciliar" id="btnConciliarMes" type="button">Conciliar mes</button>
-</div>
-</div>
-</div>
-
-<!-- ============ CONFIGURACIÓN ============ -->
-<div id="section-configuracion" style="display:none;">
-<div class="tabs subtabs" id="configSubtabs">
-<button class="tab-btn active" data-configsub="conceptos">Conceptos</button>
-<button class="tab-btn" data-configsub="monedas">Monedas</button>
-<button class="tab-btn" data-configsub="origenes">Orígenes</button>
-<button class="tab-btn" data-configsub="tipo_cambio">Tipo de cambio</button>
-<button class="tab-btn" data-configsub="reservas">Reservas</button>
-</div>
-
-<div id="configsub-conceptos">
-<div class="card">
-<h3 style="margin-top:0;">Conceptos</h3>
-<div id="listaConceptos"></div>
-<div class="add-item-row">
-<input type="text" id="nuevoConcepto" placeholder="Nuevo concepto..." />
-<button data-tabla="conceptos" data-input="nuevoConcepto">Agregar</button>
-</div>
-</div>
-</div>
-
-<div id="configsub-monedas" style="display:none;">
-<div class="card">
-<h3 style="margin-top:0;">Monedas</h3>
-<div id="listaMonedas"></div>
-<div class="add-item-row">
-<input type="text" id="nuevaMoneda" placeholder="Nueva moneda..." />
-<button data-tabla="monedas" data-input="nuevaMoneda">Agregar</button>
-</div>
-</div>
-</div>
-
-<div id="configsub-origenes" style="display:none;">
-<div class="card">
-<h3 style="margin-top:0;">Orígenes</h3>
-<div id="listaOrigenes"></div>
-<div class="add-item-row">
-<input type="text" id="nuevoOrigen" placeholder="Nuevo origen..." />
-<button data-tabla="origenes" data-input="nuevoOrigen">Agregar</button>
-</div>
-</div>
-</div>
-
-<div id="configsub-tipo_cambio" style="display:none;">
-<div class="card">
-<h3 style="margin-top:0;">Tipo de cambio a Euros</h3>
-<p class="conciliacion-ayuda">Para cada mes con movimientos cargados, ingresá a cuánto equivalía 1 unidad de cada moneda en euros. Se guarda solo, apenas salís del campo.</p>
-<div id="tablaTipoCambio"></div>
-</div>
-</div>
-
-<div id="configsub-reservas" style="display:none;">
-<div class="card">
-<h3 style="margin-top:0;">Reservas</h3>
-<div id="listaReservas"></div>
-<div class="add-item-row">
-<input type="text" id="nuevaReservaNombre" placeholder="Nombre..." />
-<input type="number" id="nuevaReservaCantidad" step="0.01" min="0" placeholder="Cantidad (€)" />
-<button type="button" id="btnAgregarReserva">Agregar</button>
-</div>
-</div>
-</div>
-</div>
-
-</main>
-</div>
-
-<!-- MODAL: agregar / editar movimiento -->
-<div class="modal-overlay" id="modalOverlay">
-<div class="modal-box">
-<button class="modal-close" id="modalClose">✕</button>
-<h3 id="modalTitulo">Agregar gasto</h3>
-<form id="formMovimiento">
-<input type="hidden" id="movId" />
-
-<div class="tipo-toggle">
-<button type="button" data-tipo="egreso" class="active">Egreso</button>
-<button type="button" data-tipo="ingreso">Ingreso</button>
-</div>
-
-<label for="fecha">Fecha</label>
-<input type="date" id="fecha" required />
-
-<label for="concepto">Concepto</label>
-<select id="concepto" required></select>
-
-<label for="descripcion">Descripción (opcional)</label>
-<input type="text" id="descripcion" placeholder="Ej: supermercado, alquiler..." />
-
-<label for="monto">Cantidad</label>
-<input type="number" id="monto" step="0.01" min="0" placeholder="0.00" required />
-
-<label for="moneda">Moneda</label>
-<select id="moneda" required></select>
-
-<label for="origen">Origen (cuenta)</label>
-<select id="origen" required></select>
-
-<button type="submit" class="primary" id="btnGuardar">Guardar</button>
-</form>
-</div>
-</div>
-
-<!-- MODAL: detalle de una celda de Distribución (Mensual/Histórica) -->
-<div class="modal-overlay" id="detalleOverlay">
-<div class="modal-box">
-<button class="modal-close" id="detalleClose">✕</button>
-<h3 id="detalleTitulo">Detalle</h3>
-<div id="detalleContenido"></div>
-</div>
-</div>
-
-<!-- MODAL: editar un concepto / moneda / origen / reserva -->
-<div class="modal-overlay" id="editarItemOverlay">
-<div class="modal-box">
-<button class="modal-close" id="editarItemClose" type="button">✕</button>
-<h3 id="editarItemTitulo">Editar</h3>
-<form id="formEditarItem">
-<label for="editarItemNombre">Nombre</label>
-<input type="text" id="editarItemNombre" required />
-
-<div id="editarItemCantidadGrupo" style="display:none;">
-<label for="editarItemCantidad">Cantidad reservada (€)</label>
-<input type="number" id="editarItemCantidad" step="0.01" min="0" />
-</div>
-
-<button type="submit" class="primary">Guardar</button>
-</form>
-</div>
-</div>
-
-<script type="module" src="js/main.js"></script>
-
-</body>
+    <script type="module" src="js/app.js"></script>
+  </body>
 </html>
