@@ -10,14 +10,13 @@
 // columna conceptos.incluir_en_snapshot que Snapshot, así lo que destildás
 // en una pantalla se destilda en la otra (fue un pedido explícito).
 //
-// Los tres colores que se usan en toda la pantalla, siempre con el mismo
-// significado:
-//   verde  = está justo (no queda plata sin repartir / la reserva llegó a
-//            su objetivo)
-//   ámbar  = falta trabajo pero no hay error (todavía queda plata sin
-//            repartir en esa cuenta)
-//   rojo   = algo no cierra: o repartiste más plata de la que hay en esa
-//            cuenta, o la reserva no llegó al objetivo que le pusiste.
+// Los colores, siempre con el mismo significado:
+//   verde  = está bien (no queda plata sin repartir en la cuenta, o la
+//            reserva llegó a su objetivo o lo pasó)
+//   rojo   = algo no cierra: repartiste más plata de la que hay en esa
+//            cuenta, o la reserva no llegó al objetivo que le pusiste
+//   ámbar  = solo en "Sin asignar", y solo quiere decir que todavía queda
+//            plata libre en esa cuenta; no es un error.
 //
 // Se guarda en la tabla asignaciones (origen_id, reserva_id, monto), con
 // una fila por combinación cuenta-reserva (UNIQUE en la base). Cada celda
@@ -32,6 +31,7 @@ import { cargarTodo } from './data-service.js';
 import { nombreOrigen } from './lookups.js';
 import { renderCheckboxesTabla } from './check-list.js';
 import { saldoEnEurosPorOrigen } from './dashboard.js';
+import { pedirConfirmacion } from './confirmar-modal.js';
 
 // Menos de medio centavo se considera "justo": si no, por los decimales de
 // la conversión a euros nunca daría exactamente cero y siempre se vería en
@@ -91,29 +91,28 @@ function objetivoDe(reservaId) {
   return numero(reserva && reserva.cantidad_reservada);
 }
 
+// La diferencia de una reserva es, siempre, lo asignado MENOS su objetivo:
+// negativa cuando todavía le falta plata, positiva cuando tiene de más. Se
+// mide así (y no al revés) porque es como se lee la columna "Diferencia"
+// del resumen: un número negativo es que estás corto.
+function diferenciaDe(reservaId, asignado) {
+  return asignado - objetivoDe(reservaId);
+}
+
 // El texto que aparece al dejar el mouse encima de un total de reserva, para
 // no tener que ensanchar la columna con el objetivo escrito al lado.
-function textoObjetivo(objetivo, falta) {
-  if (falta > TOLERANCIA) return `Objetivo ${formato(objetivo)} € · faltan ${formato(falta)} €`;
-  if (falta < -TOLERANCIA) return `Objetivo ${formato(objetivo)} € · asignaste ${formato(-falta)} € de más`;
+function textoObjetivo(objetivo, diferencia) {
+  if (diferencia < -TOLERANCIA) return `Objetivo ${formato(objetivo)} € · faltan ${formato(-diferencia)} €`;
+  if (diferencia > TOLERANCIA) return `Objetivo ${formato(objetivo)} € · asignaste ${formato(diferencia)} € de más`;
   return `Objetivo ${formato(objetivo)} € · llegaste justo`;
 }
 
-// Clase de color para lo que le falta a una reserva para llegar a su
-// objetivo (cantidad_reservada). Se usa en el resumen de abajo, donde hay
-// lugar para distinguir los tres casos.
-function claseFalta(falta) {
-  if (falta > TOLERANCIA) return "asig-rojo";      // no llegó al objetivo
-  if (falta < -TOLERANCIA) return "asig-ambar";    // se pasó del objetivo
-  return "asig-verde";
-}
-
-// En el encabezado de la tabla, en cambio, solo hay dos estados: llegó o no
-// llegó. Pasarse del objetivo no es algo que haya que corregir mientras se
-// reparte, así que también va en verde; el detalle de cuánto se pasó queda
-// en el resumen de abajo y en el texto que aparece al pasar el mouse.
-function claseObjetivoEncabezado(falta) {
-  return falta > TOLERANCIA ? "asig-rojo" : "asig-verde";
+// Solo dos estados, tanto en el encabezado de la tabla como en el resumen:
+// verde si la reserva llegó a su objetivo o lo pasó, rojo si le falta.
+// Pasarse no es algo que haya que corregir, así que no tiene un color
+// propio; cuánto se pasó se ve en el número y en el texto al pasar el mouse.
+function claseSegunObjetivo(diferencia) {
+  return diferencia < -TOLERANCIA ? "asig-rojo" : "asig-verde";
 }
 
 // Al guardar una celda se recarga todo (el patrón de siempre de la app) y
@@ -252,14 +251,14 @@ export function renderAsignacion() {
   // --- Resumen por reserva: objetivo vs. lo que se le asignó ---
   if (resumen) {
     resumen.innerHTML = `<tr>
-        <th>Reserva</th><th>Objetivo (€)</th><th>Asignado (€)</th><th>Falta (€)</th>
+        <th>Reserva</th><th>Objetivo (€)</th><th>Asignado (€)</th><th>Diferencia (€)</th>
       </tr>` +
       reservas.map(r => `
         <tr>
           <td>${r.nombre}</td>
           <td>${formato(r.cantidad_reservada)}</td>
           <td data-resumen-asignado="${r.id}">0.00</td>
-          <td data-resumen-falta="${r.id}">0.00</td>
+          <td data-resumen-diferencia="${r.id}">0.00</td>
         </tr>`).join("");
   }
 
@@ -432,15 +431,16 @@ function recalcular() {
     const reservaId = el.dataset.totalReserva || el.dataset.totalColumna;
     const asignado = porReserva[reservaId] || 0;
     const objetivo = objetivoDe(reservaId);
-    const falta = objetivo - asignado;
+    const diferencia = diferenciaDe(reservaId, asignado);
     const claseBase = el.dataset.totalReserva ? "asig-reserva-total " : "asig-total-columna ";
 
     el.textContent = formato(asignado);
-    el.className = claseBase + claseObjetivoEncabezado(falta);
-    el.title = textoObjetivo(objetivo, falta);
+    el.className = claseBase + claseSegunObjetivo(diferencia);
+    el.title = textoObjetivo(objetivo, diferencia);
   });
 
-  // Resumen: cuánto le falta a cada reserva para llegar a su objetivo.
+  // Resumen: cuánto asignó cada reserva y cuánto le falta (o le sobra)
+  // respecto de su objetivo.
   const resumen = document.getElementById("asignacionResumenTable");
   if (!resumen) return;
   resumen.querySelectorAll("[data-resumen-asignado]").forEach(celda => {
@@ -448,11 +448,12 @@ function recalcular() {
     const asignado = porReserva[reservaId] || 0;
     celda.textContent = formato(asignado);
 
-    const falta = objetivoDe(reservaId) - asignado;
-    const celdaFalta = resumen.querySelector(`[data-resumen-falta="${reservaId}"]`);
-    if (celdaFalta) {
-      celdaFalta.textContent = formato(falta);
-      celdaFalta.className = claseFalta(falta);
+    const diferencia = diferenciaDe(reservaId, asignado);
+    const celdaDiferencia = resumen.querySelector(`[data-resumen-diferencia="${reservaId}"]`);
+    if (celdaDiferencia) {
+      celdaDiferencia.textContent = formato(diferencia);
+      celdaDiferencia.className = claseSegunObjetivo(diferencia);
+      celdaDiferencia.title = textoObjetivo(objetivoDe(reservaId), diferencia);
     }
   });
 }
@@ -526,16 +527,26 @@ function confirmarCambioConRemanente(input, reservaRemanenteId, diferencia) {
 
   const reserva = nombreReserva(input.dataset.asigReserva);
   const remanente = nombreReserva(reservaRemanenteId);
+  const cuanto = formato(Math.abs(diferencia));
 
-  const encabezado = diferencia > 0
-    ? `Vas a asignarle ${formato(diferencia)} € más a "${reserva}".\n\n` +
-      `Para eso hay que sacarle esos ${formato(diferencia)} € a "${remanente}", que se queda con lo que sobra de esta cuenta.`
-    : `Vas a sacarle ${formato(-diferencia)} € a "${reserva}".\n\n` +
-      `Esos ${formato(-diferencia)} € pasan a "${remanente}", que se queda con lo que sobra de esta cuenta.`;
+  const lineas = diferencia > 0
+    ? [`Vas a asignarle <strong>${cuanto} €</strong> más a <strong>${reserva}</strong>, de la cuenta ${nombreOrigen(origenId)}.`,
+       `Como esta cuenta no tiene más plata, esos ${cuanto} € salen de <strong>${remanente}</strong>, que es la reserva que se queda con lo que sobra.`]
+    : [`Vas a sacarle <strong>${cuanto} €</strong> a <strong>${reserva}</strong>, de la cuenta ${nombreOrigen(origenId)}.`,
+       `Esos ${cuanto} € vuelven a <strong>${remanente}</strong>, que es la reserva que se queda con lo que sobra.`];
 
-  return confirm(
-    `${encabezado}\n\n"${remanente}" pasa de ${formato(remanenteAnterior)} € a ${formato(remanenteNuevo)} €.\n\n¿Estás de acuerdo?`
-  );
+  return pedirConfirmacion({
+    titulo: "Esto también cambia otra reserva",
+    lineas,
+    resumen: {
+      etiqueta: remanente,
+      antes: `${formato(remanenteAnterior)} €`,
+      despues: `${formato(remanenteNuevo)} €`,
+      alertaDespues: remanenteNuevo < -TOLERANCIA,
+    },
+    textoSi: "Sí, guardalo",
+    textoNo: "No, dejalo como estaba",
+  });
 }
 
 async function guardarCelda(input) {
@@ -549,7 +560,7 @@ async function guardarCelda(input) {
   if (Math.abs(monto - anterior) < TOLERANCIA) return;
 
   const reservaRemanenteId = remanenteDe(origen_id, reservasVisibles());
-  if (reservaRemanenteId && !confirmarCambioConRemanente(input, reservaRemanenteId, monto - anterior)) {
+  if (reservaRemanenteId && !(await confirmarCambioConRemanente(input, reservaRemanenteId, monto - anterior))) {
     input.value = anterior || "";
     recalcular();
     return;
