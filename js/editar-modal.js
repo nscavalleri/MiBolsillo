@@ -5,17 +5,18 @@
 // junto y se guarda con un solo "Guardar" — reutiliza el mismo
 // .modal-overlay / .modal-box que "Agregar gasto".
 //
-// campoCantidad es opcional: si el ítem que se edita tiene además una
-// cantidad (por ahora, Reservas con "cantidad_reservada"), se pasa acá y
-// se muestra ese segundo campo; si no, el modal solo pide el nombre.
+// campoCantidad y campoDescripcion son opcionales: si el ítem que se edita
+// tiene además una cantidad y/o una descripción (por ahora, Reservas, con
+// "cantidad_reservada" y "descripcion"), se pasan acá y se muestran esos
+// campos extra; si no, el modal solo pide el nombre.
 
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 
 let contextoActual = null;
 
-export function abrirModalEditar({ tabla, id, nombre, cantidad, campoCantidad, titulo }) {
-  contextoActual = { tabla, id, campoCantidad };
+export function abrirModalEditar({ tabla, id, nombre, cantidad, campoCantidad, descripcion, campoDescripcion, titulo }) {
+  contextoActual = { tabla, id, campoCantidad, campoDescripcion };
 
   document.getElementById("editarItemTitulo").textContent = titulo || "Editar";
   document.getElementById("editarItemNombre").value = nombre || "";
@@ -30,6 +31,16 @@ export function abrirModalEditar({ tabla, id, nombre, cantidad, campoCantidad, t
     grupoCantidad.style.display = "none";
     inputCantidad.required = false;
     inputCantidad.value = "";
+  }
+
+  const grupoDescripcion = document.getElementById("editarItemDescripcionGrupo");
+  const inputDescripcion = document.getElementById("editarItemDescripcion");
+  if (campoDescripcion) {
+    grupoDescripcion.style.display = "block";
+    inputDescripcion.value = descripcion || "";
+  } else {
+    grupoDescripcion.style.display = "none";
+    inputDescripcion.value = "";
   }
 
   document.getElementById("editarItemOverlay").classList.add("open");
@@ -47,7 +58,7 @@ export function setupEditarModal() {
   document.getElementById("formEditarItem").addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!contextoActual) return;
-    const { tabla, id, campoCantidad } = contextoActual;
+    const { tabla, id, campoCantidad, campoDescripcion } = contextoActual;
 
     const nombre = document.getElementById("editarItemNombre").value.trim();
     if (!nombre) return;
@@ -61,6 +72,13 @@ export function setupEditarModal() {
         return;
       }
       payload[campoCantidad] = cantidad;
+    }
+    if (campoDescripcion) {
+      // La descripción es opcional: si se deja vacía se guarda null (y no
+      // una cadena vacía), así "sin descripción" es siempre lo mismo mire
+      // desde donde se mire.
+      const texto = document.getElementById("editarItemDescripcion").value.trim();
+      payload[campoDescripcion] = texto === "" ? null : texto;
     }
 
     const { error } = await getClient().from(tabla).update(payload).eq("id", id);

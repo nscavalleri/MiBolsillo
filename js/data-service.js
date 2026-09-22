@@ -84,6 +84,12 @@ export async function cargarTodo() {
   });
   state.distribucion.convertirEuros = state.configuracionGeneral.convertir_euros === "true";
 
+  // Cuántos movimientos se muestran por página en Gastos > Movimientos.
+  // Solo se aceptan los tres valores del selector; cualquier otra cosa
+  // (nunca guardada, o una fila editada a mano en la base) cae en 10.
+  const porPaginaGuardado = Number(state.configuracionGeneral.movimientos_por_pagina);
+  state.paginacion.porPagina = [10, 50, 100].includes(porPaginaGuardado) ? porPaginaGuardado : 10;
+
   renderTodo();
 }
 

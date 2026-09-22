@@ -11,6 +11,14 @@ export const state = {
   tipoActual: "egreso",
   editandoId: null,
   filtros: { mes: "", tipo: "", concepto: "", origen: "", moneda: "" },
+  // Gastos > Movimientos: paginación de la lista. "porPagina" (10, 50 o
+  // 100) arranca en 10 acá, pero cargarTodo() lo pisa enseguida con lo
+  // último guardado en la tabla configuracion_general (clave
+  // "movimientos_por_pagina"), así se recuerda sin importar desde qué
+  // navegador o dispositivo entres. "pagina" en cambio es solo de esta
+  // visita: arranca siempre en la primera y vuelve a la 1 cada vez que se
+  // toca un filtro o se cambia cuántos movimientos se muestran.
+  paginacion: { porPagina: 10, pagina: 1 },
   // Estado de los tildes de conciliación en curso (todavía no cerrado con
   // "Conciliar mes"). Clave "origen::moneda" -> true/false. Se guarda en la
   // tabla conciliacion_checks para no perderlo si se recarga la página o se
@@ -34,15 +42,16 @@ export const state = {
   // mes-moneda con un valor cargado (tabla tipos_cambio). La usa
   // "Convertir todo a Euros" de Distribución para pasar todo a euros.
   tiposCambio: [],
-  // Configuración > Reservas: montos reservados en euros (nombre, cantidad
-  // y activo/inactivo), con su propio ABM (reservas.js).
+  // Configuración > Reservas: montos reservados en euros (nombre, cantidad,
+  // descripción opcional y activo/inactivo), con su propio ABM (reservas.js).
   reservas: [],
   // Preferencias generales de la app, guardadas en Supabase (tabla
   // configuracion_general: clave/valor) en vez del navegador, para que se
-  // recuerden sin importar desde dónde entres. Por ahora solo tiene
+  // recuerden sin importar desde dónde entres. Por ahora tiene
   // "convertir_euros" ("true"/"false", como texto: la tabla es genérica
   // para poder sumar otras preferencias más adelante sin tener que agregar
-  // columnas nuevas), pero data-service.js guarda todas las filas acá tal
+  // columnas nuevas) y "movimientos_por_pagina" ("10" / "50" / "100",
+  // también como texto), pero data-service.js guarda todas las filas acá tal
   // cual vienen, así que cualquier módulo puede leer otras claves futuras.
   configuracionGeneral: {},
 };

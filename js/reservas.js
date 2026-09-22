@@ -18,9 +18,15 @@ export function renderReservas() {
     return;
   }
 
+  // Igual que en Gastos > Movimientos: el nombre arriba y, si la reserva
+  // tiene descripción cargada, una segunda línea más chica y en gris claro
+  // debajo. Las reservas sin descripción se ven exactamente igual que antes.
   el.innerHTML = state.reservas.map(r => `
     <div class="config-item">
-      <span class="nombre ${r.activo ? "" : "inactivo"}">${r.nombre}</span>
+      <div class="info">
+        <span class="nombre ${r.activo ? "" : "inactivo"}">${r.nombre}</span>
+        ${r.descripcion ? `<div class="detalle">${r.descripcion}</div>` : ""}
+      </div>
       <span class="reserva-monto">${Number(r.cantidad_reservada || 0).toFixed(2)} €</span>
       <label class="switch">
         <input type="checkbox" ${r.activo ? "checked" : ""} data-toggle-reserva="${r.id}" />
@@ -40,8 +46,8 @@ export function renderReservas() {
     });
   });
 
-  // Editar abre el modal compartido (editar-modal.js) con el campo extra
-  // de cantidad habilitado, en vez de dos prompt() seguidos.
+  // Editar abre el modal compartido (editar-modal.js) con los campos extra
+  // de cantidad y descripción habilitados, en vez de prompt() seguidos.
   el.querySelectorAll("[data-editar-reserva]").forEach(btn => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.editarReserva;
@@ -53,6 +59,8 @@ export function renderReservas() {
         nombre: actual.nombre,
         cantidad: actual.cantidad_reservada,
         campoCantidad: "cantidad_reservada",
+        descripcion: actual.descripcion,
+        campoDescripcion: "descripcion",
         titulo: "Editar reserva",
       });
     });

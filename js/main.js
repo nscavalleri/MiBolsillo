@@ -3,7 +3,7 @@
 import { initSupabase, getClient } from './config.js';
 import { setupAllTabs } from './ui-tabs.js';
 import { setupAuth, mostrarSegunSesion } from './auth.js';
-import { setupFiltros } from './gastos.js';
+import { setupFiltros, setupPaginacion } from './gastos.js';
 import { setupAddItemRows } from './configuracion.js';
 import { setupModal } from './modal.js';
 import { setupConciliacion } from './conciliacion.js';
@@ -14,6 +14,7 @@ import { setupEditarModal } from './editar-modal.js';
 setupAllTabs();
 setupAuth();
 setupFiltros();
+setupPaginacion();
 setupAddItemRows();
 setupModal();
 setupConciliacion();
