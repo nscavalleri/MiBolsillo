@@ -64,7 +64,20 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 
 <div id="sub-evolucion" style="display:none;">
-<div class="card"><p class="empty">Evolución en el tiempo — próximamente.</p></div>
+<!-- Mismos conceptos que Snapshot y Asignación: comparten la columna
+     conceptos.incluir_en_snapshot. -->
+<div class="card">
+<details class="collapsible">
+<summary>Conceptos a incluir</summary>
+<div id="evolucionConceptosCheckboxes" class="check-grid"></div>
+</details>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0;">Patrimonio mes a mes</h3>
+<div class="pivot-wrap"><table class="pivot evolucion-pivot" id="evolucionTable"></table></div>
+<p class="tipo-cambio-nota" id="evolucionNota" style="display:none;">⚠ = falta cargar el tipo de cambio de alguna moneda para ese mes en Configuración &gt; Tipo de cambio, así que ese total está incompleto.</p>
+</div>
 </div>
 
 <div id="sub-distribucion" style="display:none;">
@@ -362,6 +375,48 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 
 <button type="submit" class="primary">Guardar</button>
 </form>
+</div>
+</div>
+
+<!-- MODAL: detalle de un mes de Evolución — qué ingresos y egresos de ese
+     mes fueron excepcionales, y una nota libre de qué pasó. -->
+<div class="modal-overlay" id="evolucionDetalleOverlay">
+<div class="modal-box modal-ancho">
+<button class="modal-close" id="evolucionDetalleClose" type="button">✕</button>
+<h3 id="evolucionDetalleTitulo">Mes</h3>
+
+<p class="conciliacion-ayuda">Tildá los movimientos que fueron excepcionales: los que explican por qué este mes se salió de lo normal.</p>
+
+<div class="filtros-grid evo-filtros">
+<div>
+<label for="evoFiltroTipo">Tipo</label>
+<select id="evoFiltroTipo">
+<option value="">Todos</option>
+<option value="ingreso">Ingreso</option>
+<option value="egreso">Egreso</option>
+</select>
+</div>
+<div>
+<label for="evoFiltroConcepto">Concepto</label>
+<select id="evoFiltroConcepto"><option value="">Todos</option></select>
+</div>
+<div>
+<label for="evoFiltroOrigen">Origen</label>
+<select id="evoFiltroOrigen"><option value="">Todos</option></select>
+</div>
+<div>
+<label for="evoFiltroMoneda">Moneda</label>
+<select id="evoFiltroMoneda"><option value="">Todos</option></select>
+</div>
+</div>
+<button class="secondary" id="evoLimpiarFiltros" type="button">Limpiar filtros</button>
+
+<div class="evo-columnas" id="evolucionDetalleListas"></div>
+
+<div class="evo-totales" id="evolucionDetalleTotales"></div>
+
+<label for="evolucionComentario">Comentarios adicionales</label>
+<textarea id="evolucionComentario" rows="4" placeholder="Qué pasó este mes..."></textarea>
 </div>
 </div>
 
