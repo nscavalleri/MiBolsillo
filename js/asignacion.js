@@ -139,9 +139,14 @@ export function renderAsignacion() {
   }
 
   // --- Tabla principal: cuentas en las filas, reservas en las columnas ---
+  // La plata que tiene la cuenta va como segunda línea adentro de la celda
+  // del nombre, no en una columna aparte: son las dos columnas que quedan
+  // fijas al scrollear, y en un celular tres columnas fijas se comían casi
+  // toda la pantalla y no entraba ninguna reserva. El número "de verdad"
+  // para las cuentas se lee de data-total, no del texto de la celda, para
+  // que el formato (el símbolo €, los decimales) no rompa el cálculo.
   let html = `<tr>
     <th>Cuenta</th>
-    <th>Total (€)</th>
     <th>Sin asignar</th>
     ${reservas.map(r => `
       <th>
@@ -152,9 +157,11 @@ export function renderAsignacion() {
 
   filas.forEach(f => {
     html += `<tr>
-      <td>${nombreOrigen(f.origenId)}</td>
-      <td class="asig-total-cuenta">${formato(f.total)}</td>
-      <td class="asig-restante" data-restante="${f.origenId}">0.00</td>
+      <td class="asig-cuenta">
+        <div class="asig-cuenta-nombre">${nombreOrigen(f.origenId)}</div>
+        <div class="asig-cuenta-total">${formato(f.total)} €</div>
+      </td>
+      <td class="asig-restante" data-restante="${f.origenId}" data-total="${f.total}">0.00</td>
       ${reservas.map(r => `
         <td class="asig-celda">
           <input type="number" step="0.01" placeholder="0"
@@ -166,8 +173,10 @@ export function renderAsignacion() {
 
   const totalGeneral = filas.reduce((suma, f) => suma + f.total, 0);
   html += `<tr class="total-row">
-    <td>Total</td>
-    <td>${formato(totalGeneral)}</td>
+    <td class="asig-cuenta">
+      <div class="asig-cuenta-nombre">Total</div>
+      <div class="asig-cuenta-total">${formato(totalGeneral)} €</div>
+    </td>
     <td class="asig-restante" data-restante-general>0.00</td>
     ${reservas.map(r => `<td class="asig-total-columna" data-total-columna="${r.id}">0.00</td>`).join("")}
   </tr>`;
@@ -194,8 +203,58 @@ export function renderAsignacion() {
     input.addEventListener("change", () => guardarCelda(input));
   });
 
+  habilitarArrastre();
   devolverFoco(foco);
   recalcular();
+}
+
+// Arrastrar la tabla para el costado con el mouse, como si se empujara una
+// hoja de papel: la barra de desplazamiento horizontal queda abajo de todo
+// y obligaba a bajar y volver a subir cada vez que se querían ver las
+// reservas de la derecha. En el celular no hace falta (se desliza con el
+// dedo, que el navegador ya resuelve solo).
+//
+// Dos cuidados: no se arrastra si el clic empezó sobre un campo o un botón
+// (si no, sería imposible poner el cursor en una celda para escribir), y
+// recién se considera "arrastre" después de unos pocos píxeles de
+// movimiento, así un clic común para enfocar una celda sigue siendo un clic
+// y no un tironcito. Los listeners se enganchan una sola vez (el contenedor
+// vive en el HTML y no se vuelve a crear en cada render, a diferencia de la
+// tabla de adentro).
+function habilitarArrastre() {
+  const wrap = document.getElementById("asignacionWrap");
+  if (!wrap || wrap.dataset.arrastreListo) return;
+  wrap.dataset.arrastreListo = "1";
+
+  let activo = false;
+  let xInicial = 0;
+  let scrollInicial = 0;
+  let arrastrando = false;
+
+  wrap.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest("input, button, select, textarea, label, a")) return;
+    activo = true;
+    arrastrando = false;
+    xInicial = e.pageX;
+    scrollInicial = wrap.scrollLeft;
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!activo) return;
+    const corrimiento = e.pageX - xInicial;
+    if (!arrastrando && Math.abs(corrimiento) < 4) return;
+    arrastrando = true;
+    wrap.classList.add("arrastrando");
+    wrap.scrollLeft = scrollInicial - corrimiento;
+    e.preventDefault();
+  });
+
+  document.addEventListener("mouseup", () => {
+    activo = false;
+    arrastrando = false;
+    wrap.classList.remove("arrastrando");
+  });
 }
 
 // Recalcula, a partir de lo que hay escrito en los campos (no de lo que
@@ -221,8 +280,7 @@ function recalcular() {
   let restanteGeneral = 0;
   tabla.querySelectorAll("[data-restante]").forEach(celda => {
     const origenId = celda.dataset.restante;
-    const fila = celda.parentElement;
-    const total = numero(fila.querySelector(".asig-total-cuenta").textContent);
+    const total = numero(celda.dataset.total);
     const resto = total - (porOrigen[origenId] || 0);
     restanteGeneral += resto;
     celda.textContent = formato(resto);
