@@ -1,785 +1,355 @@
 :root {
-  --fucsia: #ff6061;
-  --fucsia-oscuro: #e14748;
-  --celeste: #04c6da;
-  --celeste-oscuro: #03a3b3;
-  --peligro: #e0405a;
-  --peligro-oscuro: #c22f47;
-  --fondo: #f7f7fb;
-  --tarjeta: #ffffff;
-  --texto: #262633;
-  --texto-suave: #6b6b7b;
-  --borde: #e4e4ee;
-  --radio: 12px;
-  /* Ancho máximo del contenido: en pantallas grandes la app queda centrada
-     en vez de estirarse de punta a punta. */
-  --ancho-max: 720px;
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #1c1e21;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #04C6DA;
+  --brand-fucsia: #FF6061;
+  --income: #16a34a;
+  --expense: #dc2626;
+  --radius: 12px;
 }
-
-* {
-  box-sizing: border-box;
-}
-
+* { box-sizing: border-box; }
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--fondo);
-  color: var(--texto);
+  background: var(--bg);
+  color: var(--text);
+  padding-bottom: 60px;
 }
-
-h1,
-h2,
-h3 {
-  margin: 0 0 12px 0;
-}
-
-.oculto {
-  display: none !important;
-}
-
-.texto-ayuda {
-  color: var(--texto-suave);
-  font-size: 0.95rem;
-}
-
-/* ---------- Mensajes ---------- */
-
-.mensaje-box:empty {
-  display: none;
-}
-
-.mensaje {
-  padding: 10px 14px;
-  border-radius: var(--radio);
-  margin-bottom: 12px;
-  font-size: 0.95rem;
-}
-
-.mensaje--error {
-  background: #fde2e5;
-  color: var(--peligro-oscuro);
-}
-
-.mensaje--info {
-  background: #e0f9fc;
-  color: var(--celeste-oscuro);
-}
-
-/* ---------- Botones ---------- */
-
-.btn {
-  border: none;
-  border-radius: var(--radio);
-  padding: 10px 16px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  min-height: 40px;
-  transition: opacity 0.15s ease, transform 0.05s ease;
-}
-
-.btn:active {
-  transform: scale(0.98);
-}
-
-.btn--primario {
-  background: var(--fucsia);
-  color: white;
-}
-
-.btn--primario:hover {
-  background: var(--fucsia-oscuro);
-}
-
-.btn--secundario {
-  background: white;
-  color: var(--celeste-oscuro);
-  border: 2px solid var(--celeste);
-}
-
-.btn--secundario:hover {
-  background: #e0f9fc;
-}
-
-.btn--peligro {
-  background: white;
-  color: var(--peligro);
-  border: 2px solid var(--peligro);
-}
-
-.btn--peligro:hover {
-  background: var(--peligro);
-  color: white;
-}
-
-.btn--chico {
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  min-height: 32px;
-}
-
-.btn--ancho {
-  width: 100%;
-}
-
-.btn--link {
-  background: none;
-  color: var(--celeste-oscuro);
-  text-decoration: underline;
-  padding: 8px 0;
-  min-height: auto;
-  width: 100%;
-}
-
-/* ---------- Login ---------- */
-
-.pantalla-login {
-  min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: linear-gradient(160deg, var(--fucsia) 0%, var(--celeste) 100%);
-}
-
-.login-card {
-  background: var(--tarjeta);
-  border-radius: 20px;
-  padding: 32px 24px;
-  width: 100%;
-  max-width: 380px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}
-
-.login-titulo {
-  text-align: center;
-  font-size: 1.6rem;
-}
-
-#login-subtitulo {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.form-vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.form-vertical label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.9rem;
-  color: var(--texto-suave);
-}
-
-input[type="text"],
-input[type="email"],
-input[type="password"],
-select {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 2px solid var(--borde);
-  font-size: 1rem;
-  min-height: 42px;
-  width: 100%;
-  background: white;
-  color: var(--texto);
-}
-
-input:focus,
-select:focus {
-  outline: none;
-  border-color: var(--celeste);
-}
-
-/* ---------- App principal ---------- */
-
-.pantalla-app {
-  min-height: 100dvh;
-  padding-bottom: 40px;
-}
-
-.header-app {
-  background: var(--fucsia);
-  color: white;
-  padding: 16px 20px;
+header {
+  background: var(--card);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 10;
-}
-
-/* La barra de color ocupa todo el ancho; el contenido se centra igual que el resto. */
-.header-app__inner {
-  max-width: var(--ancho-max);
-  margin: 0 auto;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
 }
-
-.header-app h1 {
-  font-size: 1.25rem;
-  margin: 0;
-}
-
-.header-app .btn--secundario {
-  background: white;
-}
-
-.header-app__acciones {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-app__usuario {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-/* ---------- Tabs y subtabs ---------- */
-
-/* Las solapas se acomodan en varias filas en vez de scrollear horizontalmente,
-   así siempre se ven todas (importante en mobile y en Configuración). */
-.tabs,
-.subtabs {
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px 0 16px;
-  flex-wrap: wrap;
-}
-
-/* Las solapas principales y los paneles se centran con el mismo ancho máximo. */
-.tabs {
-  max-width: var(--ancho-max);
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.subtabs {
-  padding-top: 14px;
-  padding-bottom: 6px;
-}
-
-.tab-btn,
-.subtab-btn {
-  border: none;
-  background: white;
-  color: var(--texto-suave);
-  padding: 10px 18px;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  border: 2px solid var(--borde);
-}
-
-.tab-btn--activo {
-  background: var(--fucsia);
-  border-color: var(--fucsia);
-  color: white;
-}
-
-.subtab-btn--activo {
-  background: var(--celeste);
-  border-color: var(--celeste);
-  color: white;
-}
-
-.tab-panel {
-  padding: 4px 16px 24px 16px;
-  max-width: var(--ancho-max);
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.subtab-panel {
-  background: var(--tarjeta);
-  border-radius: var(--radio);
-  padding: 16px;
-  margin-top: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-}
-
-/* ---------- Formulario de agregar (autocompletado / ABM) ---------- */
-
-.form-agregar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.form-agregar input {
-  flex: 1;
-  min-width: 180px;
-}
-
-.form-agregar select {
-  flex: 1;
-  min-width: 160px;
-  max-width: 220px;
-}
-
-/* ---------- Filtro por tipo (Configuración > Productos) ---------- */
-
-.form-filtro {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.form-filtro__label {
-  font-size: 0.9rem;
-  color: var(--texto-suave);
-  white-space: nowrap;
-}
-
-.form-filtro select {
-  flex: 1;
-  min-width: 160px;
-  max-width: 260px;
-}
-
-.autocomplete {
-  position: relative;
-  flex: 1;
-  min-width: 180px;
-}
-
-.autocomplete__input {
-  width: 100%;
-}
-
-.autocomplete__lista {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: white;
-  border: 2px solid var(--borde);
-  border-radius: 10px;
-  list-style: none;
-  margin: 0;
-  padding: 4px;
-  max-height: 220px;
-  overflow-y: auto;
-  z-index: 20;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-}
-
-.autocomplete__item {
-  padding: 8px 10px;
+header h1 { margin: 0; font-size: 18px; }
+header button.logout {
+  background: none;
+  border: 1px solid var(--border);
   border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--muted);
   cursor: pointer;
 }
+main { max-width: 520px; margin: 0 auto; padding: 16px; }
 
-.autocomplete__item:hover,
-.autocomplete__item--activo {
-  background: #e0f9fc;
-}
-
-/* ---------- Listas ABM (Productos / Supermercados) ---------- */
-
-.abm-lista {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.abm-lista__fila {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--borde);
-  border-radius: 10px;
-  flex-wrap: wrap;
-}
-
-.abm-lista__fila input[type="text"] {
-  flex: 1;
-  min-width: 140px;
-}
-
-.abm-lista__fila select {
-  flex: 1;
-  min-width: 140px;
-  max-width: 220px;
-}
-
-.abm-lista__nombre {
-  flex: 1;
-  font-weight: 500;
-  min-width: 100px;
-}
-
-/* Botones con ícono (Editar / Eliminar / Guardar / Cancelar en Configuración):
-   ocupan mucho menos que los botones con texto, sobre todo en mobile. */
-.btn-icono {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  border: 2px solid var(--borde);
-  border-radius: 10px;
-  color: var(--texto-suave);
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.05s ease;
-}
-
-.btn-icono svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.btn-icono:active {
-  transform: scale(0.94);
-}
-
-.btn-icono:focus-visible {
-  outline: 2px solid var(--celeste);
-  outline-offset: 2px;
-}
-
-.btn-icono--editar {
-  color: var(--celeste-oscuro);
-}
-
-.btn-icono--editar:hover {
-  background: #e4f9fc;
-  border-color: var(--celeste);
-}
-
-.btn-icono--duplicar:hover {
-  background: var(--fondo);
-  border-color: var(--texto-suave);
-  color: var(--texto);
-}
-
-.btn-icono--eliminar {
-  color: var(--peligro);
-}
-
-.btn-icono--eliminar:hover {
-  background: #fde2e5;
-  border-color: var(--peligro);
-}
-
-.btn-icono--guardar {
-  background: var(--celeste);
-  border-color: var(--celeste);
-  color: white;
-}
-
-.btn-icono--guardar:hover {
-  background: var(--celeste-oscuro);
-  border-color: var(--celeste-oscuro);
-}
-
-.btn-icono--guardar svg {
-  stroke-width: 2.4;
-}
-
-.btn-icono--cancelar:hover {
-  background: var(--fondo);
-  border-color: var(--texto-suave);
-  color: var(--texto);
-}
-
-/* Los botones de acción van juntos: si la fila no entra, bajan los dos a la
-   vez en vez de partirse uno arriba y otro abajo. */
-.abm-lista__acciones {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.abm-lista__tipo {
-  color: var(--texto-suave);
-  font-size: 0.8rem;
-  background: var(--fondo);
-  padding: 4px 10px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-/* ---------- Listas de compra (Online / Presencial) ---------- */
-
-.item-lista {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.item-lista__fila {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid var(--borde);
-  border-radius: 10px;
-  flex-wrap: wrap;
-}
-
-.item-lista__fila--comprado {
-  opacity: 0.5;
-}
-
-.item-lista__fila--comprado .item-lista__nombre {
-  text-decoration: line-through;
-}
-
-.item-lista__nombre {
-  flex: 1;
-  min-width: 100px;
-  font-weight: 500;
-}
-
-.grupos-todos__titulo {
-  color: var(--fucsia-oscuro);
-  margin-top: 20px;
-  border-bottom: 2px solid var(--celeste);
-  padding-bottom: 6px;
-}
-
-.grupos-todos__titulo:first-child {
-  margin-top: 0;
-}
-
-/* Subtítulo de agrupado por tipo de producto, dentro de una lista o de cada
-   grupo de supermercado en "Todos". */
-.grupo-tipo__titulo {
-  color: var(--texto-suave);
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin: 16px 0 8px 0;
-}
-
-.grupo-tipo__titulo:first-child {
-  margin-top: 0;
-}
-
-/* ---------- Menú semanal (solapa Menú) ---------- */
-
-/* Cada día es una tarjeta, igual que los paneles de las otras solapas. */
-.dia {
-  background: var(--tarjeta);
-  border-radius: var(--radio);
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 16px;
-  margin-top: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  margin-bottom: 16px;
 }
 
-.dia:first-child {
-  margin-top: 8px;
-}
-
-.dia__titulo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--fucsia-oscuro);
-  border-bottom: 2px solid var(--celeste);
-  padding-bottom: 6px;
-  margin-bottom: 4px;
-}
-
-/* Distintivo del día de hoy, que siempre es el primero de la lista. */
-.dia__hoy {
-  background: var(--celeste);
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 3px 10px;
-  border-radius: 999px;
-}
-
-.momento {
-  margin-top: 16px;
-}
-
-.momento__titulo {
-  color: var(--texto-suave);
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin: 0 0 8px 0;
-}
-
-/* Cada comida del menú: la fila visible y, si está abierto, el panel de
-   ingredientes debajo. */
-.item-lista__contenedor {
-  list-style: none;
-}
-
-.item-lista__fila--menu {
-  background: var(--fondo);
-}
-
-.momento > .form-filtro,
-.momento > .btn {
-  margin-top: 8px;
-  margin-bottom: 0;
-}
-
-/* Panel para mandar los ingredientes de una comida a una lista de compra. */
-.panel-ingredientes {
-  margin-top: 8px;
-  padding: 12px;
-  border: 2px dashed var(--borde);
-  border-radius: 10px;
-}
-
-.panel-ingredientes__ayuda {
-  margin: 0 0 10px 0;
-  color: var(--texto-suave);
-  font-size: 0.9rem;
-}
-
-.panel-ingredientes .form-filtro {
-  margin: 12px 0 0 0;
-}
-
-/* Cada ingrediente tiene su propio desplegable de lista destino. */
-.panel-ingredientes__fila .select-destino {
-  margin-left: auto;
-  min-width: 140px;
-  max-width: 180px;
-}
-
-.panel-ingredientes__acciones {
-  margin-top: 12px;
-}
-
-/* ---------- Configuración > Menú (comidas e ingredientes) ---------- */
-
-/* La fila de una comida se apila: cabecera arriba, ingredientes abajo. */
-.abm-lista__fila--bloque {
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.comida__cabecera {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.comida__cabecera input[type="text"] {
+/* Tabs */
+.tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.tabs button {
   flex: 1;
-  min-width: 140px;
-}
-
-.comida__cabecera select {
-  flex: 1;
-  min-width: 140px;
-  max-width: 220px;
-}
-
-.comida__ingredientes {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--borde);
-}
-
-.comida__ingredientes .form-agregar {
-  margin-bottom: 12px;
-}
-
-/* Ingredientes como etiquetas con una cruz para quitarlos. */
-.chips {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--fondo);
-  border: 1px solid var(--borde);
-  border-radius: 999px;
-  padding: 5px 6px 5px 12px;
-  font-size: 0.9rem;
-}
-
-.chip__quitar {
-  border: none;
-  background: transparent;
-  color: var(--texto-suave);
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 2px 6px;
-  border-radius: 999px;
+  min-width: 90px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 14px;
   cursor: pointer;
+  color: var(--muted);
+}
+.tabs button.active { background: var(--accent); color: white; border-color: var(--accent); }
+.subtabs button { font-size: 13px; padding: 8px; }
+
+/* Login */
+#loginView { max-width: 360px; margin: 60px auto; padding: 0 16px; }
+#loginView h2 { text-align: center; }
+#loginView .card { padding: 20px; }
+#loginError { color: var(--expense); font-size: 13px; margin-top: 8px; display:none; }
+
+label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+input, select, textarea {
+  width: 100%; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border); font-size: 15px; background: #fff;
+}
+/* Los <textarea> (por ahora, la descripción de una reserva) usan la misma
+   tipografía que el resto de la página en vez de la monoespaciada que pone
+   el navegador, y solo se pueden estirar hacia abajo, no a lo ancho. */
+textarea { font-family: inherit; resize: vertical; box-sizing: border-box; }
+button.primary {
+  width: 100%; margin-top: 16px; padding: 12px; border: none;
+  border-radius: 8px; background: var(--accent); color: white;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+}
+button.primary:disabled { opacity: 0.6; }
+button.secondary {
+  width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: #fff; color: var(--text);
+  font-size: 14px; cursor: pointer;
 }
 
-.chip__quitar:hover {
-  background: #fde2e5;
-  color: var(--peligro-oscuro);
+/* Dashboard: botón agregar */
+.btn-agregar {
+  width: 100%; padding: 12px; border: none; border-radius: 8px;
+  background: var(--brand-fucsia); color: white; font-size: 15px; font-weight: 600;
+  cursor: pointer; margin-bottom: 16px;
 }
 
-/* Botón secundario mientras su panel está abierto: fondo celeste suave con
-   texto oscuro, que se lee mejor que blanco sobre celeste. */
-.btn--activo {
-  background: #e4f9fc;
-  border: 2px solid var(--celeste);
-  color: var(--celeste-oscuro);
+/* Pivot table */
+table.pivot { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.pivot th, table.pivot td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--border); }
+table.pivot th:first-child, table.pivot td:first-child { text-align: left; }
+table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text); border-bottom: none; }
+.pivot-wrap { overflow-x: auto; }
+
+/* Movimientos list */
+.movimiento { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.movimiento:last-child { border-bottom: none; }
+.movimiento .info { flex: 1; min-width: 0; }
+.movimiento .concepto { font-weight: 600; font-size: 14px; }
+.movimiento .detalle { font-size: 12px; color: var(--muted); }
+.movimiento .monto { font-weight: 600; font-size: 14px; white-space: nowrap; text-align: right; }
+.movimiento .monto.ingreso { color: var(--income); }
+.movimiento .monto.egreso { color: var(--expense); }
+.movimiento .acciones { display: flex; gap: 2px; }
+.movimiento .acciones button {
+  background: none; border: none; font-size: 16px; cursor: pointer; color: var(--muted); padding: 4px 6px;
 }
 
-/* ---------- Responsive ---------- */
+.empty { color: var(--muted); font-size: 14px; text-align: center; padding: 20px 0; }
 
-@media (max-width: 480px) {
-  .header-app h1 {
-    font-size: 1.05rem;
-  }
+/* Paginación de Gastos > Movimientos */
+.paginacion {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+.paginacion-tamano { display: flex; align-items: center; gap: 6px; }
+.paginacion-tamano label { margin: 0; white-space: nowrap; }
+.paginacion-tamano select { width: auto; padding: 6px 8px; font-size: 13px; }
+.paginacion-info { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.paginacion-botones { display: flex; gap: 6px; }
+.paginacion-botones button {
+  width: 32px; height: 32px; padding: 0; border-radius: 8px;
+  border: 1px solid var(--border); background: #fff; color: var(--text);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+.paginacion-botones button:disabled { opacity: 0.35; cursor: default; }
 
-  .tab-btn,
-  .subtab-btn {
-    padding: 8px 14px;
-    font-size: 0.85rem;
-  }
+/* Filtros */
+.filtros-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.filtros-grid > div { margin-bottom: 4px; }
+.filtros-grid label { margin-top: 0; }
+@media (min-width: 480px) { .filtros-grid { grid-template-columns: repeat(3, 1fr); } }
 
-  .tab-panel {
-    padding: 4px 10px 20px 10px;
-  }
+/* Tipo toggle */
+.tipo-toggle { display: flex; gap: 8px; margin-top: 10px; }
+.tipo-toggle button {
+  flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: #fff; font-size: 14px; cursor: pointer;
+}
+.tipo-toggle button.active[data-tipo="ingreso"] { background: var(--income); color: white; border-color: var(--income); }
+.tipo-toggle button.active[data-tipo="egreso"] { background: var(--expense); color: white; border-color: var(--expense); }
 
-  .login-card {
-    padding: 24px 18px;
-  }
+/* Modal: todos (Agregar gasto, Editar concepto/moneda/origen/reserva,
+   Detalle de una celda) se muestran centrados y con las cuatro esquinas
+   redondeadas, no como una "hoja" pegada abajo del todo — pegados abajo
+   quedaban con el borde inferior justo en el borde de la ventana, sin
+   esquinas ni sombra ahí, así que se veían como una ventana cortada en vez
+   de un cuadro de diálogo (pasaba más notorio cuanto más corta la ventana
+   del navegador, o con contenido largo que llegaba hasta abajo). */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  z-index: 30; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--card); width: 100%; max-width: 520px; border-radius: 16px;
+  padding: 20px 16px 24px; max-height: 80vh; overflow-y: auto;
+}
+.modal-box h3 { margin-top: 0; }
+.modal-close { float: right; background: none; border: none; font-size: 20px; color: var(--muted); cursor: pointer; }
+
+/* Config lists */
+.config-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.config-item:last-child { border-bottom: none; }
+.config-item .nombre { flex: 1; font-size: 14px; }
+.config-item .nombre.inactivo { color: var(--muted); text-decoration: line-through; }
+/* Reservas: el nombre y, debajo, su descripción en chico y gris claro
+   (mismo criterio que la segunda línea de cada movimiento en Gastos). */
+.config-item .info { flex: 1; min-width: 0; }
+.config-item .detalle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 22px; transition: .2s;
+}
+.slider:before {
+  content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px;
+  background: white; border-radius: 50%; transition: .2s;
+}
+input:checked + .slider { background: var(--accent); }
+input:checked + .slider:before { transform: translateX(16px); }
+.config-item .icon-btn { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 4px; }
+/* Monto de una reserva (Configuración > Reservas), entre el nombre y el
+   interruptor de activo/inactivo. */
+.reserva-monto { font-size: 14px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+.add-item-row { display: flex; gap: 8px; margin-top: 12px; }
+.add-item-row input { flex: 1; }
+/* En la fila de "agregar" de Reservas, el campo de cantidad es numérico y
+   no necesita tanto ancho como el de nombre. */
+.add-item-row input[type="number"] { flex: 0 0 120px; }
+.add-item-row button {
+  padding: 0 14px; border-radius: 8px; border: none; background: var(--accent); color: white; cursor: pointer;
+}
+
+/* Conciliación */
+.conciliacion-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.conciliacion-resumen { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.conciliacion-ayuda { font-size: 13px; color: var(--muted); margin: 4px 0 14px; }
+table.conciliacion-pivot td.conciliacion-celda {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+}
+table.conciliacion-pivot td.conciliacion-vacia { color: var(--border); }
+.check-conciliado {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
+  background: #fff; flex-shrink: 0; cursor: pointer; transition: .15s;
+}
+.check-conciliado input[type="checkbox"] {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer;
+}
+.check-conciliado .checkmark {
+  font-size: 13px; font-weight: 700; line-height: 1; color: transparent;
+}
+.check-conciliado.checked { background: var(--income); border-color: var(--income); }
+.check-conciliado.checked .checkmark { color: #fff; }
+.btn-conciliar {
+  width: 100%; padding: 12px; border: none; border-radius: 8px; margin-top: 14px;
+  background: var(--income); color: white; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.btn-conciliar:disabled { opacity: 0.6; cursor: default; }
+
+/* Distribución mensual */
+.mes-selector { display: flex; gap: 10px; }
+.mes-selector select { flex: 1; }
+
+details.collapsible summary {
+  font-size: 16px; font-weight: 600; cursor: pointer; list-style: revert;
+}
+details.collapsible[open] summary { margin-bottom: 10px; }
+
+.check-grid { column-count: 2; column-gap: 16px; }
+@media (max-width: 360px) { .check-grid { column-count: 1; } }
+.check-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px;
+  break-inside: avoid;
+}
+.check-item input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
+.check-item span.inactivo { color: var(--muted); text-decoration: line-through; }
+
+/* Checkbox "Todos": tilda/destilda toda la lista de un tirón. Ocupa el
+   ancho completo (column-span: all) aunque la lista de abajo esté en dos
+   columnas, y queda separado con un borde para que no se confunda con un
+   ítem más de la lista. */
+.check-item-todos {
+  column-span: all;
+  font-weight: 600;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* "Convertir todo a Euros": separado de la lista de monedas, más
+   destacado, porque cuando está tildado deja sin efecto a todas las de
+   abajo (que quedan atenuadas con check-grid-deshabilitado). */
+.check-item-euros {
+  font-weight: 600;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.check-grid-deshabilitado { opacity: 0.45; }
+
+/* Marca de advertencia en un importe convertido a euros al que le faltó
+   el tipo de cambio de alguna moneda ese mes (ver celdaImporte). */
+.valor-incompleto { color: #f59e0b; font-size: 12px; cursor: help; }
+.tipo-cambio-nota { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+
+/* El número y el circulito van en un span interno (.valor-wrap), no en el
+   <td> directamente: display:flex en un <td> lo saca del layout de tabla y
+   hace que las columnas se apilen en una sola. */
+.valor-wrap { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; width: 100%; }
+table.distrib-pivot td.valor-positivo { color: var(--income); font-weight: 600; }
+table.distrib-pivot td.valor-negativo { color: var(--expense); font-weight: 600; }
+table.distrib-pivot td.valor-cero { color: var(--border); }
+table.distrib-pivot tr.total-row td.valor-positivo,
+table.distrib-pivot tr.total-row td.valor-negativo { font-weight: 700; }
+table.distrib-pivot td:first-child, table.distrib-pivot th:first-child { white-space: nowrap; }
+
+/* Campo "Cantidad" y cualquier otro <input type="number">: sin flechitas de
+   incrementar/decrementar (que además, al pasar la rueda del mouse por
+   encima con el campo enfocado, sumaban o restaban sin querer). */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Configuración > Tipo de cambio: tabla con un input editable por celda
+   (mes = fila, moneda = columna). */
+table.tipo-cambio-tabla td input[type="number"] {
+  width: 100%;
+  min-width: 72px;
+  padding: 4px 6px;
+  text-align: right;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* Semáforo junto a cada importe: por ahora siempre gris (posición
+   reservada); "rojo/amarillo/verde" quedan listos para cuando se compare
+   cada gasto contra su promedio. */
+.semaforo { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* Botón "i" de detalle en cada celda de Mensual/Histórica, y el popup que
+   abre (reutiliza .modal-overlay / .modal-box del modal de agregar gasto). */
+.btn-detalle {
+  width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); background: #fff; color: var(--muted);
+  font-size: 10px; font-style: italic; font-weight: 700; line-height: 1; cursor: pointer;
+}
+.btn-detalle:hover { background: var(--bg); color: var(--accent); border-color: var(--accent); }
+.detalle-grupo { margin-bottom: 14px; }
+.detalle-grupo:last-child { margin-bottom: 0; }
+.detalle-grupo-titulo { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.detalle-linea {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--border);
+}
+.detalle-linea:last-of-type { border-bottom: none; }
+.detalle-nota { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.semaforo-gris { background: var(--border); }
+.semaforo-rojo { background: var(--expense); }
+.semaforo-amarillo { background: #f59e0b; }
+.semaforo-verde { background: var(--income); }
+
+.config-warning {
+  background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
+  padding: 14px; border-radius: var(--radius); margin: 40px 16px; font-size: 14px; max-width: 480px; margin-left:auto; margin-right:auto;
+}
+.load-error {
+  background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b;
+  padding: 12px 14px; border-radius: var(--radius); margin: 16px; font-size: 13px; max-width: 480px; margin-left:auto; margin-right:auto;
 }
