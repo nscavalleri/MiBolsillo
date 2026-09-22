@@ -100,11 +100,20 @@ function textoObjetivo(objetivo, falta) {
 }
 
 // Clase de color para lo que le falta a una reserva para llegar a su
-// objetivo (cantidad_reservada).
+// objetivo (cantidad_reservada). Se usa en el resumen de abajo, donde hay
+// lugar para distinguir los tres casos.
 function claseFalta(falta) {
   if (falta > TOLERANCIA) return "asig-rojo";      // no llegó al objetivo
   if (falta < -TOLERANCIA) return "asig-ambar";    // se pasó del objetivo
   return "asig-verde";
+}
+
+// En el encabezado de la tabla, en cambio, solo hay dos estados: llegó o no
+// llegó. Pasarse del objetivo no es algo que haya que corregir mientras se
+// reparte, así que también va en verde; el detalle de cuánto se pasó queda
+// en el resumen de abajo y en el texto que aparece al pasar el mouse.
+function claseObjetivoEncabezado(falta) {
+  return falta > TOLERANCIA ? "asig-rojo" : "asig-verde";
 }
 
 // Al guardar una celda se recarga todo (el patrón de siempre de la app) y
@@ -218,7 +227,10 @@ export function renderAsignacion() {
   filas.forEach(f => {
     html += `<tr>
       <td class="asig-cuenta">
-        <div class="asig-cuenta-nombre">${nombreOrigen(f.origenId)}</div>
+        <!-- El title repite el nombre porque la columna es angosta y los
+             nombres largos salen cortados con puntos suspensivos: al dejar
+             el mouse encima se ve el nombre completo. -->
+        <div class="asig-cuenta-nombre" title="${nombreOrigen(f.origenId)}">${nombreOrigen(f.origenId)}</div>
         <div class="asig-cuenta-total">${formato(f.total)} €</div>
       </td>
       <td class="asig-restante" data-restante="${f.origenId}" data-total="${f.total}">0.00</td>
@@ -377,10 +389,10 @@ function recalcular() {
   }
 
   // Total de cada reserva, arriba de su columna y en la fila de totales,
-  // pintado con el mismo semáforo que el resumen de abajo (rojo si todavía
-  // no llegó al objetivo, verde si está justo, ámbar si se pasó): así se ve
-  // de una, sin tener que bajar hasta el resumen, cuáles reservas ya están
-  // cubiertas. El texto al pasar el mouse dice el objetivo y cuánto falta.
+  // en rojo mientras no llegue al objetivo y en verde cuando ya lo alcanzó
+  // (o lo pasó): así se ve de una, sin tener que bajar hasta el resumen,
+  // cuáles reservas ya están cubiertas. El texto al pasar el mouse dice el
+  // objetivo y cuánto falta o cuánto se pasó.
   tabla.querySelectorAll("[data-total-reserva], [data-total-columna]").forEach(el => {
     const reservaId = el.dataset.totalReserva || el.dataset.totalColumna;
     const asignado = porReserva[reservaId] || 0;
@@ -389,7 +401,7 @@ function recalcular() {
     const claseBase = el.dataset.totalReserva ? "asig-reserva-total " : "asig-total-columna ";
 
     el.textContent = formato(asignado);
-    el.className = claseBase + claseFalta(falta);
+    el.className = claseBase + claseObjetivoEncabezado(falta);
     el.title = textoObjetivo(objetivo, falta);
   });
 
