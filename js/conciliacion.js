@@ -98,7 +98,10 @@ export function renderConciliacion() {
   }
   boton.disabled = false;
 
-  let html = "<tr><th>Origen</th>" + monedaIds.map(id => `<th>${nombreMoneda(id)}</th>`).join("") + "</tr>";
+  // El <thead> va aparte del <tbody> para que la fila con los nombres de
+  // las monedas pueda quedar clavada arriba al scrollear (ver el CSS de
+  // .conciliacion-scroll).
+  let html = "<thead><tr><th>Origen</th>" + monedaIds.map(id => `<th>${nombreMoneda(id)}</th>`).join("") + "</tr></thead><tbody>";
   const origenIds = Object.keys(pivot).sort((a, b) => nombreOrigen(a).localeCompare(nombreOrigen(b)));
   origenIds.forEach(origenId => {
     html += `<tr><td>${nombreOrigen(origenId)}</td>`;
@@ -112,10 +115,9 @@ export function renderConciliacion() {
       html += `
         <td class="conciliacion-celda">
           <span class="conciliacion-wrap">
-            <span class="btn-detalle btn-info" title="${textoUltimaConciliacion(origenId, monedaId)}">i</span>
             <button type="button" class="btn-detalle" data-dif-origen="${origenId}" data-dif-moneda="${monedaId}"
                     title="Calcular diferencia contra lo que tenés en realidad">Δ</button>
-            <span>${v.toFixed(2)}</span>
+            <span class="valor-conciliacion" title="${textoUltimaConciliacion(origenId, monedaId)}">${v.toFixed(2)}</span>
             <label class="check-conciliado${marcado ? " checked" : ""}">
               <input type="checkbox" data-origen-id="${origenId}" data-moneda-id="${monedaId}" ${marcado ? "checked" : ""} />
               <span class="checkmark">✓</span>
@@ -125,6 +127,7 @@ export function renderConciliacion() {
     });
     html += "</tr>";
   });
+  html += "</tbody>";
   tabla.innerHTML = html;
 
   tabla.querySelectorAll("[data-dif-origen]").forEach(btn => {
