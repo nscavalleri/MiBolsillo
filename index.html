@@ -300,6 +300,25 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 </div>
 
+<!-- MODAL: editar un concepto / moneda / origen / reserva -->
+<div class="modal-overlay" id="editarItemOverlay">
+<div class="modal-box">
+<button class="modal-close" id="editarItemClose" type="button">✕</button>
+<h3 id="editarItemTitulo">Editar</h3>
+<form id="formEditarItem">
+<label for="editarItemNombre">Nombre</label>
+<input type="text" id="editarItemNombre" required />
+
+<div id="editarItemCantidadGrupo" style="display:none;">
+<label for="editarItemCantidad">Cantidad reservada (€)</label>
+<input type="number" id="editarItemCantidad" step="0.01" min="0" />
+</div>
+
+<button type="submit" class="primary">Guardar</button>
+</form>
+</div>
+</div>
+
 <script type="module" src="js/main.js"></script>
 
 </body>
