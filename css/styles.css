@@ -152,13 +152,27 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
      margen como arriba: se la corre hasta el centro de la columna de la app
      y después "translate" la trae de vuelta media sección, que es la misma
      cuenta pero resuelta por el navegador. */
-  #sub-conciliacion {
+  /* Evolución y Distribución (Mensual e Histórica) usan exactamente el mismo
+     criterio que Conciliación: tienen una columna por moneda, así que se
+     ensanchan lo que necesiten y ni un pixel más. #sub-distribucion envuelve a
+     las dos solapas, así que con nombrarlo una vez alcanza para Mensual e
+     Histórica. */
+  #sub-conciliacion, #sub-evolucion, #sub-distribucion {
     width: fit-content;
     min-width: calc(var(--ancho-app) - 32px);
     max-width: min(1400px, calc(100vw - 48px));
     margin-left: calc((var(--ancho-app) - 32px) / 2);
     translate: -50% 0;
   }
+  /* Imprescindible para que lo de arriba sirva de algo: table.pivot trae
+     width: 100%, y una tabla al 100% nunca es más ancha que su contenedor, así
+     que la sección "fit-content" se quedaba clavada en el mínimo y no pasaba
+     nada. Con width: auto la tabla pide el ancho que necesita para que no se
+     le apriete el texto, y la sección la sigue; min-width: 100% evita el caso
+     contrario, que una tabla de pocas columnas quede flotando angosta adentro
+     de una tarjeta ancha. */
+  #sub-evolucion table.pivot,
+  #sub-distribucion table.pivot { width: auto; min-width: 100%; }
 }
 
 /* La tabla tiene su propio alto máximo y scrollea adentro suyo, en los dos
