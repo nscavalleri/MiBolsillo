@@ -136,23 +136,48 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
   }
 }
 
-.asignacion-wrap { cursor: grab; overscroll-behavior-x: contain; }
+/* La tabla tiene su propio alto máximo y scrollea adentro suyo, en los dos
+   sentidos. Es lo que hace posible que la fila con los nombres de las
+   reservas quede clavada arriba al bajar: un encabezado "pegajoso" se pega
+   al borde de lo que scrollea, y si lo que scrollea fuera la página entera
+   la fila se iría hacia arriba igual. De paso, la barra de desplazamiento
+   horizontal queda siempre al pie de la tabla y no abajo de todo. */
+.ayuda-plegable { margin-bottom: 10px; }
+.ayuda-plegable .conciliacion-ayuda { margin: 0; }
+.asignacion-wrap {
+  cursor: grab;
+  overscroll-behavior-x: contain;
+  max-height: calc(100vh - 220px);
+  min-height: 240px;
+  overflow: auto;
+}
 .asignacion-wrap.arrastrando { cursor: grabbing; user-select: none; }
 .asignacion-wrap input { cursor: auto; }
 .asignacion-pivot { min-width: 100%; }
 .asignacion-pivot th, .asignacion-pivot td { background: var(--card); }
+
+/* Las capas, de atrás para adelante: las celdas comunes, las dos columnas
+   fijas de la izquierda, la fila de encabezados, y arriba de todo las dos
+   celdas de la esquina (que están fijas en los dos sentidos a la vez y por
+   eso tienen que tapar a las otras dos). */
 .asignacion-pivot th:nth-child(1), .asignacion-pivot td:nth-child(1),
 .asignacion-pivot th:nth-child(2), .asignacion-pivot td:nth-child(2) {
   position: sticky; z-index: 1;
 }
+.asignacion-pivot thead th {
+  position: sticky; top: 0; z-index: 2;
+  box-shadow: 0 1px 0 var(--border);
+}
+.asignacion-pivot thead th:nth-child(1), .asignacion-pivot thead th:nth-child(2) { z-index: 3; }
 .asignacion-pivot th:nth-child(1), .asignacion-pivot td:nth-child(1) {
   left: 0; width: 108px; min-width: 108px; max-width: 108px;
 }
 .asignacion-pivot th:nth-child(2), .asignacion-pivot td:nth-child(2) {
   left: 108px; width: 78px; min-width: 78px; max-width: 78px;
-  box-shadow: 1px 0 0 var(--border);
 }
-.asignacion-pivot th { vertical-align: bottom; z-index: 2; }
+.asignacion-pivot td:nth-child(2) { box-shadow: 1px 0 0 var(--border); }
+.asignacion-pivot thead th:nth-child(2) { box-shadow: 1px 0 0 var(--border), 0 1px 0 var(--border); }
+.asignacion-pivot th { vertical-align: bottom; }
 .asig-cuenta-nombre {
   font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
