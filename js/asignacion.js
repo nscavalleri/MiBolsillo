@@ -145,7 +145,11 @@ export function renderAsignacion() {
   // toda la pantalla y no entraba ninguna reserva. El número "de verdad"
   // para las cuentas se lee de data-total, no del texto de la celda, para
   // que el formato (el símbolo €, los decimales) no rompa el cálculo.
-  let html = `<tr>
+  // El <thead> va aparte del <tbody> a propósito: es lo que permite que la
+  // fila con los nombres de las reservas quede clavada arriba mientras se
+  // scrollea para abajo (si no, al bajar se pierde de vista a qué reserva
+  // le estás poniendo plata).
+  let html = `<thead><tr>
     <th>Cuenta</th>
     <th>Sin asignar</th>
     ${reservas.map(r => `
@@ -153,7 +157,7 @@ export function renderAsignacion() {
         <div class="asig-reserva-nombre">${r.nombre}</div>
         <div class="asig-reserva-total" data-total-reserva="${r.id}">0.00</div>
       </th>`).join("")}
-  </tr>`;
+  </tr></thead><tbody>`;
 
   filas.forEach(f => {
     html += `<tr>
@@ -179,7 +183,7 @@ export function renderAsignacion() {
     </td>
     <td class="asig-restante" data-restante-general>0.00</td>
     ${reservas.map(r => `<td class="asig-total-columna" data-total-columna="${r.id}">0.00</td>`).join("")}
-  </tr>`;
+  </tr></tbody>`;
   tabla.innerHTML = html;
 
   // --- Resumen por reserva: objetivo vs. lo que se le asignó ---
