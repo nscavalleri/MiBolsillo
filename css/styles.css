@@ -420,6 +420,10 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
    del resumen es lo que se mira primero para decidir, así que va separado
    del texto, con el antes tachadito y el después destacado. */
 .confirmar-linea { font-size: 14px; line-height: 1.5; margin: 0 0 10px; }
+/* Título del cartel de aviso (aviso-modal.js) cuando lo que se avisa es que
+   algo no se pudo hacer. Es la única diferencia entre un aviso común y uno de
+   error: se distingue de un vistazo, sin tener que leer el texto. */
+#avisoTitulo.aviso-error { color: var(--expense); }
 .confirmar-resumen {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-top: 14px;
