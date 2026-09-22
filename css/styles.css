@@ -98,6 +98,9 @@ button.primary {
   font-size: 15px; font-weight: 600; cursor: pointer;
 }
 button.primary:disabled { opacity: 0.6; }
+/* Botón "sí" de una confirmación que borra algo: en rojo, para que no se
+   toque de apurado creyendo que es el botón de siempre. */
+button.primary.peligro { background: var(--expense); }
 button.secondary {
   width: 100%; margin-top: 8px; padding: 10px; border-radius: 8px;
   border: 1px solid var(--border); background: #fff; color: var(--text);
