@@ -69,6 +69,18 @@ function calcularPivot() {
     pivot[m.origen_id][m.moneda_id] = (pivot[m.origen_id][m.moneda_id] || 0) + val;
     monedaIdsUsadas.add(m.moneda_id);
   });
+  // Las cuentas activas que todavía no tienen ningún movimiento también
+  // entran, con la fila vacía (ver el mismo bloque en dashboard.js, que
+  // explica por qué se siembran acá y no antes). En Conciliación esto
+  // importa más que en ninguna otra pantalla: es lo que te deja tildar una
+  // cuenta nueva en cero, o usar el "Δ" para cargarle de una el saldo real
+  // que tenga.
+  if (monedaIdsUsadas.size > 0) {
+    state.origenes.forEach(o => {
+      if (o.activo && !pivot[o.id]) pivot[o.id] = {};
+    });
+  }
+
   const monedaIds = Array.from(monedaIdsUsadas).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
   return { pivot, monedaIds };
 }
@@ -105,8 +117,14 @@ export function renderConciliacion() {
   const origenIds = Object.keys(pivot).sort((a, b) => nombreOrigen(a).localeCompare(nombreOrigen(b)));
   origenIds.forEach(origenId => {
     html += `<tr><td>${nombreOrigen(origenId)}</td>`;
+    // Una cuenta sin ningún movimiento no tiene saldo en ninguna moneda, así
+    // que no hay forma de saber en cuál la usás: se muestra en 0.00 en todas,
+    // y vos tildás (o le calculás la diferencia con el "Δ") la que
+    // corresponda. En cambio, en una cuenta que sí tiene movimientos, la
+    // moneda en la que nunca movió plata sigue mostrando "–" como siempre.
+    const sinNingunMovimiento = Object.keys(pivot[origenId]).length === 0;
     monedaIds.forEach(monedaId => {
-      const v = pivot[origenId][monedaId];
+      const v = sinNingunMovimiento ? 0 : pivot[origenId][monedaId];
       if (v === undefined) {
         html += `<td class="conciliacion-vacia">–</td>`;
         return;
@@ -132,7 +150,11 @@ export function renderConciliacion() {
 
   tabla.querySelectorAll("[data-dif-origen]").forEach(btn => {
     btn.addEventListener("click", () =>
-      abrirDiferencia(btn.dataset.difOrigen, btn.dataset.difMoneda, pivot[btn.dataset.difOrigen][btn.dataset.difMoneda]));
+      // El "|| 0" no es de más: en una cuenta activa que todavía no tiene
+      // ningún movimiento no hay saldo guardado para esa moneda, y sin esto
+      // el modal mostraba "NaN" en vez de 0.00 y no dejaba registrar nada.
+      abrirDiferencia(btn.dataset.difOrigen, btn.dataset.difMoneda,
+        pivot[btn.dataset.difOrigen][btn.dataset.difMoneda] || 0));
   });
 
   tabla.querySelectorAll("input[type=\"checkbox\"]").forEach(chk => {
@@ -282,6 +304,29 @@ async function registrarDiferencia() {
     origen_id: diferenciaActual.origenId,
   });
   if (error) { alert("No se pudo registrar la diferencia: " + error.message); return; }
+
+  // Registrar la diferencia ES conciliar ese casillero: acabás de mirar el
+  // extracto, dijiste cuánta plata tenés de verdad y la app se puso a tono.
+  // Así que el tilde queda puesto solo, sin tener que volver a la tabla a
+  // tildarlo a mano. Se guarda ANTES de cargarTodo() a propósito: cargarTodo()
+  // vuelve a leer conciliacion_checks de la base y pisa lo que haya en
+  // memoria, así que si se guardara después se perdería.
+  const { error: errorTilde } = await getClient()
+    .from("conciliacion_checks")
+    .upsert(
+      {
+        origen_id: diferenciaActual.origenId,
+        moneda_id: diferenciaActual.monedaId,
+        conciliado: true,
+        actualizado_en: new Date().toISOString(),
+      },
+      { onConflict: "origen_id,moneda_id" }
+    );
+  // El movimiento ya quedó guardado, así que si falla solo el tilde no se
+  // deshace nada: se avisa y se sigue, y ella lo tilda a mano.
+  if (errorTilde) {
+    alert("Registré el movimiento, pero no pude dejar tildado el casillero: " + errorTilde.message);
+  }
 
   cerrarDiferencia();
   await cargarTodo();

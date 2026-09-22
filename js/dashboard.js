@@ -90,6 +90,27 @@ function construirPivot() {
     monedaIdsUsadas.add(m.moneda_id);
   });
 
+  // Una cuenta activa que todavía no tiene ningún movimiento igual merece su
+  // fila. Si no, una cuenta recién creada no aparece en ninguna pantalla
+  // hasta que le cargues el primer movimiento: no la ves en el Snapshot, no
+  // podés repartirla en Asignación y en Conciliación no podés ni tildarla ni
+  // usar el "Δ" para cargarle el saldo real de arranque.
+  //
+  // Se siembran DESPUÉS de recorrer los movimientos y solo si quedó alguna
+  // moneda en juego, a propósito: cuando no hay ningún movimiento cargado (o
+  // se destildaron todos los conceptos) las pantallas siguen mostrando su
+  // mensaje de "todavía no hay nada" en vez de una grilla entera de ceros.
+  //
+  // Ojo: al recorrer los movimientos NO se filtra por "activo". Una cuenta
+  // desactivada que tuvo plata sigue apareciendo, que es lo que corresponde
+  // (esa plata existió); lo que se agrega acá son solo las activas que
+  // todavía no tienen nada.
+  if (monedaIdsUsadas.size > 0) {
+    state.origenes.forEach(o => {
+      if (o.activo && !pivot[o.id]) pivot[o.id] = {};
+    });
+  }
+
   const listaMonedaIds = Array.from(monedaIdsUsadas).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
   const listaOrigenIds = Object.keys(pivot).sort((a, b) => nombreOrigen(a).localeCompare(nombreOrigen(b)));
   return { pivot, listaMonedaIds, listaOrigenIds };
