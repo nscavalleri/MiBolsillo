@@ -138,10 +138,26 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
    un bloque más ancho en la pantalla hay que correrlo a la izquierda la
    diferencia entre las dos mitades. En celular no aplica nada de esto. */
 @media (min-width: 900px) {
-  #sub-asignacion, #sub-conciliacion {
+  #sub-asignacion {
     --ancho-asignacion: min(1400px, calc(100vw - 48px));
     width: var(--ancho-asignacion);
     margin-left: calc((var(--ancho-app) - 32px) / 2 - var(--ancho-asignacion) / 2);
+  }
+  /* Conciliación también se sale de la columna de 520px, pero NO se estira a
+     todo lo que da: tiene una sola columna por moneda, así que ocupando
+     1400px quedaban columnas enormes con el número perdido en el medio y un
+     montón de espacio vacío. Con "fit-content" la sección se achica a lo que
+     necesite la tabla, y crece sola el día que agregues otra moneda.
+     Al no saber de antemano cuánto va a medir, no se puede calcular el
+     margen como arriba: se la corre hasta el centro de la columna de la app
+     y después "translate" la trae de vuelta media sección, que es la misma
+     cuenta pero resuelta por el navegador. */
+  #sub-conciliacion {
+    width: fit-content;
+    min-width: calc(var(--ancho-app) - 32px);
+    max-width: min(1400px, calc(100vw - 48px));
+    margin-left: calc((var(--ancho-app) - 32px) / 2);
+    translate: -50% 0;
   }
 }
 
@@ -452,7 +468,29 @@ input:checked + .slider:before { transform: translateX(16px); }
    nombres de las monedas se irían hacia arriba igual. Con el recuadro
    propio quedan clavados mientras se baja por la lista de cuentas. La
    columna "Origen" queda clavada a la izquierda por el mismo motivo. */
-.conciliacion-scroll { max-height: calc(100vh - 300px); min-height: 220px; overflow: auto; }
+.conciliacion-scroll {
+  max-height: calc(100vh - 300px); min-height: 220px; overflow: auto;
+  /* Reserva el lugar de la barra de scroll vertical siempre, aparezca o no.
+     Sin esto la barra se comía el borde derecho y el nombre de la última
+     moneda quedaba tapado, como si se estuviera cayendo de la tabla. */
+  scrollbar-gutter: stable;
+}
+/* La tabla NO se estira a todo el ancho disponible (que es lo que hace
+   table.pivot por defecto): con una columna por moneda son pocas columnas, y
+   estirarlas dejaba cada número perdido en el medio de una columna enorme.
+   Acá cada columna ocupa lo que necesita y el conjunto queda compacto. */
+table.conciliacion-pivot { width: auto; min-width: 100%; }
+/* El nombre de la moneda y el contenido de la celda se centran los dos, así
+   quedan uno justo arriba del otro. Antes el encabezado iba pegado al borde
+   derecho y el número no (porque después del número viene el tilde), y se
+   veían corridos entre sí. La columna "Origen" sigue alineada a la
+   izquierda, como en todas las tablas de la app. */
+table.conciliacion-pivot th, table.conciliacion-pivot td {
+  text-align: center; padding-left: 14px; padding-right: 14px;
+}
+table.conciliacion-pivot th:first-child, table.conciliacion-pivot td:first-child {
+  text-align: left; padding-left: 4px;
+}
 table.conciliacion-pivot th, table.conciliacion-pivot td { background: var(--card); }
 table.conciliacion-pivot thead th {
   position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 0 var(--border);
@@ -478,8 +516,8 @@ table.conciliacion-pivot thead th:first-child { z-index: 3; }
    y en Oro). Es el mismo motivo por el que distribucion.js usa .valor-wrap. */
 table.conciliacion-pivot td.conciliacion-celda { white-space: nowrap; }
 .conciliacion-wrap {
-  display: inline-flex; align-items: center; justify-content: flex-end;
-  gap: 6px; width: 100%;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px;
 }
 /* La fecha de la última conciliación se muestra al pasar el mouse por encima
    del propio saldo (antes había un icono "i" al lado, pero eran demasiadas
