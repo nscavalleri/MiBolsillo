@@ -8,6 +8,7 @@ import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { abrirModalEditar } from './editar-modal.js';
+import { pedirConfirmacion } from './confirmar-modal.js';
 
 export function renderReservas() {
   const el = document.getElementById("listaReservas");
@@ -55,14 +56,21 @@ export function renderReservas() {
         const esRemanenteDeAlguna = state.origenes.some(
           o => String(o.reserva_remanente_id) === String(id)
         );
-        if ((tieneAsignaciones || esRemanenteDeAlguna) && !confirm(
-          "Esta reserva se está usando en Gastos > Asignación.\n\n" +
-          "Al desactivarla esa plata se libera y vuelve a quedar sin asignar, y las cuentas " +
-          "que le mandaban lo que les sobraba dejan de hacerlo. Si después la volvés a activar, " +
-          "vas a tener que configurarlo de nuevo.\n\n¿Seguir?"
-        )) {
-          chk.checked = true;
-          return;
+        if (tieneAsignaciones || esRemanenteDeAlguna) {
+          const confirmado = await pedirConfirmacion({
+            titulo: "Esta reserva se está usando",
+            lineas: [
+              "Tiene plata asignada en Gastos &gt; Asignación.",
+              "Al desactivarla esa plata se libera y vuelve a quedar sin asignar, y las cuentas que le mandaban lo que les sobraba dejan de hacerlo.",
+              "Si después la volvés a activar, vas a tener que configurarlo de nuevo.",
+            ],
+            textoSi: "Sí, desactivala",
+            textoNo: "No, dejala activa",
+          });
+          if (!confirmado) {
+            chk.checked = true;
+            return;
+          }
         }
       }
 
@@ -105,8 +113,19 @@ export function renderReservas() {
 
   el.querySelectorAll("[data-eliminar-reserva]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      if (!confirm("¿Eliminar esta reserva?")) return;
       const id = btn.dataset.eliminarReserva;
+      const actual = state.reservas.find(x => String(x.id) === String(id));
+      const confirmado = await pedirConfirmacion({
+        titulo: "¿Eliminar esta reserva?",
+        lineas: [
+          `Vas a eliminar <strong>${actual ? actual.nombre : "esta reserva"}</strong>.`,
+          "Si tenía plata asignada en Gastos &gt; Asignación, esa plata se libera y vuelve a quedar sin asignar. Esto no se puede deshacer.",
+        ],
+        peligro: true,
+        textoSi: "Sí, eliminala",
+        textoNo: "No, dejala",
+      });
+      if (!confirmado) return;
       const { error } = await getClient().from("reservas").delete().eq("id", id);
       if (error) { alert("Error: " + error.message); return; }
       await cargarTodo();

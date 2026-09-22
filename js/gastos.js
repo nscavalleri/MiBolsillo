@@ -8,6 +8,7 @@ import { getClient } from './config.js';
 import { abrirModal } from './modal.js';
 import { cargarTodo } from './data-service.js';
 import { nombreOrigen, nombreMoneda, nombreConcepto } from './lookups.js';
+import { pedirConfirmacion } from './confirmar-modal.js';
 
 export function aplicarFiltros(lista) {
   const f = state.filtros;
@@ -137,7 +138,24 @@ export function setupPaginacion() {
 }
 
 async function borrarMovimiento(id) {
-  if (!confirm("¿Borrar este movimiento?")) return;
+  // Se recuerda en el cartel qué movimiento es: con la lista filtrada y
+  // paginada, "¿Borrar este movimiento?" a secas no alcanza para estar
+  // seguro de haberle dado al botón de la fila que se quería.
+  const m = state.movimientos.find(x => String(x.id) === String(id));
+  const lineas = m
+    ? [`<strong>${nombreConcepto(m.concepto_id)}</strong> · ${m.tipo === "egreso" ? "-" : "+"}${Number(m.monto).toFixed(2)} ${nombreMoneda(m.moneda_id)}`,
+       `${m.fecha} · ${nombreOrigen(m.origen_id)}${m.descripcion ? " · " + m.descripcion : ""}`,
+       "Esto no se puede deshacer."]
+    : ["Esto no se puede deshacer."];
+
+  const confirmado = await pedirConfirmacion({
+    titulo: "¿Borrar este movimiento?",
+    lineas,
+    peligro: true,
+    textoSi: "Sí, borralo",
+    textoNo: "No, dejalo",
+  });
+  if (!confirmado) return;
   const { error } = await getClient().from("movimientos").delete().eq("id", id);
   if (error) { alert("Error borrando: " + error.message); return; }
   await cargarTodo();

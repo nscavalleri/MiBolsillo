@@ -3,6 +3,7 @@
 
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
+import { pedirConfirmacion } from './confirmar-modal.js';
 import { abrirModalEditar } from './editar-modal.js';
 
 // Título lindo para el modal de editar, según la tabla ("Editar concepto",
@@ -45,8 +46,19 @@ export function renderConfigLista(tabla, items, contenedorId) {
   });
   el.querySelectorAll("[data-eliminar]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      if (!confirm("¿Eliminar esta opción? Si ya tiene movimientos asociados, no se va a poder borrar (podés desactivarla en su lugar).")) return;
       const [tab, id] = btn.dataset.eliminar.split(":");
+      const actual = items.find(x => String(x.id) === String(id));
+      const confirmado = await pedirConfirmacion({
+        titulo: "¿Eliminar esta opción?",
+        lineas: [
+          `Vas a eliminar <strong>${actual ? actual.nombre : "esta opción"}</strong>.`,
+          "Si ya está usada en algún movimiento, la base no va a dejar borrarla. En ese caso podés desactivarla con el interruptor: deja de aparecer como opción y no se pierde el historial.",
+        ],
+        peligro: true,
+        textoSi: "Sí, eliminala",
+        textoNo: "No, dejala",
+      });
+      if (!confirmado) return;
       const { error } = await getClient().from(tab).delete().eq("id", id);
       if (error) {
         // 23503 = violación de clave foránea: significa que este

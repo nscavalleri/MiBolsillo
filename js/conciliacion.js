@@ -16,6 +16,7 @@
 import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
+import { pedirConfirmacion } from './confirmar-modal.js';
 import { nombreOrigen, nombreMoneda } from './lookups.js';
 
 function clave(origenId, monedaId) {
@@ -137,9 +138,16 @@ export function setupConciliacion() {
     }
 
     const marcados = filas.filter(f => f.conciliado).length;
-    const confirmado = confirm(
-      `Vas a cerrar la conciliación de ${mes} con ${marcados} de ${filas.length} saldos tildados como conciliados.\n\nLos que quedaron sin tildar también se guardan (como no conciliados). Después se reinician todos los tildes para el mes que viene.\n\n¿Confirmás?`
-    );
+    const confirmado = await pedirConfirmacion({
+      titulo: `¿Cerrar la conciliación de ${mes}?`,
+      lineas: [
+        `Tildaste <strong>${marcados} de ${filas.length}</strong> saldos como conciliados.`,
+        "Los que quedaron sin tildar también se guardan, como no conciliados.",
+        "Después se reinician todos los tildes para empezar el mes que viene de cero.",
+      ],
+      textoSi: "Sí, cerrar el mes",
+      textoNo: "No, todavía no",
+    });
     if (!confirmado) return;
 
     const { error: errorGuardar } = await getClient().from("conciliaciones").insert(filas);

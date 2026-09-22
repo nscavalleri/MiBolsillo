@@ -44,11 +44,15 @@ function engancharBotones() {
 // resumen (opcional): { etiqueta, antes, despues, alertaDespues } se muestra
 // como un renglón aparte del tipo "Ahorro   35.00 € → 25.00 €", que es lo
 // que se mira primero para decidir.
-export function pedirConfirmacion({ titulo, lineas = [], resumen, textoSi = "Sí, hacelo", textoNo = "No, dejalo como estaba" }) {
+// peligro: true pinta el botón de "sí" en rojo, para las acciones que
+// borran algo y no se pueden deshacer.
+export function pedirConfirmacion({ titulo, lineas = [], resumen, peligro = false, textoSi = "Sí, hacelo", textoNo = "No, dejalo como estaba" }) {
   engancharBotones();
 
+  const botonSi = document.getElementById("confirmarSi");
   document.getElementById("confirmarTitulo").textContent = titulo || "¿Estás de acuerdo?";
-  document.getElementById("confirmarSi").textContent = textoSi;
+  botonSi.textContent = textoSi;
+  botonSi.className = peligro ? "primary peligro" : "primary";
   document.getElementById("confirmarNo").textContent = textoNo;
 
   const cuerpo = document.getElementById("confirmarTexto");
@@ -64,7 +68,7 @@ export function pedirConfirmacion({ titulo, lineas = [], resumen, textoSi = "Sí
 
   document.getElementById("confirmarOverlay").classList.add("open");
   document.addEventListener("keydown", alPresionarTecla);
-  document.getElementById("confirmarSi").focus();
+  botonSi.focus();
 
   return new Promise(resolver => { resolverActual = resolver; });
 }
