@@ -5,6 +5,7 @@
 import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
+import { avisarError } from './aviso-modal.js';
 
 // Valores por defecto al agregar un gasto nuevo (no se aplican al editar).
 // IDs según la base: moneda "Euros" = 2, origen "Efectivo" = 5, concepto "Supermercado" = 25.
@@ -129,7 +130,7 @@ export function setupModal() {
     } else {
       ({ error } = await getClient().from("movimientos").insert(payload));
     }
-    if (error) { alert("Error guardando: " + error.message); return; }
+    if (error) { avisarError("Error guardando: " + error.message); return; }
     cerrarModal();
     await cargarTodo();
   });

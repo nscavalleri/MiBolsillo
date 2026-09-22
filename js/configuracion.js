@@ -5,6 +5,7 @@ import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { pedirConfirmacion } from './confirmar-modal.js';
 import { abrirModalEditar } from './editar-modal.js';
+import { avisarError } from './aviso-modal.js';
 
 // Título lindo para el modal de editar, según la tabla ("Editar concepto",
 // no "Editar conceptos").
@@ -32,7 +33,7 @@ export function renderConfigLista(tabla, items, contenedorId) {
     chk.addEventListener("change", async () => {
       const [tab, id] = chk.dataset.toggle.split(":");
       const { error } = await getClient().from(tab).update({ activo: chk.checked }).eq("id", id);
-      if (error) { alert("Error: " + error.message); return; }
+      if (error) { avisarError("Error: " + error.message); return; }
       await cargarTodo();
     });
   });
@@ -66,9 +67,9 @@ export function renderConfigLista(tabla, items, contenedorId) {
         // conciliación), así que la base de datos no deja borrarlo. En ese
         // caso se avisa y se sugiere desactivarlo en vez de eliminarlo.
         if (error.code === "23503") {
-          alert("No se puede eliminar: ya está usado en movimientos cargados. Desactivalo con el interruptor de la izquierda para que deje de aparecer como opción, sin perder el historial.");
+          avisarError("No se puede eliminar: ya está usado en movimientos cargados. Desactivalo con el interruptor de la izquierda para que deje de aparecer como opción, sin perder el historial.");
         } else {
-          alert("Error: " + error.message);
+          avisarError("Error: " + error.message);
         }
         return;
       }
@@ -93,7 +94,7 @@ export function setupAddItemRows() {
       const nombre = input.value.trim();
       if (!nombre) return;
       const { error } = await getClient().from(tabla).insert({ nombre });
-      if (error) { alert("Error agregando: " + error.message); return; }
+      if (error) { avisarError("Error agregando: " + error.message); return; }
       input.value = "";
       await cargarTodo();
     }

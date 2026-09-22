@@ -18,6 +18,7 @@ import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { pedirConfirmacion } from './confirmar-modal.js';
 import { nombreOrigen, nombreMoneda } from './lookups.js';
+import { avisar, avisarError } from './aviso-modal.js';
 
 function clave(origenId, monedaId) {
   return origenId + "::" + monedaId;
@@ -175,7 +176,7 @@ export function renderConciliacion() {
           { onConflict: "origen_id,moneda_id" }
         );
       if (error) {
-        alert("No se pudo guardar el tilde: " + error.message);
+        avisarError("No se pudo guardar el tilde: " + error.message);
       }
     });
   });
@@ -290,7 +291,7 @@ async function registrarDiferencia() {
   if (!diferenciaActual || !diferenciaActual.diferencia) return;
   const conceptoId = conceptoConciliacion();
   if (conceptoId == null) {
-    alert('No encontré el concepto "Conciliación". Crealo en Configuración > Conceptos y volvé a intentar.');
+    avisarError('No encontré el concepto "Conciliación". Crealo en Configuración > Conceptos y volvé a intentar.');
     return;
   }
 
@@ -303,7 +304,7 @@ async function registrarDiferencia() {
     moneda_id: diferenciaActual.monedaId,
     origen_id: diferenciaActual.origenId,
   });
-  if (error) { alert("No se pudo registrar la diferencia: " + error.message); return; }
+  if (error) { avisarError("No se pudo registrar la diferencia: " + error.message); return; }
 
   // Registrar la diferencia ES conciliar ese casillero: acabás de mirar el
   // extracto, dijiste cuánta plata tenés de verdad y la app se puso a tono.
@@ -325,7 +326,7 @@ async function registrarDiferencia() {
   // El movimiento ya quedó guardado, así que si falla solo el tilde no se
   // deshace nada: se avisa y se sigue, y ella lo tilda a mano.
   if (errorTilde) {
-    alert("Registré el movimiento, pero no pude dejar tildado el casillero: " + errorTilde.message);
+    avisarError("Registré el movimiento, pero no pude dejar tildado el casillero: " + errorTilde.message);
   }
 
   cerrarDiferencia();
@@ -367,7 +368,7 @@ export function setupConciliacion() {
     });
 
     if (filas.length === 0) {
-      alert("Todavía no hay saldos para conciliar.");
+      avisar("Todavía no hay saldos para conciliar.", "Nada para conciliar");
       return;
     }
 
@@ -386,7 +387,7 @@ export function setupConciliacion() {
 
     const { error: errorGuardar } = await getClient().from("conciliaciones").insert(filas);
     if (errorGuardar) {
-      alert("No se pudo guardar la conciliación: " + errorGuardar.message);
+      avisarError("No se pudo guardar la conciliación: " + errorGuardar.message);
       return;
     }
 
@@ -394,11 +395,11 @@ export function setupConciliacion() {
     // mes que viene, ningún casillero aparece tildado.
     const { error: errorReset } = await getClient().from("conciliacion_checks").delete().gte("id", 0);
     if (errorReset) {
-      alert("La conciliación de " + mes + " quedó guardada, pero no se pudieron reiniciar los tildes: " + errorReset.message);
+      avisarError("La conciliación de " + mes + " quedó guardada, pero no se pudieron reiniciar los tildes: " + errorReset.message);
     }
 
     state.conciliacionChecks = {};
     await cargarTodo();
-    alert(`Conciliación de ${mes} guardada. Los tildes se reiniciaron para el próximo mes.`);
+    avisar(`Conciliación de ${mes} guardada. Los tildes se reiniciaron para el próximo mes.`);
   });
 }

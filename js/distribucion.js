@@ -33,6 +33,7 @@ import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { nombreMoneda } from './lookups.js';
 import { renderCheckboxesTabla } from './check-list.js';
+import { avisarError } from './aviso-modal.js';
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -616,7 +617,7 @@ export function setupDistribucion() {
       .from("configuracion_general")
       .upsert({ clave: "convertir_euros", valor: String(valor) }, { onConflict: "clave" });
     if (error) {
-      alert("No se pudo guardar: " + error.message);
+      avisarError("No se pudo guardar: " + error.message);
       e.target.checked = !valor;
       return;
     }

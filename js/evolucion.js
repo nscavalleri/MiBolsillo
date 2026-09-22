@@ -28,6 +28,7 @@ import { cargarTodo } from './data-service.js';
 import { nombreOrigen, nombreMoneda, nombreConcepto, contieneTexto } from './lookups.js';
 import { renderCheckboxesTabla } from './check-list.js';
 import { formatoMesLegible, convertirAEuros } from './distribucion.js';
+import { avisarError } from './aviso-modal.js';
 
 const UMBRAL_POR_DEFECTO = 5;
 
@@ -368,7 +369,7 @@ function renderBuscador() {
 async function marcarExcepcional(id, valor) {
   const { error } = await getClient()
     .from("movimientos").update({ excepcional: valor }).eq("id", id);
-  if (error) { alert("No se pudo guardar: " + error.message); return; }
+  if (error) { avisarError("No se pudo guardar: " + error.message); return; }
   await cargarTodo();
 }
 
@@ -384,7 +385,7 @@ async function guardarComentario(tipo) {
   const { error } = await getClient()
     .from("evolucion_comentarios")
     .upsert({ mes: mesAbierto, [campo]: texto === "" ? null : texto }, { onConflict: "mes" });
-  if (error) { alert("No se pudo guardar el comentario: " + error.message); return; }
+  if (error) { avisarError("No se pudo guardar el comentario: " + error.message); return; }
   await cargarTodo();
 }
 

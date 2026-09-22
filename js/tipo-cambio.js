@@ -21,6 +21,7 @@ import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { formatoMesLegible } from './distribucion.js';
+import { avisarError } from './aviso-modal.js';
 
 function valorGuardado(mes, monedaId) {
   const fila = state.tiposCambio.find(
@@ -78,7 +79,7 @@ export function renderTipoCambio() {
         .from("tipos_cambio")
         .upsert({ mes, moneda_id: monedaId, valor_eur: valor }, { onConflict: "mes,moneda_id" });
       if (error) {
-        alert("No se pudo guardar: " + error.message);
+        avisarError("No se pudo guardar: " + error.message);
         return;
       }
       await cargarTodo();

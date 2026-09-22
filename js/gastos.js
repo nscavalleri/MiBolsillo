@@ -9,6 +9,7 @@ import { abrirModal } from './modal.js';
 import { cargarTodo } from './data-service.js';
 import { nombreOrigen, nombreMoneda, nombreConcepto, contieneTexto } from './lookups.js';
 import { pedirConfirmacion } from './confirmar-modal.js';
+import { avisarError } from './aviso-modal.js';
 
 export function aplicarFiltros(lista) {
   const f = state.filtros;
@@ -119,7 +120,7 @@ export function setupPaginacion() {
       .from("configuracion_general")
       .upsert({ clave: "movimientos_por_pagina", valor: String(valor) }, { onConflict: "clave" });
     if (error) {
-      alert("No se pudo guardar: " + error.message);
+      avisarError("No se pudo guardar: " + error.message);
       e.target.value = String(anterior);
       return;
     }
@@ -160,7 +161,7 @@ async function borrarMovimiento(id) {
   });
   if (!confirmado) return;
   const { error } = await getClient().from("movimientos").delete().eq("id", id);
-  if (error) { alert("Error borrando: " + error.message); return; }
+  if (error) { avisarError("Error borrando: " + error.message); return; }
   await cargarTodo();
 }
 

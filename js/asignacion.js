@@ -32,6 +32,7 @@ import { nombreOrigen } from './lookups.js';
 import { renderCheckboxesTabla } from './check-list.js';
 import { saldoEnEurosPorOrigen } from './dashboard.js';
 import { pedirConfirmacion } from './confirmar-modal.js';
+import { avisarError } from './aviso-modal.js';
 
 // Menos de medio centavo se considera "justo": si no, por los decimales de
 // la conversión a euros nunca daría exactamente cero y siempre se vería en
@@ -494,12 +495,12 @@ async function alternarRemanente(btn) {
     .from("origenes")
     .update({ reserva_remanente_id: yaEstaba ? null : reserva_id })
     .eq("id", origen_id);
-  if (error) { alert("No se pudo guardar: " + error.message); return; }
+  if (error) { avisarError("No se pudo guardar: " + error.message); return; }
 
   if (!yaEstaba) {
     const { error: errorBorrado } = await cliente
       .from("asignaciones").delete().eq("origen_id", origen_id).eq("reserva_id", reserva_id);
-    if (errorBorrado) { alert("No se pudo limpiar el monto anterior de esa celda: " + errorBorrado.message); }
+    if (errorBorrado) { avisarError("No se pudo limpiar el monto anterior de esa celda: " + errorBorrado.message); }
   }
 
   await cargarTodo();
@@ -570,7 +571,7 @@ async function guardarCelda(input) {
     .from("asignaciones")
     .upsert({ origen_id, reserva_id, monto }, { onConflict: "origen_id,reserva_id" });
   if (error) {
-    alert("No se pudo guardar: " + error.message);
+    avisarError("No se pudo guardar: " + error.message);
     await cargarTodo();
     return;
   }

@@ -12,6 +12,7 @@
 
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
+import { avisarError } from './aviso-modal.js';
 
 let contextoActual = null;
 
@@ -68,7 +69,7 @@ export function setupEditarModal() {
       const cantidadTexto = document.getElementById("editarItemCantidad").value;
       const cantidad = Number(String(cantidadTexto).replace(",", "."));
       if (Number.isNaN(cantidad) || cantidad < 0) {
-        alert("La cantidad tiene que ser un número mayor o igual a 0.");
+        avisarError("La cantidad tiene que ser un número mayor o igual a 0.");
         return;
       }
       payload[campoCantidad] = cantidad;
@@ -82,7 +83,7 @@ export function setupEditarModal() {
     }
 
     const { error } = await getClient().from(tabla).update(payload).eq("id", id);
-    if (error) { alert("Error editando: " + error.message); return; }
+    if (error) { avisarError("Error editando: " + error.message); return; }
     cerrarModalEditar();
     await cargarTodo();
   });

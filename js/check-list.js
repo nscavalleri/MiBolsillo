@@ -14,12 +14,13 @@
 
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
+import { avisarError } from './aviso-modal.js';
 
 async function marcarTodos(tabla, items, campo, valor) {
   const ids = items.map(it => it.id);
   if (ids.length === 0) return;
   const { error } = await getClient().from(tabla).update({ [campo]: valor }).in("id", ids);
-  if (error) { alert("No se pudo guardar: " + error.message); return; }
+  if (error) { avisarError("No se pudo guardar: " + error.message); return; }
   await cargarTodo();
 }
 
@@ -53,7 +54,7 @@ export function renderCheckboxesTabla(tabla, items, contenedorId, vacioTexto, ca
       const id = chk.dataset.incluir;
       const { error } = await getClient().from(tabla).update({ [campo]: chk.checked }).eq("id", id);
       if (error) {
-        alert("No se pudo guardar: " + error.message);
+        avisarError("No se pudo guardar: " + error.message);
         chk.checked = !chk.checked;
         return;
       }

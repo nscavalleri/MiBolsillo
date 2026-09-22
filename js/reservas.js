@@ -9,6 +9,7 @@ import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { abrirModalEditar } from './editar-modal.js';
 import { pedirConfirmacion } from './confirmar-modal.js';
+import { avisarError } from './aviso-modal.js';
 
 export function renderReservas() {
   const el = document.getElementById("listaReservas");
@@ -75,16 +76,16 @@ export function renderReservas() {
       }
 
       const { error } = await cliente.from("reservas").update({ activo: chk.checked }).eq("id", id);
-      if (error) { alert("Error: " + error.message); chk.checked = !chk.checked; return; }
+      if (error) { avisarError("Error: " + error.message); chk.checked = !chk.checked; return; }
 
       if (!chk.checked) {
         const { error: errorAsig } = await cliente.from("asignaciones").delete().eq("reserva_id", id);
-        if (errorAsig) { alert("Se desactivó la reserva pero no se pudo liberar la plata asignada: " + errorAsig.message); }
+        if (errorAsig) { avisarError("Se desactivó la reserva pero no se pudo liberar la plata asignada: " + errorAsig.message); }
         // Las cuentas que mandaban su remanente a esta reserva dejan de
         // tener remanente automático, si no apuntarían a algo invisible.
         const { error: errorRem } = await cliente
           .from("origenes").update({ reserva_remanente_id: null }).eq("reserva_remanente_id", id);
-        if (errorRem) { alert("Se desactivó la reserva pero quedó marcada como destino del sobrante de alguna cuenta: " + errorRem.message); }
+        if (errorRem) { avisarError("Se desactivó la reserva pero quedó marcada como destino del sobrante de alguna cuenta: " + errorRem.message); }
       }
 
       await cargarTodo();
@@ -127,7 +128,7 @@ export function renderReservas() {
       });
       if (!confirmado) return;
       const { error } = await getClient().from("reservas").delete().eq("id", id);
-      if (error) { alert("Error: " + error.message); return; }
+      if (error) { avisarError("Error: " + error.message); return; }
       await cargarTodo();
     });
   });
@@ -145,12 +146,12 @@ export function setupReservas() {
     const cantidadTexto = inputCantidad.value.trim();
     const cantidad = cantidadTexto === "" ? 0 : Number(cantidadTexto);
     if (Number.isNaN(cantidad) || cantidad < 0) {
-      alert("La cantidad tiene que ser un número mayor o igual a 0.");
+      avisarError("La cantidad tiene que ser un número mayor o igual a 0.");
       return;
     }
 
     const { error } = await getClient().from("reservas").insert({ nombre, cantidad_reservada: cantidad });
-    if (error) { alert("Error agregando: " + error.message); return; }
+    if (error) { avisarError("Error agregando: " + error.message); return; }
     inputNombre.value = "";
     inputCantidad.value = "";
     await cargarTodo();
