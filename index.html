@@ -472,6 +472,20 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 </div>
 
+<!-- MODAL: el "tomá nota de esto" con el formato de la app, en vez del cartel
+     gris del navegador (ese que arriba dice "nscavalleri.github.io dice"). Lo
+     llena aviso-modal.js. Tiene su propio recuadro y no comparte el de arriba
+     a propósito: hay lugares donde primero se pide una confirmación y
+     enseguida se avisa cómo salió. -->
+<div class="modal-overlay" id="avisoOverlay">
+<div class="modal-box">
+<button class="modal-close" id="avisoClose" type="button" title="Cerrar">✕</button>
+<h3 id="avisoTitulo">Listo</h3>
+<div id="avisoTexto"></div>
+<button type="button" class="primary" id="avisoOk">Entendido</button>
+</div>
+</div>
+
 <script type="module" src="js/main.js"></script>
 
 </body>
