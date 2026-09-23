@@ -196,11 +196,14 @@ function semaforoContraPromedio(total, promedio, unidad) {
 // es solo la vara contra la que se lo compara. Si se pintara igual que los
 // demás, la tabla quedaría toda de colores y no se sabría dónde mirar.
 function celdaPromedio(promedio, incompleto) {
+  // Esta columna no tiene adornos (ni botón "i" ni circulito), así que no
+  // necesita el span de ancho fijo: el número se alinea solo contra el borde
+  // derecho de su celda.
   if (promedio == null) return `<td class="col-promedio valor-cero">–</td>`;
   const marca = incompleto
     ? `<span class="valor-incompleto" title="A algún mes anterior le falta el tipo de cambio de alguna moneda, en Configuración &gt; Tipo de cambio; esos meses no entran en el promedio">⚠</span>`
     : "";
-  return `<td class="col-promedio"><span class="valor-wrap">${marca}<span>${promedio.toFixed(2)}</span></span></td>`;
+  return `<td class="col-promedio">${marca}${promedio.toFixed(2)}</td>`;
 }
 
 // Una celda de importe: verde si es mayor a cero, rojo si es menor, y un
@@ -237,9 +240,18 @@ export function celdaImporte(v, semaforoInfo, incompleto, detalleRef, tituloInco
   const boton = detalleRef
     ? `<button type="button" class="btn-detalle" data-detalle="${detalleRef}" title="Ver el detalle de este total">i</button>`
     : "";
-  if (!v) return `<td class="valor-cero"><span class="valor-wrap">${marca}<span>–</span>${boton}${semaforo}</span></td>`;
+  // El número y los adornos (el botón "i" y el circulito) van en dos spans
+  // separados y NO todos sueltos adentro del wrap. Es lo que permite alinear
+  // el número: antes se centraba el grupo entero, así que el número terminaba
+  // corrido a la izquierda tantos pixeles como midieran los adornos que le
+  // tocaran al lado — 18 px en una celda con botón, 7 en una vacía, 0 si no
+  // tenía ninguno. Cada celda caía en un lugar distinto y la columna se veía
+  // torcida. Con los adornos en su propio span de ancho fijo, todos los
+  // números terminan en la misma raya (ver el CSS de .valor-numero).
+  const adornos = `<span class="valor-adornos">${boton}${semaforo}</span>`;
+  if (!v) return `<td class="valor-cero"><span class="valor-wrap">${marca}<span class="valor-numero">–</span>${adornos}</span></td>`;
   const clase = v > 0 ? "valor-positivo" : "valor-negativo";
-  return `<td class="${clase}"><span class="valor-wrap">${marca}<span>${v.toFixed(2)}</span>${boton}${semaforo}</span></td>`;
+  return `<td class="${clase}"><span class="valor-wrap">${marca}<span class="valor-numero">${v.toFixed(2)}</span>${adornos}</span></td>`;
 }
 
 // Registro de "detalle de celda", para el botón "i" y su popup. Mensual e
