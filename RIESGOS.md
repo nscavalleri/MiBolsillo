@@ -2,10 +2,8 @@
 
 Última revisión: **23 de septiembre de 2026**
 
-Este archivo junta lo que puede salir mal a medida que la app crece, con
-números medidos (no estimados) y qué hacer en cada caso. La idea es no tener
-que volver a investigarlo desde cero, y que cualquiera que agarre el proyecto
-—persona o IA— sepa dónde están los bordes antes de tocar algo.
+Este archivo junta lo que puede salir mal a medida que la app crece, con números medidos (no estimados) y qué hacer en cada caso. La idea es no tener
+que volver a investigarlo desde cero, y que cualquiera que agarre el proyecto —persona o IA— sepa dónde están los bordes antes de tocar algo.
 
 Cada riesgo tiene: **qué es**, **cómo se nota**, **dónde estamos hoy** y **qué
 hacer**.
