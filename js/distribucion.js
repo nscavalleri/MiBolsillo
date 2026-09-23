@@ -85,15 +85,138 @@ function escribirMesSeleccionado(mesTexto) {
   document.getElementById("distribAnio").value = anio;
 }
 
+function escaparAtributo(texto) {
+  return String(texto).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+// --- Promedio histórico por concepto -------------------------------------
+//
+// El "Promedio" de la columna nueva de Mensual es, para cada concepto, el
+// promedio de lo que movió por mes. Dos decisiones que tomó Nadia y que
+// conviene no cambiar sin preguntarle:
+//
+//   1. Solo cuentan los meses en los que ESE concepto tuvo algo cargado. Si
+//      al Colegio le pagaste en 3 meses de 9, se divide por 3 y no por 9. Si
+//      se dividiera por todos los meses, cualquier concepto esporádico
+//      (Regalos, Salud) tendría un promedio irrisorio y todos sus meses con
+//      movimiento se verían "carísimos".
+//   2. El mes que se está mirando NO entra en su propio promedio: la
+//      comparación es "este mes contra cómo venías", así que un mes muy alto
+//      no se sube a sí mismo la vara. Consecuencia: en el primer mes de la
+//      historia de un concepto no hay con qué comparar, y ahí el promedio
+//      muestra "–" y el circulito queda gris.
+//
+// Se arma todo de UNA pasada por los movimientos (y no buscando en
+// state.movimientos una vez por celda) porque el reporte puede tener veinte
+// conceptos por cuatro monedas.
+function historicoPorConcepto(mesExcluido) {
+  const porMoneda = {};   // "concepto|moneda" -> { mes: total en esa moneda }
+  const enEuros = {};     // "concepto"        -> { mes: total convertido }
+  const faltaTasa = {};   // "concepto"        -> { mes: true }
+  state.movimientos.forEach(m => {
+    const mes = String(m.fecha).slice(0, 7);
+    if (mes === mesExcluido) return;
+    const signo = m.tipo === "ingreso" ? 1 : -1;
+    const val = signo * Number(m.monto);
+
+    const claveMoneda = m.concepto_id + "|" + m.moneda_id;
+    if (!porMoneda[claveMoneda]) porMoneda[claveMoneda] = {};
+    porMoneda[claveMoneda][mes] = (porMoneda[claveMoneda][mes] || 0) + val;
+
+    // La conversión usa el tipo de cambio de CADA mes, igual que el resto de
+    // Distribución (no el más reciente, que es lo que hace Snapshot).
+    const { valor, ok } = convertirAEuros(mes, m.moneda_id, val);
+    if (!enEuros[m.concepto_id]) enEuros[m.concepto_id] = {};
+    enEuros[m.concepto_id][mes] = (enEuros[m.concepto_id][mes] || 0) + valor;
+    if (!ok) {
+      if (!faltaTasa[m.concepto_id]) faltaTasa[m.concepto_id] = {};
+      faltaTasa[m.concepto_id][mes] = true;
+    }
+  });
+  return { porMoneda, enEuros, faltaTasa };
+}
+
+// Promedia un { mes: total }. mesesConFalta (opcional) son los meses a los
+// que les faltó algún tipo de cambio: esos NO se promedian, porque su total
+// quedó incompleto y contarlo tiraría el promedio para abajo por una plata
+// que sí existió. Es el mismo criterio que usa toda la app con el ⚠: lo que
+// no se puede convertir no se cuenta como cero.
+function promediar(porMes, mesesConFalta) {
+  if (!porMes) return { promedio: null, incompleto: false };
+  const todos = Object.keys(porMes);
+  const buenos = mesesConFalta ? todos.filter(mes => !mesesConFalta[mes]) : todos;
+  const incompleto = buenos.length !== todos.length;
+  if (buenos.length === 0) return { promedio: null, incompleto };
+  return { promedio: buenos.reduce((s, mes) => s + porMes[mes], 0) / buenos.length, incompleto };
+}
+
+// Junta varios { mes: total } en uno solo, para la fila "Total" (que es la
+// suma de los conceptos que estén tildados, así que su promedio tiene que
+// salir de los mismos conceptos y no de todos).
+function sumarPorMes(lista) {
+  const acc = {};
+  lista.forEach(porMes => {
+    Object.entries(porMes || {}).forEach(([mes, v]) => { acc[mes] = (acc[mes] || 0) + v; });
+  });
+  return acc;
+}
+
+function unirMeses(lista) {
+  const acc = {};
+  lista.forEach(mapa => Object.keys(mapa || {}).forEach(mes => { acc[mes] = true; }));
+  return acc;
+}
+
+// El color del circulito. Una sola comparación sirve para ingresos y para
+// gastos, aunque parezcan dos reglas distintas: en un ingreso (total
+// positivo) cobrar MÁS que el promedio es lo bueno; en un gasto (total
+// negativo) gastar de más hace el número más negativo, o sea MENOR que el
+// promedio. En los dos casos, total >= promedio va en verde.
+function semaforoContraPromedio(total, promedio, unidad) {
+  if (promedio == null) {
+    return {
+      clase: "semaforo-gris",
+      titulo: "Todavía no hay meses anteriores con movimientos en este concepto, así que no hay promedio con qué comparar",
+    };
+  }
+  const sufijo = unidad ? " " + unidad : "";
+  const verde = total >= promedio;
+  const esGasto = total < 0 || promedio < 0;
+  const lectura = verde
+    ? (esGasto ? "gastaste menos que de costumbre" : "entró más que de costumbre")
+    : (esGasto ? "gastaste más que de costumbre" : "entró menos que de costumbre");
+  return {
+    clase: verde ? "semaforo-verde" : "semaforo-rojo",
+    titulo: `Este mes ${total.toFixed(2)}${sufijo} · promedio ${promedio.toFixed(2)}${sufijo} — ${lectura}`,
+  };
+}
+
+// La celda de la columna "Promedio". Va en gris (no en verde/rojo como los
+// importes) a propósito: el número que importa es el del mes, y el promedio
+// es solo la vara contra la que se lo compara. Si se pintara igual que los
+// demás, la tabla quedaría toda de colores y no se sabría dónde mirar.
+function celdaPromedio(promedio, incompleto) {
+  if (promedio == null) return `<td class="col-promedio valor-cero">–</td>`;
+  const marca = incompleto
+    ? `<span class="valor-incompleto" title="A algún mes anterior le falta el tipo de cambio de alguna moneda, en Configuración &gt; Tipo de cambio; esos meses no entran en el promedio">⚠</span>`
+    : "";
+  return `<td class="col-promedio"><span class="valor-wrap">${marca}<span>${promedio.toFixed(2)}</span></span></td>`;
+}
+
 // Una celda de importe: verde si es mayor a cero, rojo si es menor, y un
 // guión gris si no hubo movimientos (mismo criterio de color que el resto
 // de la app: var(--income) / var(--expense)). En Mensual además va, al lado
-// del número, un circulito gris a modo de posición reservada (más adelante
-// se va a pintar de rojo, amarillo o verde según si ese gasto quedó por
-// arriba o por abajo del promedio); en Histórica no aplica, así que se
-// puede omitir con conSemaforo=false. El número (y el circulito, si va) se
+// del número, el circulito del semáforo, que compara ese mes contra el
+// promedio histórico del concepto (ver semaforoContraPromedio); en Histórica
+// no aplica, así que se puede omitir. El número (y el circulito, si va) se
 // arman adentro de un span propio (no en el <td> directamente): poner
 // display:flex en el <td> lo saca del layout de tabla y rompe las columnas.
+//
+// "semaforo" acepta tres cosas: algo falso (sin circulito), true (circulito
+// gris, que es como estaba antes de que el semáforo tuviera sentido, y lo que
+// sigue usando cualquier llamador que no calcule promedios) o un objeto
+// { clase, titulo } para pintarlo.
+//
 // incompleto=true agrega un ⚠ (usado por "Convertir todo a Euros" cuando a
 // alguna moneda de esa celda le falta el tipo de cambio de ese mes, así que
 // el número mostrado quedó sin esa parte). detalleRef (opcional, del tipo
@@ -103,8 +226,11 @@ function escribirMesSeleccionado(mesTexto) {
 // "Total (€)"): mismo criterio de color/advertencia que acá. tituloIncompleto
 // es opcional porque el texto del ⚠ menciona "este mes", que no aplica en
 // Snapshot (no está atado a un mes); Snapshot pasa su propio texto.
-export function celdaImporte(v, conSemaforo, incompleto, detalleRef, tituloIncompleto) {
-  const semaforo = conSemaforo ? `<span class="semaforo semaforo-gris"></span>` : "";
+export function celdaImporte(v, semaforoInfo, incompleto, detalleRef, tituloIncompleto) {
+  const sem = semaforoInfo === true ? { clase: "semaforo-gris", titulo: "" } : semaforoInfo;
+  const semaforo = sem
+    ? `<span class="semaforo ${sem.clase}"${sem.titulo ? ` title="${escaparAtributo(sem.titulo)}"` : ""}></span>`
+    : "";
   const marca = incompleto
     ? `<span class="valor-incompleto" title="${tituloIncompleto || "Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración > Tipo de cambio"}">⚠</span>`
     : "";
@@ -272,10 +398,14 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
     return;
   }
 
+  // El promedio histórico de cada concepto, sin contar este mes (ver
+  // historicoPorConcepto). Se calcula una vez para toda la tabla.
+  const { enEuros, faltaTasa } = historicoPorConcepto(mes);
+
   let total = 0;
   let totalIncompleto = false;
   const movsPorMonedaTotal = {};
-  let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th><th>Total (€)</th></tr>`;
+  let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th><th>Total (€)</th><th class="col-promedio">Promedio (€)</th></tr>`;
   conceptosConDatos.forEach(c => {
     const v = totales[c.id] || 0;
     total += v;
@@ -287,12 +417,26 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
     const detalleRef = detalleConceptoEnEuros(
       detallesReporte, "reporte", `${c.nombre} — ${formatoMesLegible(mes)}`, movsPorConcepto[c.id] || {}, mes
     );
-    html += `<tr><td>${c.nombre}</td>${celdaImporte(v, true, !!incompletos[c.id], detalleRef)}</tr>`;
+    const { promedio, incompleto } = promediar(enEuros[c.id], faltaTasa[c.id]);
+    html += `<tr><td>${c.nombre}</td>` +
+      celdaImporte(v, semaforoContraPromedio(v, promedio, "€"), !!incompletos[c.id], detalleRef) +
+      celdaPromedio(promedio, incompleto) +
+      `</tr>`;
   });
   const detalleTotalRef = detalleConceptoEnEuros(
     detallesReporte, "reporte", `Total — ${formatoMesLegible(mes)}`, movsPorMonedaTotal, mes
   );
-  html += `<tr class="total-row"><td>Total</td>${celdaImporte(total, true, totalIncompleto, detalleTotalRef)}</tr>`;
+  // El promedio de la fila "Total" sale de los mismos conceptos que se están
+  // mostrando, no de todos: si no, no cerraría con el total de arriba.
+  const idsMostrados = conceptosConDatos.map(c => c.id);
+  const { promedio: promedioTotal, incompleto: totalPromIncompleto } = promediar(
+    sumarPorMes(idsMostrados.map(id => enEuros[id])),
+    unirMeses(idsMostrados.map(id => faltaTasa[id]))
+  );
+  html += `<tr class="total-row"><td>Total</td>` +
+    celdaImporte(total, semaforoContraPromedio(total, promedioTotal, "€"), totalIncompleto, detalleTotalRef) +
+    celdaPromedio(promedioTotal, totalPromIncompleto) +
+    `</tr>`;
   html += `</table></div>`;
   html += `<p class="tipo-cambio-nota">Convertido a euros con los tipos de cambio de Configuración &gt; Tipo de cambio, para este mismo mes. ⚠ = falta cargar el tipo de cambio de alguna moneda ese mes, ese total está incompleto. Tocá el botón "i" de cada celda para ver el detalle.</p>`;
 
@@ -345,8 +489,15 @@ function renderReporte() {
 
   const listaMonedaIds = Array.from(monedaIdsUsadas).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
 
+  // El promedio histórico de cada concepto en cada moneda, sin contar este
+  // mes. Acá no se convierte nada: cada moneda se promedia con la suya, que
+  // es lo mismo que hace el resto de esta tabla.
+  const { porMoneda } = historicoPorConcepto(mes);
+
   let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th>` +
-    listaMonedaIds.map(id => `<th>${nombreMoneda(id)}</th>`).join("") + `</tr>`;
+    listaMonedaIds.map(id =>
+      `<th>${nombreMoneda(id)}</th><th class="col-promedio">Prom. ${nombreMoneda(id)}</th>`
+    ).join("") + `</tr>`;
 
   // Solo se listan los conceptos que tuvieron movimientos ese mes (para no
   // llenar el reporte de filas en cero); los que no tuvieron simplemente no
@@ -372,11 +523,16 @@ function renderReporte() {
               [{ etiqueta: null, lineas: movs.map(lineaMovimiento) }]
             )
           : null;
-        html += celdaImporte(v, true, false, detalleRef);
+        const { promedio } = promediar(porMoneda[c.id + "|" + monedaId]);
+        html += celdaImporte(v, semaforoContraPromedio(v, promedio, nombreMoneda(monedaId)), false, detalleRef) +
+          celdaPromedio(promedio, false);
       });
       html += `</tr>`;
     });
 
+  // Igual que en la vista de euros: el promedio de la fila "Total" sale solo
+  // de los conceptos que se están mostrando.
+  const idsMostrados = state.conceptos.filter(c => porConceptoMoneda[c.id]).map(c => c.id);
   html += `<tr class="total-row"><td>Total</td>` +
     listaMonedaIds.map(monedaId => {
       const movs = movsPorMonedaTotal[monedaId] || [];
@@ -387,7 +543,10 @@ function renderReporte() {
             [{ etiqueta: null, lineas: movs.map(lineaMovimiento) }]
           )
         : null;
-      return celdaImporte(totales[monedaId] || 0, true, false, detalleRef);
+      const v = totales[monedaId] || 0;
+      const { promedio } = promediar(sumarPorMes(idsMostrados.map(id => porMoneda[id + "|" + monedaId])));
+      return celdaImporte(v, semaforoContraPromedio(v, promedio, nombreMoneda(monedaId)), false, detalleRef) +
+        celdaPromedio(promedio, false);
     }).join("") + `</tr>`;
   html += `</table></div>`;
 
@@ -464,7 +623,7 @@ function renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos
   tabla += `</table>`;
 
   return `
-    <div class="card">
+    <div class="card card-ancho">
       <details class="collapsible" open>
         <summary>${moneda.nombre}</summary>
         <div class="pivot-wrap">${tabla}</div>
@@ -532,7 +691,7 @@ function renderSeccionHistoricaEuros(conceptosIncluidos, conceptoIdsIncluidos, o
   tabla += `</table>`;
 
   return `
-    <div class="card">
+    <div class="card card-ancho">
       <details class="collapsible" open>
         <summary>Total en Euros</summary>
         <div class="pivot-wrap">${tabla}</div>
