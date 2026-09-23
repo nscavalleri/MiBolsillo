@@ -157,23 +157,66 @@ table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text
      ensanchan lo que necesiten y ni un pixel más. #sub-distribucion envuelve a
      las dos solapas, así que con nombrarlo una vez alcanza para Mensual e
      Histórica. */
-  #sub-conciliacion, #sub-evolucion, #sub-distribucion {
+  #sub-conciliacion {
     width: fit-content;
     min-width: calc(var(--ancho-app) - 32px);
     max-width: min(1400px, calc(100vw - 48px));
     margin-left: calc((var(--ancho-app) - 32px) / 2);
     translate: -50% 0;
   }
+
+  /* En Evolución y Distribución se ensancha SOLO la tarjeta que tiene la
+     tabla, y no la solapa entera. Ensanchar la solapa entera se probó primero
+     y estaba mal: los botones "Mensual / Histórica" son flex:1, así que se
+     estiraban hasta el otro extremo de la pantalla y quedaban de un ancho
+     distinto en cada solapa, y el desplegable de "Orden" y el selector de mes
+     terminaban midiendo más de mil pixeles para nada. Marcando la tarjeta,
+     todo lo demás se queda en la columna normal de la app.
+     La cuenta: margin-left la lleva hasta el centro de la columna que la
+     contiene y translate la trae de vuelta media tarjeta, o sea que queda
+     centrada sin necesidad de saber de antemano cuánto va a medir. */
+  .card-ancho {
+    width: fit-content;
+    min-width: 100%;
+    max-width: min(1400px, calc(100vw - 48px));
+    margin-left: 50%;
+    translate: -50% 0;
+  }
   /* Imprescindible para que lo de arriba sirva de algo: table.pivot trae
      width: 100%, y una tabla al 100% nunca es más ancha que su contenedor, así
-     que la sección "fit-content" se quedaba clavada en el mínimo y no pasaba
+     que la tarjeta "fit-content" se quedaba clavada en el mínimo y no pasaba
      nada. Con width: auto la tabla pide el ancho que necesita para que no se
-     le apriete el texto, y la sección la sigue; min-width: 100% evita el caso
+     le apriete el texto, y la tarjeta la sigue; min-width: 100% evita el caso
      contrario, que una tabla de pocas columnas quede flotando angosta adentro
      de una tarjeta ancha. */
-  #sub-evolucion table.pivot,
-  #sub-distribucion table.pivot { width: auto; min-width: 100%; }
+  .card-ancho table.pivot { width: auto; min-width: 100%; }
 }
+
+/* El nombre de la columna y el contenido de la celda se centran los dos, así
+   quedan uno justo arriba del otro. Alineados a la derecha (que es lo que hace
+   table.pivot) se veían corridos entre sí: el encabezado terminaba pegado al
+   borde y el número no, porque después del número vienen el botón "i" y el
+   semáforo. Es el mismo arreglo que se hizo en Conciliación.
+   La primera columna (Concepto / Mes) sigue a la izquierda. */
+table.distrib-pivot th, table.distrib-pivot td,
+table.evolucion-pivot th, table.evolucion-pivot td {
+  text-align: center; padding-left: 12px; padding-right: 12px;
+}
+table.distrib-pivot th:first-child, table.distrib-pivot td:first-child,
+table.evolucion-pivot th:first-child, table.evolucion-pivot td:first-child {
+  text-align: left; padding-left: 4px;
+}
+table.distrib-pivot .valor-wrap,
+table.evolucion-pivot .valor-wrap { justify-content: center; width: auto; }
+
+/* Columna "Promedio" de Distribución > Mensual. Va en gris apagado, y no en
+   verde/rojo como los importes, a propósito: el número que importa es el del
+   mes, y el promedio es solo la vara contra la que se lo compara. Pintados
+   los dos igual, la tabla quedaba toda de colores y no se sabía dónde mirar.
+   El circulito del semáforo, que sí está al lado del importe del mes, es el
+   que dice si estuviste por arriba o por abajo. */
+table.distrib-pivot th.col-promedio { color: var(--muted); font-weight: 600; }
+table.distrib-pivot td.col-promedio { color: var(--muted); }
 
 /* La tabla tiene su propio alto máximo y scrollea adentro suyo, en los dos
    sentidos. Es lo que hace posible que la fila con los nombres de las
