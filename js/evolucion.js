@@ -18,16 +18,17 @@
 // destilda en una pantalla se destilda en las otras.
 //
 // El semáforo de la variación compara contra un porcentaje guardado en la
-// tabla configuracion_general, clave "evolucion_umbral_pct" (hoy 5). No hay
-// pantalla para cambiarlo: se edita directamente en la base, igual que el
-// resto de lo que vive en esa tabla.
+// tabla configuracion_general, clave "evolucion_umbral_crecimiento_pct"
+// (hoy 1). No hay pantalla para cambiarlo: se edita directamente en la base,
+// igual que el resto de lo que vive en esa tabla. Distribución tiene el suyo
+// aparte, con otro valor y otro criterio (ver distribucion.js).
 
 import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { nombreOrigen, nombreMoneda, nombreConcepto, contieneTexto } from './lookups.js';
 import { renderCheckboxesTabla } from './check-list.js';
-import { formatoMesLegible, convertirAEuros, umbralPorcentaje } from './distribucion.js';
+import { formatoMesLegible, convertirAEuros, umbralCrecimientoEvolucion } from './distribucion.js';
 import { avisarError } from './aviso-modal.js';
 
 
@@ -53,10 +54,11 @@ function formato(v) {
   return numero(v).toFixed(2);
 }
 
-// El umbral (el porcentaje a partir del cual se considera que el patrimonio
-// "subió") ahora vive en distribucion.js y lo comparten las dos pantallas,
-// para que sea un solo número y una sola función. Ver el comentario de
-// umbralPorcentaje() allá.
+// El umbral (el porcentaje que tiene que crecer el patrimonio para que se
+// considere que "subió") vive en distribucion.js junto con el de Distribución,
+// para que los dos se lean igual y desde un solo lugar. Son números distintos
+// y con su propia fila en la base: acá 1, allá 5. Ver el comentario de
+// leerUmbral() allá.
 
 function conceptosIncluidos() {
   return new Set(
@@ -83,7 +85,7 @@ function tieneComentarios(mes) {
 function claseVariacion(porcentaje) {
   if (porcentaje == null) return "";
   if (porcentaje < 0) return "asig-rojo";
-  if (porcentaje > umbralPorcentaje()) return "asig-verde";
+  if (porcentaje > umbralCrecimientoEvolucion()) return "asig-verde";
   return "asig-ambar";
 }
 

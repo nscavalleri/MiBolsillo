@@ -167,19 +167,35 @@ function unirMeses(lista) {
   return acc;
 }
 
-// El porcentaje a partir del cual una diferencia se considera "de verdad".
-// Vive en configuracion_general, clave "evolucion_umbral_pct" (hoy 5). No hay
-// pantalla para cambiarlo: se edita directamente en la base, igual que el
-// resto de lo que vive en esa tabla.
-// Se exporta y lo usan DOS pantallas con el mismo criterio: la Variación de
-// Evolución y el semáforo del promedio de Mensual. Es a propósito que sea un
-// solo número: para Nadia es "mi umbral", uno solo. Si alguna vez hicieran
-// falta dos distintos, hay que agregar otra clave, no duplicar esta función.
-const UMBRAL_POR_DEFECTO = 5;
+// --- Los dos umbrales de porcentaje ---------------------------------------
+//
+// Son DOS números distintos, con su propia fila en configuracion_general,
+// porque miden cosas distintas y Nadia los quiere con valores distintos:
+//
+//   distribucion_umbral_promedio_pct  (5)  ±% alrededor del promedio de un
+//       concepto dentro del cual se considera que "estás en tu promedio" y el
+//       circulito va ámbar. Es SIMÉTRICO: cuenta igual para arriba que para
+//       abajo.
+//
+//   evolucion_umbral_crecimiento_pct  (1)  % que tiene que CRECER el
+//       patrimonio de un mes al siguiente para contar como que subió y
+//       pintarse verde. Es ASIMÉTRICO: solo se mira para arriba, porque
+//       cualquier caída va roja por poca que sea.
+//
+// No hay pantalla para cambiarlos: se editan directamente en la base, igual
+// que todo lo que vive en esa tabla. Si la fila no está o tiene cualquier
+// cosa, se usa el valor por defecto de acá.
+function leerUmbral(clave, porDefecto) {
+  const v = Number(state.configuracionGeneral[clave]);
+  return Number.isFinite(v) && v >= 0 ? v : porDefecto;
+}
 
-export function umbralPorcentaje() {
-  const v = Number(state.configuracionGeneral.evolucion_umbral_pct);
-  return Number.isFinite(v) && v >= 0 ? v : UMBRAL_POR_DEFECTO;
+export function umbralPromedioDistribucion() {
+  return leerUmbral("distribucion_umbral_promedio_pct", 5);
+}
+
+export function umbralCrecimientoEvolucion() {
+  return leerUmbral("evolucion_umbral_crecimiento_pct", 1);
 }
 
 // El color del circulito, con tres estados:
@@ -208,7 +224,7 @@ function semaforoContraPromedio(total, promedio, unidad) {
     };
   }
   const sufijo = unidad ? " " + unidad : "";
-  const umbral = umbralPorcentaje();
+  const umbral = umbralPromedioDistribucion();
   const diferencia = total - promedio;
   const porcentaje = promedio === 0 ? Infinity : Math.abs(diferencia) / Math.abs(promedio) * 100;
   const base = `Este mes ${total.toFixed(2)}${sufijo} · promedio ${promedio.toFixed(2)}${sufijo}`;
