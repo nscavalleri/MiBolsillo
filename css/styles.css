@@ -117,6 +117,13 @@ button.secondary {
 /* Pivot table */
 table.pivot { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.pivot th, table.pivot td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--border); }
+/* Los nombres de las columnas van SIEMPRE centrados, en todas las tablas de
+   la app (fue un pedido explícito). Los números de las celdas siguen
+   alineados a la derecha, que es como se leen los importes. Donde la celda
+   tiene adornos al lado del número —el botón "i", el semáforo, el tilde— hay
+   que asegurarse además de que el número quede centrado, si no el encabezado
+   no le cae encima; ver .valor-espejo más abajo. */
+table.pivot th { text-align: center; }
 table.pivot th:first-child, table.pivot td:first-child { text-align: left; }
 table.pivot tr.total-row td { font-weight: 700; border-top: 2px solid var(--text); border-bottom: none; }
 .pivot-wrap { overflow-x: auto; }
@@ -216,26 +223,28 @@ table.evolucion-pivot .valor-wrap { justify-content: center; width: auto; }
    raya, tengan botón o no. El encabezado se alinea a la derecha con ese mismo
    ancho de más en el padding, así que cae exactamente sobre los números. */
 table.distrib-pivot th, table.distrib-pivot td {
-  text-align: right; padding-left: 12px; padding-right: 12px;
+  text-align: center; padding-left: 12px; padding-right: 12px;
 }
 table.distrib-pivot th:first-child, table.distrib-pivot td:first-child {
   text-align: left; padding-left: 4px;
 }
-table.distrib-pivot .valor-wrap { display: flex; justify-content: flex-end; width: 100%; }
-table.distrib-pivot .valor-numero { flex: 1; text-align: right; }
-.valor-adornos {
-  display: inline-flex; align-items: center; justify-content: flex-start;
-  gap: 6px; width: 34px; flex-shrink: 0; margin-left: 6px;
+/* El número va centrado en la celda, con los adornos (el botón "i" y el
+   semáforo) colgando a la derecha y un hueco vacío del mismo ancho —el
+   "espejo"— a la izquierda. Los dos miden lo mismo, así que se compensan y
+   el número queda exactamente en el centro: eso es lo que hace que el nombre
+   de la columna, que va centrado, le caiga justo encima.
+   Sin el espejo, los adornos empujaban el número hacia la izquierda tantos
+   pixeles como midieran —18 con botón, 7 en una celda vacía, 0 en la columna
+   Promedio— y cada celda caía en un lugar distinto. */
+table.distrib-pivot .valor-wrap {
+  display: flex; align-items: center; justify-content: center; width: 100%;
 }
-/* Los encabezados de las columnas con adornos se corren lo que miden esos
-   adornos, para caer justo arriba del número. Los 58 px salen de medirlo en
-   el navegador hasta que el borde derecho del encabezado y el del número
-   quedaron en el mismo pixel; si algún día se cambia el ancho de
-   .valor-adornos o su margen, hay que volver a ajustar este número (y
-   verificarlo, no estimarlo). La columna Promedio no tiene adornos, así que
-   queda con el padding normal. */
-table.distrib-pivot th { padding-right: 58px; }
-table.distrib-pivot th:first-child, table.distrib-pivot th.col-promedio { padding-right: 12px; }
+.valor-adornos, .valor-espejo {
+  display: inline-flex; align-items: center;
+  gap: 6px; width: 34px; flex-shrink: 0;
+}
+.valor-adornos { margin-left: 6px; justify-content: flex-start; }
+.valor-espejo  { margin-right: 6px; justify-content: flex-end; }
 
 /* Columna "Promedio" de Distribución > Mensual. Va en gris apagado, y no en
    verde/rojo como los importes, a propósito: el número que importa es el del
@@ -608,6 +617,11 @@ table.conciliacion-pivot td.conciliacion-celda { white-space: nowrap; }
   display: inline-flex; align-items: center; justify-content: center;
   gap: 6px;
 }
+/* El tilde mide 22 px y el "Δ" 16, así que el número quedaba 3 px corrido a
+   la izquierda y el nombre de la moneda no le caía justo encima. Estos 6 px
+   de más a la izquierda del Δ emparejan los dos lados y dejan el número en el
+   centro exacto de la celda. */
+table.conciliacion-pivot .conciliacion-wrap > .btn-detalle { margin-left: 6px; }
 /* La fecha de la última conciliación se muestra al pasar el mouse por encima
    del propio saldo (antes había un icono "i" al lado, pero eran demasiadas
    cosas en una celda tan chica). El subrayado punteado suave es la única
@@ -718,16 +732,33 @@ input[type="number"] {
 }
 
 /* Configuración > Tipo de cambio: tabla con un input editable por celda
-   (mes = fila, moneda = columna). */
+   (mes = fila, moneda = columna).
+   ⚠ OJO CON EL PADDING DE LA CELDA. El <input> tiene que ocupar TODO el
+   casillero. Si la celda deja espacio propio alrededor, esa franja no es
+   parte del input y un clic ahí no hace absolutamente nada: se siente como
+   que "la primera vez no te deja escribir y hay que hacer clic de nuevo".
+   Pasó tal cual — la tabla comparte la clase distrib-pivot para heredar
+   colores y bordes, y de ahí se coló un padding de 12 px a cada lado, o sea
+   24 px de celda donde el clic no servía. El aire va ADENTRO del input. */
+table.tipo-cambio-tabla td { padding: 2px 3px; }
 table.tipo-cambio-tabla td input[type="number"] {
+  display: block;
   width: 100%;
   min-width: 72px;
-  padding: 4px 6px;
+  margin: 0;
+  padding: 9px 10px;
   text-align: right;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
 }
+/* Los encabezados de Distribución se corren a la derecha para caer justo
+   sobre el número, que allá tiene el botón "i" y el semáforo al lado. Acá no
+   hay nada de eso —el campo ocupa la celda entera—, así que el nombre de la
+   moneda va centrado sobre ella y la columna del mes a la izquierda. */
+table.tipo-cambio-tabla th { padding: 6px 4px; text-align: center; }
+table.tipo-cambio-tabla th:first-child,
+table.tipo-cambio-tabla td:first-child { text-align: left; padding-left: 4px; }
 
 /* Semáforo junto a cada importe: por ahora siempre gris (posición
    reservada); "rojo/amarillo/verde" quedan listos para cuando se compare

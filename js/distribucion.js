@@ -248,10 +248,18 @@ export function celdaImporte(v, semaforoInfo, incompleto, detalleRef, tituloInco
   // tenía ninguno. Cada celda caía en un lugar distinto y la columna se veía
   // torcida. Con los adornos en su propio span de ancho fijo, todos los
   // números terminan en la misma raya (ver el CSS de .valor-numero).
+  // El "espejo" es un hueco vacío del mismo ancho que los adornos, puesto del
+  // otro lado del número. Con los dos, el número queda EXACTAMENTE en el
+  // centro de la celda y entonces el nombre de la columna —que va centrado—
+  // le cae justo encima. Sin el espejo, los adornos empujan el número hacia
+  // la izquierda y la columna se ve torcida.
+  // El ⚠ va adentro del espejo y no suelto, así ocupa un lugar que ya estaba
+  // reservado y tampoco corre el número.
   const adornos = `<span class="valor-adornos">${boton}${semaforo}</span>`;
-  if (!v) return `<td class="valor-cero"><span class="valor-wrap">${marca}<span class="valor-numero">–</span>${adornos}</span></td>`;
+  const espejo = `<span class="valor-espejo">${marca}</span>`;
+  if (!v) return `<td class="valor-cero"><span class="valor-wrap">${espejo}<span class="valor-numero">–</span>${adornos}</span></td>`;
   const clase = v > 0 ? "valor-positivo" : "valor-negativo";
-  return `<td class="${clase}"><span class="valor-wrap">${marca}<span class="valor-numero">${v.toFixed(2)}</span>${adornos}</span></td>`;
+  return `<td class="${clase}"><span class="valor-wrap">${espejo}<span class="valor-numero">${v.toFixed(2)}</span>${adornos}</span></td>`;
 }
 
 // Registro de "detalle de celda", para el botón "i" y su popup. Mensual e

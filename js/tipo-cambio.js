@@ -70,6 +70,24 @@ export function renderTipoCambio() {
 
   cont.innerHTML = `<div class="pivot-wrap">${tabla}</div>`;
 
+  // Un clic en cualquier parte del casillero enfoca su campo, incluido el
+  // borde. Las celdas dejan unos pocos pixeles de aire alrededor del input
+  // para que las columnas no queden pegadas una contra la otra, y sin esto un
+  // clic que caiga justo ahí no hace nada: se siente como que la primera vez
+  // no te deja escribir y hay que hacer clic de nuevo. Fue exactamente el
+  // problema que reportó Nadia (ver también el comentario del CSS de
+  // .tipo-cambio-tabla). Va en mousedown y no en click para que el foco quede
+  // puesto antes de que el navegador decida por su cuenta a dónde mandarlo.
+  cont.querySelectorAll("td").forEach(celda => {
+    celda.addEventListener("mousedown", (e) => {
+      if (e.target !== celda) return; // el clic ya cayó adentro del input
+      const campo = celda.querySelector("input");
+      if (!campo) return;
+      e.preventDefault();
+      campo.focus();
+    });
+  });
+
   cont.querySelectorAll("[data-tc-mes]").forEach(input => {
     input.addEventListener("change", async () => {
       const mes = input.dataset.tcMes;

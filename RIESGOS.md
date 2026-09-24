@@ -1,9 +1,11 @@
 # Riesgos y límites de Mi Bolsillo
 
-Última revisión: **23 de septiembre de 2026**
+Última revisión: **24 de septiembre de 2026**
 
-Este archivo junta lo que puede salir mal a medida que la app crece, con números medidos (no estimados) y qué hacer en cada caso. La idea es no tener
-que volver a investigarlo desde cero, y que cualquiera que agarre el proyecto —persona o IA— sepa dónde están los bordes antes de tocar algo.
+Este archivo junta lo que puede salir mal a medida que la app crece, con
+números medidos (no estimados) y qué hacer en cada caso. La idea es no tener
+que volver a investigarlo desde cero, y que cualquiera que agarre el proyecto
+—persona o IA— sepa dónde están los bordes antes de tocar algo.
 
 Cada riesgo tiene: **qué es**, **cómo se nota**, **dónde estamos hoy** y **qué
 hacer**.
@@ -15,6 +17,8 @@ hacer**.
 | Riesgo | Gravedad | Estado hoy |
 |---|---|---|
 | Tope de filas de la API | **Alto** (rompe callado) | Mitigado: se subió a 50.000 |
+| Quién puede entrar a la app | **Alto** (es plata propia) | Verificado el 24/09/2026 — falta confirmar el registro abierto |
+| Permisos de las tablas nuevas (cambio del 30/10/2026) | Medio | Pendiente: cambia cómo se escriben los SQL |
 | La app recarga todo después de cada guardado | Medio | Sin resolver, no molesta todavía |
 | Egress del plan gratuito | Bajo | 0,2% usado |
 | Pausa del proyecto por inactividad | Bajo | No aplica mientras se use |
@@ -283,6 +287,157 @@ default faltara, el tooltip mostraría un guion en vez de la fecha.
 
 ---
 
+## Riesgo 7 — Quién puede entrar a la app ⚠ el otro importante
+
+### Qué es
+
+La app está publicada en GitHub Pages, así que **la clave de Supabase que usa
+está a la vista de cualquiera** en `js/config.js`. Eso es normal y está bien
+diseñado así: esa clave (la "anon key") es **pública por diseño**, no es una
+contraseña. Identifica al proyecto, no autoriza nada por sí sola. Cualquier
+app que corra en un navegador tiene que llevar algo así, y no hay forma de
+esconderlo: lo que el JavaScript puede leer, la persona también.
+
+Lo que **nunca** puede estar en el código, porque esas sí se saltean todo:
+
+- la **service_role key**
+- la **contraseña de la base de datos**
+
+Lo que realmente protege los datos son tres capas: el login, los permisos
+(grants) y RLS.
+
+### Cómo está hoy (verificado el 24/09/2026)
+
+Las tres capas están bien:
+
+| Capa | Estado |
+|---|---|
+| RLS | Prendido en **las 12 tablas** |
+| Políticas | 1 por tabla (menos `tipo_concepto`, ver abajo) |
+| Grant a `anon` | **Sin SELECT** — solo REFERENCES, TRIGGER, TRUNCATE |
+| Grant a `authenticated` | SELECT, INSERT, UPDATE, DELETE |
+| Grant a `service_role` | Sin SELECT |
+
+Que `anon` **no tenga SELECT** es mejor que el default de Supabase: aunque
+alguien use la clave pública sin estar logueado, no puede leer nada ni
+llegando a RLS. Son dos candados en serie, no uno.
+
+Tres observaciones, ninguna urgente:
+
+- **`anon` tiene TRUNCATE.** Suena feo pero no es explotable: la Data API no
+  expone TRUNCATE, y para ejecutarlo por conexión directa haría falta la
+  contraseña de la base, no la clave pública. Es un resto del `GRANT ALL`
+  original al que después se le revocaron las operaciones que importaban. Se
+  puede limpiar por prolijidad, no por seguridad.
+- **`service_role` no tiene SELECT.** Hoy no importa porque la app no lo usa
+  (las apps de navegador usan la anon key). Importaría el día que se agregue
+  algo del lado del servidor.
+- **`tipo_concepto` tiene RLS prendido y 0 políticas**, o sea que está
+  cerrada a todo el mundo. **No es un error**: la app no la lee (no está en
+  `cargarTodo()`), es solo una tabla de referencia. ⚠ Pero si algún día se la
+  quiere leer desde la app, va a devolver **cero filas sin dar ningún error**
+  —RLS sin políticas no falla, simplemente no devuelve nada— y se va a ver
+  como si estuviera vacía. Ahí hay que agregarle su política.
+
+### El riesgo que queda
+
+La política de todas las tablas es `for all to authenticated using (true)`:
+**cualquier usuario autenticado ve y edita todo**. Eso está bien mientras la
+única usuaria sea Nadia.
+
+⚠ **Pero si el registro de usuarios nuevos está abierto en Supabase, cualquiera
+puede crearse una cuenta y leer toda la información financiera.** Esa es la
+puerta real, mucho más que la clave visible en el código.
+
+### Qué hacer
+
+**1. Ver cuántos usuarios hay:**
+
+```sql
+select count(*) as usuarios from auth.users;
+```
+
+Si da más de 1, alguien más se registró y hay que investigarlo.
+
+**2. Cerrar el registro.** En el panel de Supabase, en la sección de
+Authentication, está la opción **"Allow new users to sign up"**. Apagarla
+**no afecta a los usuarios que ya existen**: Nadia sigue entrando igual, pero
+nadie más puede crearse una cuenta.
+
+```
+https://supabase.com/dashboard/project/tprnfkuuawfirwsmwjzg/auth
+```
+
+**3. (Opcional, cinturón y tiradores.)** Se pueden cambiar las políticas para
+que además exijan que sea *esa* persona y no cualquiera autenticada:
+
+```sql
+-- Ejemplo para una tabla; habría que repetirlo en las 11.
+drop policy if exists "acceso autenticado" on public.movimientos;
+create policy "acceso autenticado" on public.movimientos
+  for all to authenticated
+  using      ((auth.jwt() ->> 'email') = 'nadiascavalleri@gmail.com')
+  with check ((auth.jwt() ->> 'email') = 'nadiascavalleri@gmail.com');
+```
+
+Es la protección más fuerte, pero deja el mail escrito en la base: el día que
+se quiera compartir la app con otra persona hay que tocar las 11 políticas.
+Con el registro cerrado alcanza para el uso actual.
+
+---
+
+## Riesgo 8 — Las tablas nuevas necesitan permisos explícitos (desde el 30/10/2026)
+
+### Qué es
+
+Supabase avisó por mail que **el 30 de octubre de 2026** deja de dar acceso
+automático a la Data API para las tablas nuevas del esquema `public`.
+
+- **Las tablas que ya existen no se tocan.** Siguen funcionando igual, sin
+  hacer nada.
+- **Toda tabla nueva** necesita un `GRANT` explícito o la API no la ve,
+  *da igual cómo se haya creado* (SQL Editor, Table Editor del panel,
+  migración, proyecto nuevo).
+
+### Cómo se nota
+
+Bien fuerte, por suerte: la API devuelve `permission denied for table X` y
+`cargarTodo()` lo muestra en el cartel rojo de arriba de la pantalla. Nada que
+ver con el tope de filas del Riesgo 1, que falla en silencio.
+
+### Qué hacer
+
+**Desde ahora, todo SQL que cree una tabla tiene que traer los tres bloques
+juntos.** Esta es la plantilla de este proyecto:
+
+```sql
+-- 1) La tabla
+create table public.NOMBRE_TABLA (
+  -- columnas
+);
+
+-- 2) Permisos de la Data API (obligatorio desde el 30/10/2026)
+grant select, insert, update, delete on public.NOMBRE_TABLA to authenticated;
+grant select, insert, update, delete on public.NOMBRE_TABLA to service_role;
+
+-- 3) RLS y la política de siempre de esta app
+alter table public.NOMBRE_TABLA enable row level security;
+create policy "acceso autenticado" on public.NOMBRE_TABLA
+  for all to authenticated using (true) with check (true);
+```
+
+⚠ **No copiar el `grant select ... to anon` que trae el mail de Supabase.**
+Esta app requiere login, así que `anon` no necesita leer nada — y hoy
+justamente no tiene SELECT en ninguna tabla, que es parte de lo que la
+protege (ver Riesgo 7).
+
+Nota: si algún `insert` llegara a fallar con un error de permisos que menciona
+una *sequence*, hay que agregar
+`grant usage on sequence public.NOMBRE_SEQ to authenticated;`. No pasa con
+columnas `identity`, solo con `serial`.
+
+---
+
 ## Lo que NO es un riesgo
 
 **La velocidad de la app.** Se midió cuánto tarda cada pantalla en dibujarse
@@ -361,6 +516,9 @@ Supabase, en la sección de uso del proyecto (`Settings > Usage`).
 
 | Señal | Qué hacer |
 |---|---|
+| **Antes del 30/10/2026** | Confirmar que el registro de usuarios está cerrado (Riesgo 7) y adoptar la plantilla de `CREATE TABLE` con grants (Riesgo 8) |
+| Se crea **cualquier tabla nueva** | Usar la plantilla completa del Riesgo 8: tabla + grants + RLS + política |
+| `select count(*) from auth.users` da más de **1** | Investigar quién se registró (Riesgo 7) |
 | `movimientos` pasa de **800** | Implementar la paginación con `.range()` (Riesgo 1) y verificar que la app vea todas las filas |
 | La app tarda al guardar en el celular | Dejar de recargar todo en cada guardado (Riesgo 3, alternativa 1) |
 | El egress del mes pasa de **1 GB** | Revisar las alternativas 2 y 3 del Riesgo 3 |
