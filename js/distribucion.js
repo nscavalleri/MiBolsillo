@@ -519,6 +519,158 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
   cont.innerHTML = html;
 }
 
+// --- Tarjetas "Gastos fijos" / "Gastos variables" -------------------------
+//
+// Debajo del reporte del mes, dos tarjetas con el total de EGRESOS de ese
+// mes separados según conceptos.tipo_gasto ("fijo" o "variable", ver
+// Configuración > Conceptos). Solo cuentan egresos a propósito: la
+// clasificación fijo/variable es de GASTOS — si un concepto que en general
+// es de ingreso tuviera alguna vez un movimiento cargado como egreso, ese sí
+// entraría, pero un ingreso normal no se cuenta acá aunque su concepto
+// tenga un tipo_gasto asignado.
+//
+// Respetan los mismos "Conceptos a incluir" / "Monedas a incluir" (o
+// "Convertir todo a Euros") que el reporte de arriba, así que cambiar esos
+// filtros mueve las tarjetas igual que mueve la tabla.
+let detallesFijoVariable = [];
+
+function tipoGastoDe(conceptoId) {
+  const c = state.conceptos.find(x => String(x.id) === String(conceptoId));
+  // Cualquier cosa que no sea "fijo" (incluido null/undefined, por si algún
+  // concepto viejo no tuviera la columna todavía) cuenta como "variable",
+  // que es el valor por defecto de la columna en la base.
+  return c && c.tipo_gasto === "fijo" ? "fijo" : "variable";
+}
+
+function totalesFijoVariableEnEuros(mes, conceptoIdsIncluidos) {
+  const porConcepto = { fijo: {}, variable: {} };  // tipo -> concepto_id -> total en €
+  const incompletos = { fijo: {}, variable: {} };  // tipo -> concepto_id -> true
+  const totales = { fijo: 0, variable: 0 };
+  const totalIncompleto = { fijo: false, variable: false };
+  state.movimientos.forEach(m => {
+    if (m.tipo !== "egreso") return;
+    if (String(m.fecha).slice(0, 7) !== mes) return;
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    const tipo = tipoGastoDe(m.concepto_id);
+    const { valor, ok } = convertirAEuros(mes, m.moneda_id, -Number(m.monto));
+    porConcepto[tipo][m.concepto_id] = (porConcepto[tipo][m.concepto_id] || 0) + valor;
+    totales[tipo] += valor;
+    if (!ok) { incompletos[tipo][m.concepto_id] = true; totalIncompleto[tipo] = true; }
+  });
+  return { porConcepto, incompletos, totales, totalIncompleto };
+}
+
+function totalesFijoVariablePorMoneda(mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
+  const porConceptoMoneda = { fijo: {}, variable: {} }; // tipo -> concepto_id -> moneda_id -> total
+  const totalesPorMoneda = { fijo: {}, variable: {} };  // tipo -> moneda_id -> total
+  state.movimientos.forEach(m => {
+    if (m.tipo !== "egreso") return;
+    if (String(m.fecha).slice(0, 7) !== mes) return;
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    if (!monedaIdsIncluidas.has(String(m.moneda_id))) return;
+    const tipo = tipoGastoDe(m.concepto_id);
+    const val = -Number(m.monto);
+    if (!porConceptoMoneda[tipo][m.concepto_id]) porConceptoMoneda[tipo][m.concepto_id] = {};
+    porConceptoMoneda[tipo][m.concepto_id][m.moneda_id] = (porConceptoMoneda[tipo][m.concepto_id][m.moneda_id] || 0) + val;
+    totalesPorMoneda[tipo][m.moneda_id] = (totalesPorMoneda[tipo][m.moneda_id] || 0) + val;
+  });
+  return { porConceptoMoneda, totalesPorMoneda };
+}
+
+function nombreConceptoOrdenable(id) {
+  const c = state.conceptos.find(x => String(x.id) === String(id));
+  return c ? c.nombre : "";
+}
+
+// Arma el detalle que abre el botón "i" de cada tarjeta: reusa el mismo
+// popup (#detalleOverlay) y la misma forma de "grupos" que el resto de la
+// app, pero acá cada línea es un CONCEPTO con su total de ese mes (no un
+// movimiento puntual) — es un resumen, no una lista de movimientos. Con
+// "Convertir todo a Euros" es un solo grupo; sin convertir, un grupo por
+// moneda seleccionada, y en cada uno solo aparecen los conceptos que
+// tuvieron algo en esa moneda ese mes.
+function detalleFijoVariable(tipo, titulo, datosEuros, datosPorMoneda, monedaIdsOrdenadas) {
+  let grupos;
+  if (datosEuros) {
+    const porConcepto = datosEuros.porConcepto[tipo];
+    const ids = Object.keys(porConcepto).sort((a, b) => nombreConceptoOrdenable(a).localeCompare(nombreConceptoOrdenable(b)));
+    grupos = [{
+      etiqueta: null,
+      lineas: ids.map(id => ({
+        texto: nombreConceptoOrdenable(id),
+        monto: `${porConcepto[id].toFixed(2)} €${datosEuros.incompletos[tipo][id] ? " ⚠" : ""}`,
+      })),
+    }];
+  } else {
+    const porConceptoMoneda = datosPorMoneda.porConceptoMoneda[tipo];
+    grupos = monedaIdsOrdenadas.map(monedaId => {
+      const ids = Object.keys(porConceptoMoneda)
+        .filter(id => porConceptoMoneda[id][monedaId])
+        .sort((a, b) => nombreConceptoOrdenable(a).localeCompare(nombreConceptoOrdenable(b)));
+      if (ids.length === 0) return null;
+      return {
+        etiqueta: nombreMoneda(monedaId),
+        lineas: ids.map(id => ({ texto: nombreConceptoOrdenable(id), monto: porConceptoMoneda[id][monedaId].toFixed(2) })),
+      };
+    }).filter(Boolean);
+  }
+  if (grupos.length === 0) {
+    grupos = [{ etiqueta: null, lineas: [{ texto: "Sin movimientos este mes", monto: "" }] }];
+  }
+  return registrarDetalle(detallesFijoVariable, "fijovar", titulo, grupos);
+}
+
+function tarjetaFijoVariable(tipo, titulo, mes, datosEuros, datosPorMoneda, monedaIdsOrdenadas) {
+  const tituloDetalle = `${titulo} — ${formatoMesLegible(mes)}`;
+  let montoHtml;
+  if (datosEuros) {
+    const v = datosEuros.totales[tipo];
+    const marca = datosEuros.totalIncompleto[tipo]
+      ? `<span class="valor-incompleto" title="Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración &gt; Tipo de cambio">⚠</span>`
+      : "";
+    montoHtml = v
+      ? `<span class="${v > 0 ? "positivo" : "negativo"}">${marca}${v.toFixed(2)} €</span>`
+      : `<span class="cero">–</span>`;
+  } else {
+    const totalesTipo = datosPorMoneda.totalesPorMoneda[tipo];
+    const idsConMonto = Object.keys(totalesTipo).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
+    montoHtml = idsConMonto.length === 0
+      ? `<span class="cero">–</span>`
+      : idsConMonto.map(monedaId => {
+          const v = totalesTipo[monedaId];
+          return `<span class="${v > 0 ? "positivo" : "negativo"}">${v.toFixed(2)} ${nombreMoneda(monedaId)}</span>`;
+        }).join("");
+  }
+  const detalleRef = detalleFijoVariable(tipo, tituloDetalle, datosEuros, datosPorMoneda, monedaIdsOrdenadas);
+  return `
+    <div class="card card-fijovar">
+      <div class="fijovar-header">
+        <h3>${titulo}</h3>
+        <button type="button" class="btn-detalle" data-detalle="${detalleRef}" title="Ver el detalle por concepto">i</button>
+      </div>
+      <div class="fijovar-monto">${montoHtml}</div>
+    </div>`;
+}
+
+function renderFijoVariable(mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
+  detallesFijoVariable = [];
+  const cont = document.getElementById("distribFijoVariable");
+  if (state.distribucion.convertirEuros) {
+    const datosEuros = totalesFijoVariableEnEuros(mes, conceptoIdsIncluidos);
+    cont.innerHTML =
+      tarjetaFijoVariable("fijo", "Gastos fijos", mes, datosEuros, null, []) +
+      tarjetaFijoVariable("variable", "Gastos variables", mes, datosEuros, null, []);
+    return;
+  }
+  const datosPorMoneda = totalesFijoVariablePorMoneda(mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  const monedaIdsOrdenadas = Array.from(
+    new Set([...Object.keys(datosPorMoneda.totalesPorMoneda.fijo), ...Object.keys(datosPorMoneda.totalesPorMoneda.variable)])
+  ).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
+  cont.innerHTML =
+    tarjetaFijoVariable("fijo", "Gastos fijos", mes, null, datosPorMoneda, monedaIdsOrdenadas) +
+    tarjetaFijoVariable("variable", "Gastos variables", mes, null, datosPorMoneda, monedaIdsOrdenadas);
+}
+
 function renderReporte() {
   detallesReporte = [];
   const cont = document.getElementById("distribReporte");
@@ -526,15 +678,16 @@ function renderReporte() {
   const conceptoIdsIncluidos = new Set(
     state.conceptos.filter(c => c.incluir_en_distribucion !== false).map(c => String(c.id))
   );
+  const monedaIdsIncluidas = new Set(
+    state.monedas.filter(m => m.incluir_en_distribucion !== false).map(m => String(m.id))
+  );
+
+  renderFijoVariable(mes, conceptoIdsIncluidos, monedaIdsIncluidas);
 
   if (state.distribucion.convertirEuros) {
     renderReporteEnEuros(cont, mes, conceptoIdsIncluidos);
     return;
   }
-
-  const monedaIdsIncluidas = new Set(
-    state.monedas.filter(m => m.incluir_en_distribucion !== false).map(m => String(m.id))
-  );
 
   // Se suma por concepto y, dentro de cada concepto, por moneda (así no se
   // mezclan importes de monedas distintas en un mismo número). El signo
@@ -866,7 +1019,9 @@ export function setupDistribucion() {
     const btn = e.target.closest("[data-detalle]");
     if (!btn) return;
     const [prefijo, idTexto] = btn.dataset.detalle.split(":");
-    const fuente = prefijo === "historico" ? detallesHistorico : detallesReporte;
+    const fuente = prefijo === "historico" ? detallesHistorico
+      : prefijo === "fijovar" ? detallesFijoVariable
+      : detallesReporte;
     const d = fuente[Number(idTexto)];
     if (d) mostrarDetalle(d);
   });

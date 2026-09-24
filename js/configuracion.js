@@ -13,13 +13,34 @@ const TITULO_EDITAR = { conceptos: "Editar concepto", monedas: "Editar moneda", 
 
 export function renderConfigLista(tabla, items, contenedorId) {
   const el = document.getElementById(contenedorId);
+  // Por ahora "Tipo" (Fijo/Variable) es un campo propio de Conceptos, no de
+  // Monedas ni Orígenes — por eso esta función (compartida entre las tres)
+  // solo agrega la columna y el encabezado cuando tabla === "conceptos".
+  const esConceptos = tabla === "conceptos";
   if (items.length === 0) {
     el.innerHTML = `<div class="empty">Todavía no agregaste nada acá.</div>`;
     return;
   }
-  el.innerHTML = items.map(it => `
+  const encabezado = esConceptos
+    ? `<div class="config-item config-list-header">
+         <span class="col-nombre"></span>
+         <span class="col-tipo">Tipo</span>
+         <span class="col-activo">Estado</span>
+         <span class="col-acciones"></span>
+       </div>`
+    : "";
+  el.innerHTML = encabezado + items.map(it => {
+    const esFijo = it.tipo_gasto === "fijo";
+    // Chip de texto (no otro switch mudo al lado del de Activo): dice "Fijo"
+    // o "Variable" directamente, así no hace falta memorizar qué lado es
+    // cuál — el encabezado de arriba es un refuerzo, no la única pista.
+    const chipTipo = esConceptos
+      ? `<button type="button" class="tipo-chip ${esFijo ? "fijo" : "variable"}" data-toggle-tipo="${tabla}:${it.id}" title="Tocá para cambiar entre Fijo y Variable">${esFijo ? "Fijo" : "Variable"}</button>`
+      : "";
+    return `
     <div class="config-item">
       <span class="nombre ${it.activo ? "" : "inactivo"}">${it.nombre}</span>
+      ${chipTipo}
       <label class="switch">
         <input type="checkbox" ${it.activo ? "checked" : ""} data-toggle="${tabla}:${it.id}" />
         <span class="slider"></span>
@@ -27,7 +48,19 @@ export function renderConfigLista(tabla, items, contenedorId) {
       <button class="icon-btn" data-editar-item="${tabla}:${it.id}" title="Editar">✎</button>
       <button class="icon-btn" data-eliminar="${tabla}:${it.id}" title="Eliminar">🗑</button>
     </div>
-  `).join("");
+  `;
+  }).join("");
+
+  el.querySelectorAll("[data-toggle-tipo]").forEach(chip => {
+    chip.addEventListener("click", async () => {
+      const [tab, id] = chip.dataset.toggleTipo.split(":");
+      const actual = items.find(x => String(x.id) === String(id));
+      const nuevoTipo = actual && actual.tipo_gasto === "fijo" ? "variable" : "fijo";
+      const { error } = await getClient().from(tab).update({ tipo_gasto: nuevoTipo }).eq("id", id);
+      if (error) { avisarError("Error: " + error.message); return; }
+      await cargarTodo();
+    });
+  });
 
   el.querySelectorAll("[data-toggle]").forEach(chk => {
     chk.addEventListener("change", async () => {

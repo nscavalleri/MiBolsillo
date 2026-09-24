@@ -557,6 +557,31 @@ table.distrib-pivot td.col-promedio { color: var(--muted); }
 input:checked + .slider { background: var(--accent); }
 input:checked + .slider:before { transform: translateX(16px); }
 .config-item .icon-btn { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 4px; }
+/* Configuración > Conceptos: encabezado chico arriba de la lista, para poder
+   diferenciar la columna "Tipo" (Fijo/Variable) de la de "Estado"
+   (activo/inactivo) ahora que hay dos controles uno al lado del otro. Solo
+   se muestra para Conceptos (ver configuracion.js), nunca para Monedas ni
+   Orígenes. Reusa la clase .config-item para heredar el mismo gap/alto de
+   columnas y quedar alineado con las filas de abajo. */
+.config-list-header {
+  padding-top: 0; padding-bottom: 6px;
+  font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em;
+}
+.config-list-header .col-nombre { flex: 1; }
+.config-list-header .col-tipo { width: 62px; flex-shrink: 0; text-align: center; }
+.config-list-header .col-activo { width: 38px; flex-shrink: 0; text-align: center; }
+.config-list-header .col-acciones { width: 52px; flex-shrink: 0; }
+/* El chip de "Fijo"/"Variable" de cada concepto: a diferencia del switch de
+   Activo, muestra la palabra directamente (no hay que memorizar qué lado es
+   cuál) y tiene el mismo ancho que la columna del encabezado de arriba para
+   que quede centrado debajo de "Tipo". Variable es el estado por defecto y
+   se ve neutro; Fijo se resalta con el celeste de la app. */
+.tipo-chip {
+  width: 62px; flex-shrink: 0; padding: 4px 2px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--bg); font-size: 11px; line-height: 1.2; text-align: center; cursor: pointer;
+  color: var(--muted);
+}
+.tipo-chip.fijo { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 /* Monto de una reserva (Configuración > Reservas), entre el nombre y el
    interruptor de activo/inactivo. */
 .reserva-monto { font-size: 14px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
@@ -715,6 +740,25 @@ details.collapsible[open] summary { margin-bottom: 10px; }
 /* Marca de advertencia en un importe convertido a euros al que le faltó
    el tipo de cambio de alguna moneda ese mes (ver celdaImporte). */
 .valor-incompleto { color: #f59e0b; font-size: 12px; cursor: help; }
+/* Distribución > Mensual: las dos tarjetas de "Gastos fijos" / "Gastos
+   variables" debajo del reporte. Van una al lado de la otra (comparten el
+   ancho de la tarjeta del reporte); en celular, apiladas, porque con más de
+   una moneda seleccionada el monto puede llevar varias líneas y quedaba
+   apretado a la mitad del ancho. */
+.card-fijovar-fila { display: flex; gap: 10px; }
+.card-fijovar { flex: 1; min-width: 0; }
+.fijovar-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.fijovar-header h3 { margin: 0; font-size: 14px; }
+.fijovar-monto {
+  margin-top: 8px; font-size: 16px; font-weight: 700;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+}
+.fijovar-monto .positivo { color: var(--income); }
+.fijovar-monto .negativo { color: var(--expense); }
+.fijovar-monto .cero { color: var(--muted); font-weight: 400; }
+@media (max-width: 480px) {
+  .card-fijovar-fila { flex-direction: column; }
+}
 .tipo-cambio-nota { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
 
 /* El número y el circulito van en un span interno (.valor-wrap), no en el
