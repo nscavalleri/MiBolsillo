@@ -167,11 +167,39 @@ function unirMeses(lista) {
   return acc;
 }
 
-// El color del circulito. Una sola comparación sirve para ingresos y para
-// gastos, aunque parezcan dos reglas distintas: en un ingreso (total
-// positivo) cobrar MÁS que el promedio es lo bueno; en un gasto (total
-// negativo) gastar de más hace el número más negativo, o sea MENOR que el
-// promedio. En los dos casos, total >= promedio va en verde.
+// El porcentaje a partir del cual una diferencia se considera "de verdad".
+// Vive en configuracion_general, clave "evolucion_umbral_pct" (hoy 5). No hay
+// pantalla para cambiarlo: se edita directamente en la base, igual que el
+// resto de lo que vive en esa tabla.
+// Se exporta y lo usan DOS pantallas con el mismo criterio: la Variación de
+// Evolución y el semáforo del promedio de Mensual. Es a propósito que sea un
+// solo número: para Nadia es "mi umbral", uno solo. Si alguna vez hicieran
+// falta dos distintos, hay que agregar otra clave, no duplicar esta función.
+const UMBRAL_POR_DEFECTO = 5;
+
+export function umbralPorcentaje() {
+  const v = Number(state.configuracionGeneral.evolucion_umbral_pct);
+  return Number.isFinite(v) && v >= 0 ? v : UMBRAL_POR_DEFECTO;
+}
+
+// El color del circulito, con tres estados:
+//
+//   ámbar  = estás en tu promedio (la diferencia no llega al umbral, ni para
+//            arriba ni para abajo). No es ni bueno ni malo: es lo normal.
+//   verde  = te fue mejor que tu promedio, por más del umbral.
+//   rojo   = te fue peor que tu promedio, por más del umbral.
+//   gris   = todavía no hay promedio con qué comparar.
+//
+// Verde y rojo salen de UNA sola comparación, aunque parezcan dos reglas
+// distintas: en un ingreso (total positivo) cobrar MÁS que el promedio es lo
+// bueno; en un gasto (total negativo) gastar de más hace el número más
+// negativo, o sea MENOR que el promedio. En los dos casos, total >= promedio
+// es lo bueno.
+//
+// El porcentaje se mide contra el VALOR ABSOLUTO del promedio, si no un
+// promedio negativo (un gasto) daría el porcentaje al revés. Y si el promedio
+// es cero no se puede sacar un porcentaje de nada: ahí cualquier diferencia
+// cuenta como real y el circulito va verde o rojo, nunca ámbar.
 function semaforoContraPromedio(total, promedio, unidad) {
   if (promedio == null) {
     return {
@@ -180,6 +208,18 @@ function semaforoContraPromedio(total, promedio, unidad) {
     };
   }
   const sufijo = unidad ? " " + unidad : "";
+  const umbral = umbralPorcentaje();
+  const diferencia = total - promedio;
+  const porcentaje = promedio === 0 ? Infinity : Math.abs(diferencia) / Math.abs(promedio) * 100;
+  const base = `Este mes ${total.toFixed(2)}${sufijo} · promedio ${promedio.toFixed(2)}${sufijo}`;
+
+  if (porcentaje <= umbral) {
+    return {
+      clase: "semaforo-amarillo",
+      titulo: `${base} — estás en tu promedio (menos de ${umbral}% de diferencia)`,
+    };
+  }
+
   const verde = total >= promedio;
   const esGasto = total < 0 || promedio < 0;
   const lectura = verde
@@ -187,7 +227,7 @@ function semaforoContraPromedio(total, promedio, unidad) {
     : (esGasto ? "gastaste más que de costumbre" : "entró menos que de costumbre");
   return {
     clase: verde ? "semaforo-verde" : "semaforo-rojo",
-    titulo: `Este mes ${total.toFixed(2)}${sufijo} · promedio ${promedio.toFixed(2)}${sufijo} — ${lectura}`,
+    titulo: `${base} — ${lectura} (${porcentaje.toFixed(1)}% de diferencia)`,
   };
 }
 

@@ -27,10 +27,10 @@ import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { nombreOrigen, nombreMoneda, nombreConcepto, contieneTexto } from './lookups.js';
 import { renderCheckboxesTabla } from './check-list.js';
-import { formatoMesLegible, convertirAEuros } from './distribucion.js';
+import { formatoMesLegible, convertirAEuros, umbralPorcentaje } from './distribucion.js';
 import { avisarError } from './aviso-modal.js';
 
-const UMBRAL_POR_DEFECTO = 5;
+
 
 // Mes que se está mirando en el modal de detalle, o null si está cerrado.
 let mesAbierto = null;
@@ -53,12 +53,10 @@ function formato(v) {
   return numero(v).toFixed(2);
 }
 
-// El porcentaje a partir del cual se considera que el patrimonio "subió".
-// Si la fila no está en la base o tiene cualquier cosa, se usa 5.
-function umbralPorcentaje() {
-  const v = Number(state.configuracionGeneral.evolucion_umbral_pct);
-  return Number.isFinite(v) && v >= 0 ? v : UMBRAL_POR_DEFECTO;
-}
+// El umbral (el porcentaje a partir del cual se considera que el patrimonio
+// "subió") ahora vive en distribucion.js y lo comparten las dos pantallas,
+// para que sea un solo número y una sola función. Ver el comentario de
+// umbralPorcentaje() allá.
 
 function conceptosIncluidos() {
   return new Set(

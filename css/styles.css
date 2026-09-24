@@ -237,8 +237,17 @@ table.distrib-pivot th:first-child, table.distrib-pivot td:first-child {
    pixeles como midieran —18 con botón, 7 en una celda vacía, 0 en la columna
    Promedio— y cada celda caía en un lugar distinto. */
 table.distrib-pivot .valor-wrap {
-  display: flex; align-items: center; justify-content: center; width: 100%;
+  display: flex; align-items: center; width: 100%;
 }
+/* El número ocupa todo el espacio que queda entre el espejo y los adornos, y
+   se apoya en el borde derecho de ese espacio. Es lo que mantiene la columna
+   prolija: como el espejo y los adornos miden lo mismo y siempre lo mismo,
+   TODOS los números terminan en la misma raya y TODOS los "i" y los puntitos
+   del semáforo arrancan en la misma raya, sin importar si el importe tiene
+   cuatro dígitos o nueve.
+   Antes el número iba centrado y los adornos quedaban pegados a él, así que se
+   corrían según el largo de cada importe y los puntitos hacían zigzag. */
+table.distrib-pivot .valor-numero { flex: 1; text-align: right; }
 .valor-adornos, .valor-espejo {
   display: inline-flex; align-items: center;
   gap: 6px; width: 34px; flex-shrink: 0;
