@@ -498,11 +498,11 @@ const GRUPOS_HISTORICO_FLUJO = [
     // una misma cosa), pero Nadia pidió agruparlas igual bajo un título
     // común para ganar el mismo ancho — "% Ahorro"/"Cantidad ahorrada" son
     // los nombres que ya tenían (ver más arriba); "Proporción de gastos" se
-    // acorta a "% gastado" acá abajo para que las tres queden parejas.
+    // acorta a "% Gastado" acá abajo para que las tres queden parejas.
     titulo: "Ahorro",
     columnas: [
-      { tituloCorto: "% gastado", tituloCompleto: "Proporción de gastos", clave: "proporcionGastos" },
-      { tituloCorto: "% ahorrado", tituloCompleto: "% Ahorro", clave: "ahorroPct" },
+      { tituloCorto: "% Gastado", tituloCompleto: "Proporción de gastos", clave: "proporcionGastos" },
+      { tituloCorto: "% Ahorrado", tituloCompleto: "% Ahorro", clave: "ahorroPct" },
       { tituloCorto: "Importe", tituloCompleto: "Cantidad ahorrada", clave: "ahorroImporte" },
     ],
   },
@@ -702,11 +702,19 @@ function tablaHistoricoFlujo(porMes, detallePorMes, mesesUsados, orden, incomple
   if (orden === "desc") listaMeses.reverse();
 
   // "Mes" ocupa las dos filas del encabezado (rowspan=2), así no queda una
-  // celda vacía rara al lado de los títulos de grupo.
+  // celda vacía rara al lado de los títulos de grupo. Esa segunda fila
+  // ("Totales"/"Fijos"/"Variables"/...) NO repite la celda de "Mes" (el
+  // rowspan de arriba ya la cubre), así que su primer <th> ("Totales") es,
+  // en el DOM, el :first-child de su <tr> — y por eso agarraba sin querer
+  // la regla `th:first-child { text-align:left; padding-left:4px }` que en
+  // el resto de la app es la que alinea a la izquierda la columna "Mes"
+  // (acá la primera columna VISUAL de esta fila no es "Mes", así que ese
+  // estilo le quedaba mal puesto). La clase "fila-subencabezado" es el
+  // gancho para desactivar esa regla solo en esta fila (ver css/styles.css).
   let tabla = `<table class="pivot distrib-pivot pivot-agrupado">` +
     `<tr><th rowspan="2">Mes</th>` +
     GRUPOS_HISTORICO_FLUJO.map(g => `<th colspan="${g.columnas.length}" class="pivot-grupo-titulo">${g.titulo}</th>`).join("") +
-    `</tr><tr>` +
+    `</tr><tr class="fila-subencabezado">` +
     COLUMNAS_HISTORICO_FLUJO.map(c => `<th>${c.tituloCorto}</th>`).join("") +
     `</tr>`;
   listaMeses.forEach(mes => {

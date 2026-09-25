@@ -274,6 +274,25 @@ table.pivot-agrupado.distrib-pivot th, table.pivot-agrupado.distrib-pivot td {
 table.pivot-agrupado .valor-adornos, table.pivot-agrupado .valor-espejo {
   width: 22px; gap: 2px;
 }
+/* "Mes" ocupa las dos filas del encabezado (rowspan=2, ver
+   tablaHistoricoFlujo en js/flujo-caja.js) — sin esto, el navegador lo
+   centra verticalmente contra el alto de las DOS filas juntas, así que
+   quedaba flotando más arriba que "Totales"/"Fijos"/etc., como pegado a la
+   fila de "Ingresos"/"Gastos" en vez de a la fila de nombres cortos que es
+   la que de verdad describe las columnas de datos. "bottom" lo pone a la
+   misma altura que esa fila. */
+table.pivot-agrupado th[rowspan] { vertical-align: bottom; }
+/* La segunda fila del encabezado ("Totales"/"Fijos"/...) no repite la
+   celda de "Mes" (la cubre el rowspan de arriba), así que su primer <th>
+   termina siendo el :first-child de su <tr> — y agarraba sin querer la
+   regla de más abajo que alinea a la izquierda la columna "Mes" (pensada
+   para la primera columna real de la tabla, no para esta). Acá se
+   desactiva esa regla solo en esta fila (ver la clase "fila-subencabezado"
+   en tablaHistoricoFlujo), para que "Totales" quede centrado como
+   cualquier otro nombre de columna. */
+table.pivot-agrupado tr.fila-subencabezado th:first-child {
+  text-align: center; padding-left: 6px;
+}
 /* El número va centrado en la celda, con los adornos (el botón "i" y el
    semáforo) colgando a la derecha y un hueco vacío del mismo ancho —el
    "espejo"— a la izquierda. Los dos miden lo mismo, así que se compensan y
