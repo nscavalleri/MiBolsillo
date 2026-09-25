@@ -40,6 +40,12 @@ export function setupAllTabs() {
     mensual: "distrib-mensual",
     historica: "distrib-historica",
   });
+  // Flujo de caja también tiene Mensual/Histórica, espejo de Distribución
+  // (a pedido de Nadia) — ver js/flujo-caja.js.
+  setupTabGroup("flujoSubtabs", "flujosub", {
+    mensual: "flujo-mensual",
+    historica: "flujo-historica",
+  });
   setupTabGroup("gastosSubtabs", "subtab", {
     movimientos: "sub-movimientos",
     asignacion: "sub-asignacion",

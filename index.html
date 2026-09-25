@@ -142,15 +142,14 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 
 <!-- Flujo de caja: pestaña propia de Dashboard, a la altura de Snapshot/
      Evolución/Distribución (no una sub-pestaña de Distribución, a pedido de
-     Nadia). Ingresos fijos/variables y Gastos fijos/variables del mes
-     (conceptos.tipo_gasto, ver Configuración > Conceptos), separados en
-     ingresos (Ingresos) y egresos (Gastos) — Ingresos arriba, Gastos abajo,
-     a pedido de Nadia. Tiene su PROPIA lista de "Conceptos a incluir"
-     (conceptos.incluir_en_flujo_caja) y su PROPIO mes elegido
-     (state.flujoCaja.mes), independientes de los de Mensual/Histórica;
-     respeta la misma selección de "Monedas a incluir" / "Convertir todo a
-     Euros" de Distribución (eso sí es compartido, ver el comentario de
-     arriba de #sub-distribucion). -->
+     Nadia). Tiene, a su vez, sus propias sub-pestañas Mensual/Histórica —
+     mismo espejo de Distribución, también a pedido de Nadia. "Conceptos a
+     incluir" (conceptos.incluir_en_flujo_caja) va COMPARTIDO arriba de las
+     dos (igual que en Distribución), no una lista por cada una. Su PROPIO
+     mes elegido (state.flujoCaja.mes) es independiente del de Distribución
+     > Mensual; respeta la misma selección de "Monedas a incluir" /
+     "Convertir todo a Euros" de Distribución (eso sí es compartido, ver el
+     comentario de arriba de #sub-distribucion). -->
 <div id="sub-flujo" style="display:none;">
 <div class="card">
 <details class="collapsible">
@@ -159,6 +158,12 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </details>
 </div>
 
+<div class="tabs subtabs" id="flujoSubtabs">
+<button class="tab-btn active" data-flujosub="mensual">Mensual</button>
+<button class="tab-btn" data-flujosub="historica">Histórica</button>
+</div>
+
+<div id="flujo-mensual">
 <div class="card">
 <h3 style="margin-top:0;">Mes</h3>
 <label for="distribFlujoMesNombre">Elegí el mes y año</label>
@@ -170,6 +175,29 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 
 <div id="distribFijoVariableIngresos" class="card-fijovar-fila"></div>
 <div id="distribFijoVariable" class="card-fijovar-fila"></div>
+
+<!-- Resumen del mes: qué % de los ingresos se gastó, qué % se ahorró y
+     cuánto es eso en plata (js/flujo-caja.js: renderResumenAhorro). -->
+<div id="distribResumenAhorro" class="card-fijovar-fila"></div>
+</div>
+
+<!-- Histórica de Flujo de caja: mismo mecanismo que la Histórica de
+     Distribución (una fila por mes, una tabla por moneda o "Total en
+     Euros" si está convertido), pero las COLUMNAS son las nueve tarjetas de
+     Mensual (Ingresos/Gastos totales-fijos-variables + Proporción de
+     gastos/Ahorro/Ahorro importe) en vez de una columna por concepto — a
+     pedido de Nadia. -->
+<div id="flujo-historica" style="display:none;">
+<div class="card">
+<label for="flujoOrdenHistorico">Orden</label>
+<select id="flujoOrdenHistorico">
+<option value="asc">Más antiguo primero</option>
+<option value="desc">Más reciente primero</option>
+</select>
+</div>
+
+<div id="flujoHistoricoSecciones"></div>
+</div>
 </div>
 </div>
 

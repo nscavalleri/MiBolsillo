@@ -4,6 +4,13 @@
 // Fijos + Variables sumados (a pedido de Nadia, para ver el número redondo
 // sin tener que sumar las otras dos tarjetas a mano).
 //
+// Abajo de esas seis van tres tarjetas más de resumen (a pedido de Nadia):
+// "Proporción de gastos" (qué % de los ingresos del mes se gastó), "Ahorro"
+// (qué % se ahorró) y "Ahorro (importe)" (lo mismo pero en plata, no en
+// porcentaje). Las tres comparan Ingresos totales contra Gastos totales del
+// MISMO mes (no llevan semáforo ni promedio histórico, a diferencia de las
+// otras seis: acá no se pidió comparar contra meses anteriores).
+//
 // Es una pestaña más de Distribución (junto con Mensual e Histórica, ver
 // js/distribucion.js), pero tiene su PROPIO archivo — igual que cada
 // pestaña de Dashboard/Gastos tiene el suyo (dashboard.js, evolucion.js,
@@ -27,17 +34,31 @@
 // Tiene su PROPIA lista de "Conceptos a incluir" (conceptos.
 // incluir_en_flujo_caja, otra columna aparte, igual mecánica que
 // incluir_en_distribucion) — a pedido de Nadia, independiente de la que
-// usan Mensual/Histórica, para poder armar un conjunto de conceptos
-// relevante para el flujo de caja sin pisar esa otra selección. Y también
-// su PROPIO mes elegido (state.flujoCaja.mes, en vez de
+// usan Mensual/Histórica DE DISTRIBUCIÓN, para poder armar un conjunto de
+// conceptos relevante para el flujo de caja sin pisar esa otra selección. Y
+// también su PROPIO mes elegido (state.flujoCaja.mes, en vez de
 // state.distribucion.mes de Mensual) — también a pedido de Nadia, para
-// poder mirar un mes acá y otro distinto en Mensual al mismo tiempo. Sí
-// comparte con Mensual/Histórica la selección de "Monedas a incluir" /
-// "Convertir todo a Euros" de arriba (eso no se pidió separar). El
+// poder mirar un mes acá y otro distinto en Mensual de Distribución al
+// mismo tiempo. Sí comparte con Distribución la selección de "Monedas a
+// incluir" / "Convertir todo a Euros" de ahí (eso no se pidió separar). El
 // MECANISMO del selector de mes (dos <select> en español, ver
 // poblarSelectMes/leerMesSeleccionado/escribirMesSeleccionado importados de
-// distribucion.js) sí es el mismo que usa Mensual, pero cada uno lee y
-// escribe su propio mes.
+// distribucion.js) sí es el mismo que usa Distribución > Mensual, pero cada
+// uno lee y escribe su propio mes.
+//
+// A su vez, Flujo de caja tiene sus PROPIAS sub-pestañas Mensual/Histórica
+// (a pedido de Nadia, espejo de las de Distribución): "Mensual" es todo lo
+// de arriba (las nueve tarjetas del mes elegido); "Histórica" es una tabla
+// con una fila por mes y una columna por cada una de esas nueve tarjetas
+// (Ingresos/Gastos totales-fijos-variables + Proporción de gastos/Ahorro/
+// Ahorro importe) — a diferencia de la Histórica de Distribución, que tiene
+// una columna por CONCEPTO. Entre Mensual y Histórica de Flujo de caja
+// (pero no con Distribución) se comparte una sola lista de "Conceptos a
+// incluir" arriba de las dos sub-pestañas — a pedido de Nadia, mismo
+// mecanismo que usa Distribución con SU "Conceptos a incluir" (compartido
+// entre Mensual e Histórica de Distribución, ver el comentario de arriba
+// de distribucion.js). "ordenHistorico" (state.flujoCaja.ordenHistorico)
+// es el orden de esta Histórica, independiente del de Distribución.
 
 import { state } from './state.js';
 import { nombreMoneda } from './lookups.js';
@@ -45,7 +66,7 @@ import { renderCheckboxesTabla } from './check-list.js';
 import {
   mesActualTexto, poblarSelectMes, poblarSelectAnio, leerMesSeleccionado, escribirMesSeleccionado,
   escaparAtributo, promediar, semaforoContraPromedio, registrarDetalle, mostrarDetalle,
-  convertirAEuros, formatoMesLegible,
+  convertirAEuros, formatoMesLegible, celdaImporte,
 } from './distribucion.js';
 
 // Detalle de cada tarjeta (botón "i"), en SU propia lista — no se comparte
@@ -316,6 +337,332 @@ function renderGrupoFijoVariable(contenedorId, tipoMovimiento, tituloTotal, titu
     tarjetaFijoVariable("variable", tituloVariable, mes, null, datosPorMoneda, monedaIdsOrdenadas, historico);
 }
 
+// --- Proporción de gastos / Ahorro ----------------------------------------
+//
+// Junta Ingresos totales y Gastos totales del mes (el bucket "total" =
+// fijo + variable de las mismas dos funciones de arriba) para armar las
+// tres tarjetas de resumen. "gasto" siempre se guarda en POSITIVO acá
+// (invirtiendo el signo que trae totales.total para egresos), porque estas
+// tres tarjetas quieren "cuánto gasté" para compararlo contra "cuánto
+// ingresé", no un importe con signo.
+//
+// Con "Convertir todo a Euros" da una sola fila (en euros); sin convertir,
+// una fila por moneda que haya tenido Ingresos o Gastos ese mes — Ingresos
+// y Gastos se comparan moneda contra moneda, nunca mezclando monedas
+// distintas (comparar USD gastados contra ARS ingresados no tendría
+// sentido).
+function calcularResumenAhorro(mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
+  if (state.distribucion.convertirEuros) {
+    const ingresos = totalesFijoVariableEnEuros("ingreso", mes, conceptoIdsIncluidos);
+    const gastos = totalesFijoVariableEnEuros("egreso", mes, conceptoIdsIncluidos);
+    return {
+      unidadUnica: " €",
+      filas: [{
+        etiqueta: null,
+        ingreso: ingresos.totales.total,
+        gasto: -gastos.totales.total,
+        incompleto: ingresos.totalIncompleto.total || gastos.totalIncompleto.total,
+      }],
+    };
+  }
+  const ingresosPM = totalesFijoVariablePorMoneda("ingreso", mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  const gastosPM = totalesFijoVariablePorMoneda("egreso", mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  const monedaIds = Array.from(new Set([
+    ...Object.keys(ingresosPM.totalesPorMoneda.total),
+    ...Object.keys(gastosPM.totalesPorMoneda.total),
+  ])).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
+  return {
+    unidadUnica: null,
+    filas: monedaIds.map(id => ({
+      etiqueta: nombreMoneda(id),
+      ingreso: ingresosPM.totalesPorMoneda.total[id] || 0,
+      gasto: -(gastosPM.totalesPorMoneda.total[id] || 0),
+      incompleto: false,
+    })),
+  };
+}
+
+// Una tarjeta de resumen: "tipoTarjeta" decide qué cuenta con ingreso/gasto
+// de cada fila ("proporcionGastos", "ahorroPct" o "ahorroMonto"). Una fila
+// por moneda (una sola si está "Convertir todo a Euros"); si algún mes no
+// tuvo ingresos, esa fila muestra "Sin ingresos este mes" en vez de
+// dividir por cero.
+function tarjetaResumen(titulo, resumen, tipoTarjeta) {
+  let montoHtml;
+  if (resumen.filas.length === 0) {
+    montoHtml = `<div class="fijovar-item"><span class="fijovar-linea"><span class="cero">–</span></span></div>`;
+  } else {
+    montoHtml = resumen.filas.map(fila => {
+      const unidad = resumen.unidadUnica != null ? resumen.unidadUnica : " " + fila.etiqueta;
+      const marca = fila.incompleto
+        ? `<span class="valor-incompleto" title="Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración &gt; Tipo de cambio">⚠</span>`
+        : "";
+      if (fila.ingreso <= 0) {
+        return `
+          <div class="fijovar-item">
+            <span class="fijovar-linea">${marca}<span class="cero">–</span></span>
+            <span class="fijovar-promedio">Sin ingresos este mes${fila.etiqueta ? " en " + fila.etiqueta : ""}</span>
+          </div>`;
+      }
+      if (tipoTarjeta === "proporcionGastos") {
+        const pct = (fila.gasto / fila.ingreso) * 100;
+        return `
+          <div class="fijovar-item">
+            <span class="fijovar-linea">${marca}<span>${pct.toFixed(1)}%</span></span>
+            <span class="fijovar-promedio">${fila.gasto.toFixed(2)}${unidad} de ${fila.ingreso.toFixed(2)}${unidad}</span>
+          </div>`;
+      }
+      const ahorro = fila.ingreso - fila.gasto;
+      const clase = ahorro > 0 ? "positivo" : ahorro < 0 ? "negativo" : "cero";
+      if (tipoTarjeta === "ahorroPct") {
+        const pct = (ahorro / fila.ingreso) * 100;
+        return `
+          <div class="fijovar-item">
+            <span class="fijovar-linea">${marca}<span class="${clase}">${pct.toFixed(1)}%</span></span>
+            <span class="fijovar-promedio">${ahorro.toFixed(2)}${unidad} de ${fila.ingreso.toFixed(2)}${unidad}</span>
+          </div>`;
+      }
+      // ahorroMonto
+      return `
+        <div class="fijovar-item">
+          <span class="fijovar-linea">${marca}<span class="${clase}">${ahorro.toFixed(2)}${unidad}</span></span>
+        </div>`;
+    }).join("");
+  }
+  return `
+    <div class="card card-fijovar">
+      <div class="fijovar-header"><h3>${titulo}</h3></div>
+      <div class="fijovar-monto">${montoHtml}</div>
+    </div>`;
+}
+
+function renderResumenAhorro(contenedorId, mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
+  const cont = document.getElementById(contenedorId);
+  if (!cont) return;
+  const resumen = calcularResumenAhorro(mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  cont.innerHTML =
+    tarjetaResumen("Proporción de gastos", resumen, "proporcionGastos") +
+    tarjetaResumen("Ahorro", resumen, "ahorroPct") +
+    tarjetaResumen("Ahorro (importe)", resumen, "ahorroMonto");
+}
+
+// --- Histórica de Flujo de caja --------------------------------------------
+//
+// Mismo mecanismo que la Histórica de Distribución (una fila por mes, una
+// tabla por moneda incluida, o "Total en Euros" si está convertido), pero
+// acá las COLUMNAS son las nueve tarjetas de Mensual, no una por concepto —
+// a pedido de Nadia. No lleva semáforo ni promedio (a diferencia de la
+// Histórica de Distribución): acá cada celda YA es una comparación entre
+// meses, no un importe puntual para comparar contra un promedio aparte.
+const COLUMNAS_HISTORICO_FLUJO = [
+  { titulo: "Ingresos totales", clave: "ingresoTotal" },
+  { titulo: "Ingresos fijos", clave: "ingresoFijo" },
+  { titulo: "Ingresos variables", clave: "ingresoVariable" },
+  { titulo: "Gastos totales", clave: "gastoTotal" },
+  { titulo: "Gastos fijos", clave: "gastoFijo" },
+  { titulo: "Gastos variables", clave: "gastoVariable" },
+  { titulo: "Proporción de gastos", clave: "proporcionGastos" },
+  { titulo: "Ahorro", clave: "ahorroPct" },
+  { titulo: "Ahorro (importe)", clave: "ahorroImporte" },
+];
+
+function filaMetricasVacia() {
+  return { ingresoFijo: 0, ingresoVariable: 0, gastoFijo: 0, gastoVariable: 0 };
+}
+
+// Junta ingreso/gasto fijo/variable de un mes puntual en las nueve métricas
+// de las columnas de arriba (mismas fórmulas que calcularResumenAhorro() y
+// que las tarjetas de Totales de Mensual). "gastoFijo"/"gastoVariable"/
+// "gastoTotal" quedan en POSITIVO acá (para poder calcular Proporción de
+// gastos/Ahorro sin líos de signo) — se muestran en NEGATIVO en la tabla,
+// ver celdaHistoricoFlujo.
+function metricasDelMes(datosMes) {
+  const ingresoTotal = datosMes.ingresoFijo + datosMes.ingresoVariable;
+  const gastoTotal = datosMes.gastoFijo + datosMes.gastoVariable;
+  const ahorroImporte = ingresoTotal - gastoTotal;
+  const proporcionGastos = ingresoTotal > 0 ? (gastoTotal / ingresoTotal) * 100 : null;
+  const ahorroPct = ingresoTotal > 0 ? (ahorroImporte / ingresoTotal) * 100 : null;
+  return {
+    ingresoTotal, ingresoFijo: datosMes.ingresoFijo, ingresoVariable: datosMes.ingresoVariable,
+    gastoTotal, gastoFijo: datosMes.gastoFijo, gastoVariable: datosMes.gastoVariable,
+    proporcionGastos, ahorroPct, ahorroImporte,
+  };
+}
+
+// Agrupa los movimientos de UNA moneda puntual por mes, separando de una
+// ingreso/egreso y fijo/variable — insumo de metricasDelMes() de arriba.
+function historicoFlujoPorMoneda(monedaId, conceptoIdsIncluidos) {
+  const porMes = {};
+  const mesesUsados = new Set();
+  state.movimientos.forEach(m => {
+    if (String(m.moneda_id) !== String(monedaId)) return;
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    const mes = String(m.fecha).slice(0, 7);
+    const tipoGasto = tipoGastoDe(m.concepto_id);
+    if (!porMes[mes]) porMes[mes] = filaMetricasVacia();
+    const clave = (m.tipo === "ingreso" ? "ingreso" : "gasto") + (tipoGasto === "fijo" ? "Fijo" : "Variable");
+    porMes[mes][clave] += Number(m.monto);
+    mesesUsados.add(mes);
+  });
+  return { porMes, mesesUsados };
+}
+
+// Igual que la anterior, pero para todas las monedas juntas convertidas a
+// euros (con "Convertir todo a Euros" tildado) — mismo criterio que
+// calcularHistoricoEnEuros de distribucion.js: si a algún movimiento de un
+// mes le faltó el tipo de cambio, ese MES ENTERO (las nueve columnas, no
+// una celda puntual) queda marcado como incompleto, porque casi cualquier
+// columna depende de casi cualquier movimiento de ese mes.
+function historicoFlujoEnEuros(conceptoIdsIncluidos) {
+  const porMes = {};
+  const mesesUsados = new Set();
+  const incompletos = new Set();
+  state.movimientos.forEach(m => {
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    const mes = String(m.fecha).slice(0, 7);
+    const tipoGasto = tipoGastoDe(m.concepto_id);
+    const { valor, ok } = convertirAEuros(mes, m.moneda_id, Number(m.monto));
+    if (!porMes[mes]) porMes[mes] = filaMetricasVacia();
+    const clave = (m.tipo === "ingreso" ? "ingreso" : "gasto") + (tipoGasto === "fijo" ? "Fijo" : "Variable");
+    porMes[mes][clave] += valor;
+    if (!ok) incompletos.add(mes);
+    mesesUsados.add(mes);
+  });
+  return { porMes, mesesUsados, incompletos };
+}
+
+// Celda de importe (columnas de Ingresos/Gastos): mismo criterio de color
+// que el resto de la app (celdaImporte, importada de distribucion.js) —
+// verde si es mayor a cero, rojo si es menor, guión gris en cero. Sin botón
+// "i" ni semáforo (no se pidieron acá).
+function celdaMontoHistoricoFlujo(v, incompleto) {
+  return celdaImporte(v, false, incompleto, null);
+}
+
+// Celda de porcentaje (Proporción de gastos / Ahorro): "–" si ese mes no
+// tuvo ingresos (no se puede calcular "% de qué"). "colorear"=true pinta
+// verde/rojo según el signo (para Ahorro: ahorrar es positivo, gastar de
+// más es negativo); "Proporción de gastos" no se pinta a propósito (gastar
+// más o menos no es "bueno" o "malo" en sí mismo). Mismo armado de
+// valor-espejo/valor-numero/valor-adornos que celdaImporte, para que las
+// columnas se alineen igual que las de importe.
+function celdaPorcentajeHistoricoFlujo(v, colorear, incompleto) {
+  const marca = incompleto
+    ? `<span class="valor-incompleto" title="Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración &gt; Tipo de cambio">⚠</span>`
+    : "";
+  const espejo = `<span class="valor-espejo">${marca}</span>`;
+  if (v == null) return `<td class="valor-cero"><span class="valor-wrap">${espejo}<span class="valor-numero">–</span><span class="valor-adornos"></span></span></td>`;
+  const clase = colorear ? (v > 0 ? "valor-positivo" : v < 0 ? "valor-negativo" : "valor-cero") : "";
+  return `<td class="${clase}"><span class="valor-wrap">${espejo}<span class="valor-numero">${v.toFixed(1)}%</span><span class="valor-adornos"></span></span></td>`;
+}
+
+function celdaHistoricoFlujo(columna, metricas, incompleto) {
+  if (columna.clave === "proporcionGastos") return celdaPorcentajeHistoricoFlujo(metricas.proporcionGastos, false, incompleto);
+  if (columna.clave === "ahorroPct") return celdaPorcentajeHistoricoFlujo(metricas.ahorroPct, true, incompleto);
+  // Gastos en negativo acá (mismo signo que las tarjetas de Gastos de
+  // Mensual); metricas.gastoFijo/gastoVariable/gastoTotal vienen en
+  // positivo (ver metricasDelMes).
+  if (columna.clave === "gastoTotal") return celdaMontoHistoricoFlujo(-metricas.gastoTotal, incompleto);
+  if (columna.clave === "gastoFijo") return celdaMontoHistoricoFlujo(-metricas.gastoFijo, incompleto);
+  if (columna.clave === "gastoVariable") return celdaMontoHistoricoFlujo(-metricas.gastoVariable, incompleto);
+  return celdaMontoHistoricoFlujo(metricas[columna.clave], incompleto);
+}
+
+function tablaHistoricoFlujo(porMes, mesesUsados, orden, incompletosPorMes) {
+  let listaMeses = Array.from(mesesUsados).sort(); // "YYYY-MM" ordena bien como texto
+  if (orden === "desc") listaMeses.reverse();
+
+  let tabla = `<table class="pivot distrib-pivot"><tr><th>Mes</th>` +
+    COLUMNAS_HISTORICO_FLUJO.map(c => `<th>${c.titulo}</th>`).join("") + `</tr>`;
+  listaMeses.forEach(mes => {
+    const metricas = metricasDelMes(porMes[mes] || filaMetricasVacia());
+    const incompleto = incompletosPorMes ? incompletosPorMes.has(mes) : false;
+    tabla += `<tr><td>${formatoMesLegible(mes)}</td>` +
+      COLUMNAS_HISTORICO_FLUJO.map(c => celdaHistoricoFlujo(c, metricas, incompleto)).join("") +
+      `</tr>`;
+  });
+  tabla += `</table>`;
+  return tabla;
+}
+
+function renderSeccionHistoricaFlujoMoneda(moneda, conceptoIdsIncluidos, orden) {
+  const { porMes, mesesUsados } = historicoFlujoPorMoneda(moneda.id, conceptoIdsIncluidos);
+  if (mesesUsados.size === 0) {
+    return `
+      <div class="card">
+        <details class="collapsible" open>
+          <summary>${moneda.nombre}</summary>
+          <p class="empty">No hay movimientos en ${moneda.nombre} para los conceptos seleccionados.</p>
+        </details>
+      </div>`;
+  }
+  const tabla = tablaHistoricoFlujo(porMes, mesesUsados, orden, null);
+  return `
+    <div class="card card-ancho">
+      <details class="collapsible" open>
+        <summary>${moneda.nombre}</summary>
+        <div class="pivot-wrap">${tabla}</div>
+      </details>
+    </div>`;
+}
+
+function renderSeccionHistoricaFlujoEuros(conceptoIdsIncluidos, orden) {
+  const { porMes, mesesUsados, incompletos } = historicoFlujoEnEuros(conceptoIdsIncluidos);
+  if (mesesUsados.size === 0) {
+    return `
+      <div class="card">
+        <details class="collapsible" open>
+          <summary>Total en Euros</summary>
+          <p class="empty">No hay movimientos para los conceptos seleccionados.</p>
+        </details>
+      </div>`;
+  }
+  const tabla = tablaHistoricoFlujo(porMes, mesesUsados, orden, incompletos);
+  return `
+    <div class="card card-ancho">
+      <details class="collapsible" open>
+        <summary>Total en Euros</summary>
+        <div class="pivot-wrap">${tabla}</div>
+        <p class="tipo-cambio-nota">⚠ = falta cargar el tipo de cambio de alguna moneda para ese mes, así que esa fila puede estar incompleta.</p>
+      </details>
+    </div>`;
+}
+
+// Punto de entrada de la sub-pestaña Histórica: usa la MISMA lista de
+// "Conceptos a incluir" que Mensual (conceptos.incluir_en_flujo_caja, a
+// pedido de Nadia — no se pidió una lista separada para cada sub-pestaña) y
+// la misma selección de "Monedas a incluir"/"Convertir todo a Euros" de
+// Distribución que ya usa Mensual.
+function renderHistoricoFlujo() {
+  const cont = document.getElementById("flujoHistoricoSecciones");
+  if (!cont) return;
+  const conceptoIdsIncluidos = new Set(
+    state.conceptos.filter(c => c.incluir_en_flujo_caja !== false).map(c => String(c.id))
+  );
+  if (conceptoIdsIncluidos.size === 0) {
+    cont.innerHTML = `<div class="card"><p class="empty">Elegí al menos un concepto arriba para armar el histórico.</p></div>`;
+    return;
+  }
+
+  if (state.distribucion.convertirEuros) {
+    cont.innerHTML = renderSeccionHistoricaFlujoEuros(conceptoIdsIncluidos, state.flujoCaja.ordenHistorico);
+    return;
+  }
+
+  const monedasIncluidas = state.monedas
+    .filter(m => m.incluir_en_distribucion !== false)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  if (monedasIncluidas.length === 0) {
+    cont.innerHTML = `<div class="card"><p class="empty">Elegí al menos una moneda en Distribución (o tildá "Convertir todo a Euros") para armar el histórico.</p></div>`;
+    return;
+  }
+
+  cont.innerHTML = monedasIncluidas
+    .map(moneda => renderSeccionHistoricaFlujoMoneda(moneda, conceptoIdsIncluidos, state.flujoCaja.ordenHistorico))
+    .join("");
+}
+
 // Lista de conceptos propia de Flujo de caja (ver el comentario de arriba
 // del archivo): misma función reutilizable de check-list.js que usa
 // Mensual/Histórica, pero guardando en su propia columna
@@ -334,6 +681,8 @@ export function renderFlujoCaja() {
   // queda "vacío" solo, así que se escribe el valor desde el estado en
   // cada render.
   escribirMesSeleccionado("distribFlujo", state.flujoCaja.mes);
+  const selOrden = document.getElementById("flujoOrdenHistorico");
+  if (selOrden) selOrden.value = state.flujoCaja.ordenHistorico;
   renderCheckboxesConceptosFlujo();
   detallesFijoVariable = [];
   const mes = state.flujoCaja.mes;
@@ -349,6 +698,11 @@ export function renderFlujoCaja() {
   // cómo se ven en la pantalla.
   renderGrupoFijoVariable("distribFijoVariableIngresos", "ingreso", "Ingresos totales", "Ingresos fijos", "Ingresos variables", mes, conceptoIdsIncluidos, monedaIdsIncluidas);
   renderGrupoFijoVariable("distribFijoVariable", "egreso", "Gastos totales", "Gastos fijos", "Gastos variables", mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  renderResumenAhorro("distribResumenAhorro", mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  // Histórica (sub-pestaña separada de Mensual) se re-renderiza siempre
+  // acá también, no solo al mostrarla — mismo criterio que usa
+  // renderDistribucion() con renderReporte()/renderHistorico().
+  renderHistoricoFlujo();
 }
 
 export function setupFlujoCaja() {
@@ -359,6 +713,11 @@ export function setupFlujoCaja() {
       state.flujoCaja.mes = leerMesSeleccionado("distribFlujo");
       renderFlujoCaja();
     });
+  });
+
+  document.getElementById("flujoOrdenHistorico").addEventListener("change", (e) => {
+    state.flujoCaja.ordenHistorico = e.target.value;
+    renderHistoricoFlujo();
   });
 
   // Botón "i" de cada tarjeta: mismo mecanismo que Mensual/Histórica
