@@ -210,11 +210,16 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 
 <div id="sub-movimientos">
-<button class="btn-agregar" id="btnAgregar">+ Agregar</button>
 <!-- Cambio de moneda: abre js/cambio-moneda.js, un modal aparte del de
-     Agregar de arriba (ese carga un solo movimiento por vez) que carga DOS
-     de un saque, un egreso "Desde" y un ingreso "Hacia". -->
-<button class="secondary" id="btnCambioMoneda" type="button">Cambio de moneda</button>
+     Agregar de al lado (ese carga un solo movimiento por vez) que carga DOS
+     de un saque, un egreso "Desde" y un ingreso "Hacia". Mismo formato que
+     "+ Agregar" (mismo padding/redondeo/tamaño de letra, ver .btn-agregar-
+     secundario en css/styles.css) y al lado en la misma fila, para que
+     ninguno de los dos quede tan ancho como antes. -->
+<div class="fila-botones-movimientos">
+<button class="btn-agregar" id="btnAgregar">+ Agregar</button>
+<button class="btn-agregar-secundario" id="btnCambioMoneda" type="button">Cambio de moneda</button>
+</div>
 
 <div class="card">
 <h3 style="margin-top:0;">Filtros</h3>
@@ -431,7 +436,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <label for="cambioDescripcion">Descripción</label>
 <input type="text" id="cambioDescripcion" placeholder="Ej: cambio dólares a euros" />
 
-<div class="modal-subtitulo">Desde (de dónde sale la plata)</div>
+<div class="modal-subtitulo">Egreso</div>
 <label for="cambioDesdeMonto">Cantidad</label>
 <input type="number" id="cambioDesdeMonto" step="0.01" min="0" placeholder="0.00" required />
 
@@ -441,7 +446,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <label for="cambioDesdeOrigen">Origen (cuenta)</label>
 <select id="cambioDesdeOrigen" required></select>
 
-<div class="modal-subtitulo">Hacia (a dónde entra la plata)</div>
+<div class="modal-subtitulo">Ingreso</div>
 <label for="cambioHaciaMonto">Cantidad</label>
 <input type="number" id="cambioHaciaMonto" step="0.01" min="0" placeholder="0.00" required />
 

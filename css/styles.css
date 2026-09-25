@@ -113,6 +113,22 @@ button.secondary {
   background: var(--brand-fucsia); color: white; font-size: 15px; font-weight: 600;
   cursor: pointer; margin-bottom: 16px;
 }
+/* Gastos > Movimientos: "+ Agregar" y "Cambio de moneda" van uno al lado
+   del otro (a pedido de Nadia, para que no queden tan anchos como cuando
+   estaban apilados) adentro de esta fila; anula el width:100%/margin-bottom
+   de .btn-agregar para que se reparta el ancho con flex en vez de ocupar
+   toda la fila él solo. */
+.fila-botones-movimientos { display: flex; gap: 10px; margin-bottom: 16px; }
+.fila-botones-movimientos .btn-agregar { width: auto; flex: 1; margin-bottom: 0; }
+/* Mismo formato que .btn-agregar (padding, redondeo, tamaño y peso de
+   letra) pero con la paleta neutra de button.secondary, para distinguirlo
+   del botón principal sin dejar de matchear en forma y tamaño — mismo
+   criterio que ya separa .primary de .secondary en los modales. */
+.btn-agregar-secundario {
+  flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: #fff; color: var(--text); font-size: 15px; font-weight: 600;
+  cursor: pointer;
+}
 
 /* Pivot table */
 table.pivot { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -227,6 +243,17 @@ table.distrib-pivot th, table.distrib-pivot td {
 }
 table.distrib-pivot th:first-child, table.distrib-pivot td:first-child {
   text-align: left; padding-left: 4px;
+}
+/* Histórica de Flujo de caja: encabezado agrupado en dos filas (a pedido de
+   Nadia, para achicar el ancho de la tabla y el scroll horizontal) — la de
+   arriba agrupa "Ingresos"/"Gastos"/"Ahorro" con colspan=3, la de abajo
+   tiene el nombre corto de cada columna adentro de su grupo. El título de
+   grupo va más chico y gris (no compite con los nombres de columna de
+   abajo, que son los que hay que leer fila a fila) y con un borde propio
+   para separarlo de la fila de nombres cortos. */
+table.pivot-agrupado th.pivot-grupo-titulo {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .02em;
+  color: var(--muted); border-bottom: 1px solid var(--border);
 }
 /* El número va centrado en la celda, con los adornos (el botón "i" y el
    semáforo) colgando a la derecha y un hueco vacío del mismo ancho —el

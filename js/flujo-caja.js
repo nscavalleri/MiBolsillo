@@ -59,6 +59,19 @@
 // entre Mensual e Histórica de Distribución, ver el comentario de arriba
 // de distribucion.js). "ordenHistorico" (state.flujoCaja.ordenHistorico)
 // es el orden de esta Histórica, independiente del de Distribución.
+//
+// Las columnas "Proporción de gastos" y "% Ahorro"/"Cantidad ahorrada" (así
+// se llaman en el encabezado, a pedido de Nadia — antes eran "Ahorro"/
+// "Ahorro (importe)") tienen cada una su propio criterio de color:
+// "Proporción de gastos" pinta verde si gastaste MENOS del 100% de lo que
+// entró ese mes y rojo si llegaste al 100% o más (no importa el signo del
+// número, siempre es positivo); "% Ahorro" pinta según el signo, como el
+// resto de la app (ahorrar = positivo = verde). Cada celda de la Histórica
+// tiene además su propio botón "i" (a pedido de Nadia, para que quede igual
+// que la Histórica de Distribución): en las seis columnas de importe abre
+// el desglose por concepto de ese mes; en las tres derivadas, un resumen de
+// Ingresos totales contra Gastos totales de ese mes (ver
+// detalleCeldaHistoricoFlujo).
 
 import { state } from './state.js';
 import { nombreMoneda } from './lookups.js';
@@ -454,17 +467,51 @@ function renderResumenAhorro(contenedorId, mes, conceptoIdsIncluidos, monedaIdsI
 // a pedido de Nadia. No lleva semáforo ni promedio (a diferencia de la
 // Histórica de Distribución): acá cada celda YA es una comparación entre
 // meses, no un importe puntual para comparar contra un promedio aparte.
-const COLUMNAS_HISTORICO_FLUJO = [
-  { titulo: "Ingresos totales", clave: "ingresoTotal" },
-  { titulo: "Ingresos fijos", clave: "ingresoFijo" },
-  { titulo: "Ingresos variables", clave: "ingresoVariable" },
-  { titulo: "Gastos totales", clave: "gastoTotal" },
-  { titulo: "Gastos fijos", clave: "gastoFijo" },
-  { titulo: "Gastos variables", clave: "gastoVariable" },
-  { titulo: "Proporción de gastos", clave: "proporcionGastos" },
-  { titulo: "Ahorro", clave: "ahorroPct" },
-  { titulo: "Ahorro (importe)", clave: "ahorroImporte" },
+// Encabezado en dos pisos (a pedido de Nadia, para achicar el ancho de la
+// tabla y el scroll horizontal): arriba, un título de GRUPO con colspan=3
+// ("Ingresos"/"Gastos"/"Ahorro"); abajo, el nombre CORTO de cada columna
+// adentro de ese grupo (p.ej. "Fijos" en vez de "Ingresos fijos", ya que
+// "Ingresos" queda dicho una sola vez arriba, en el grupo). "tituloCompleto"
+// es el nombre largo de siempre, que se sigue usando en el título del popup
+// del botón "i" (detalleCeldaHistoricoFlujo) — ahí SÍ hace falta que se
+// entienda solo, sin depender de en qué grupo esté la columna en la tabla.
+const GRUPOS_HISTORICO_FLUJO = [
+  {
+    titulo: "Ingresos",
+    columnas: [
+      { tituloCorto: "Totales", tituloCompleto: "Ingresos totales", clave: "ingresoTotal" },
+      { tituloCorto: "Fijos", tituloCompleto: "Ingresos fijos", clave: "ingresoFijo" },
+      { tituloCorto: "Variables", tituloCompleto: "Ingresos variables", clave: "ingresoVariable" },
+    ],
+  },
+  {
+    titulo: "Gastos",
+    columnas: [
+      { tituloCorto: "Totales", tituloCompleto: "Gastos totales", clave: "gastoTotal" },
+      { tituloCorto: "Fijos", tituloCompleto: "Gastos fijos", clave: "gastoFijo" },
+      { tituloCorto: "Variables", tituloCompleto: "Gastos variables", clave: "gastoVariable" },
+    ],
+  },
+  {
+    // Las tres columnas de acá no son un trío Totales/Fijos/Variables como
+    // los otros dos grupos (son tres cálculos distintos, no un desglose de
+    // una misma cosa), pero Nadia pidió agruparlas igual bajo un título
+    // común para ganar el mismo ancho — "% Ahorro"/"Cantidad ahorrada" son
+    // los nombres que ya tenían (ver más arriba); "Proporción de gastos" se
+    // acorta a "% gastado" acá abajo para que las tres queden parejas.
+    titulo: "Ahorro",
+    columnas: [
+      { tituloCorto: "% gastado", tituloCompleto: "Proporción de gastos", clave: "proporcionGastos" },
+      { tituloCorto: "% ahorrado", tituloCompleto: "% Ahorro", clave: "ahorroPct" },
+      { tituloCorto: "Importe", tituloCompleto: "Cantidad ahorrada", clave: "ahorroImporte" },
+    ],
+  },
 ];
+
+// Lista plana (una entrada por columna, en el mismo orden) para todo lo que
+// no necesita saber de grupos — el dispatch de celdaHistoricoFlujo, armar
+// cada fila de la tabla, etc.
+const COLUMNAS_HISTORICO_FLUJO = GRUPOS_HISTORICO_FLUJO.flatMap(g => g.columnas);
 
 function filaMetricasVacia() {
   return { ingresoFijo: 0, ingresoVariable: 0, gastoFijo: 0, gastoVariable: 0 };
@@ -491,8 +538,13 @@ function metricasDelMes(datosMes) {
 
 // Agrupa los movimientos de UNA moneda puntual por mes, separando de una
 // ingreso/egreso y fijo/variable — insumo de metricasDelMes() de arriba.
+// "detallePorMes" (mes -> clave -> concepto_id -> total) es el desglose por
+// concepto que arma el botón "i" de cada celda (detalleCeldaHistoricoFlujo,
+// más abajo) — acá cada entrada es un número puntual (sin conversión, así
+// que no hace falta marcar incompletos por concepto).
 function historicoFlujoPorMoneda(monedaId, conceptoIdsIncluidos) {
   const porMes = {};
+  const detallePorMes = {};
   const mesesUsados = new Set();
   state.movimientos.forEach(m => {
     if (String(m.moneda_id) !== String(monedaId)) return;
@@ -502,9 +554,12 @@ function historicoFlujoPorMoneda(monedaId, conceptoIdsIncluidos) {
     if (!porMes[mes]) porMes[mes] = filaMetricasVacia();
     const clave = (m.tipo === "ingreso" ? "ingreso" : "gasto") + (tipoGasto === "fijo" ? "Fijo" : "Variable");
     porMes[mes][clave] += Number(m.monto);
+    if (!detallePorMes[mes]) detallePorMes[mes] = {};
+    if (!detallePorMes[mes][clave]) detallePorMes[mes][clave] = {};
+    detallePorMes[mes][clave][m.concepto_id] = (detallePorMes[mes][clave][m.concepto_id] || 0) + Number(m.monto);
     mesesUsados.add(mes);
   });
-  return { porMes, mesesUsados };
+  return { porMes, detallePorMes, mesesUsados };
 }
 
 // Igual que la anterior, pero para todas las monedas juntas convertidas a
@@ -512,9 +567,13 @@ function historicoFlujoPorMoneda(monedaId, conceptoIdsIncluidos) {
 // calcularHistoricoEnEuros de distribucion.js: si a algún movimiento de un
 // mes le faltó el tipo de cambio, ese MES ENTERO (las nueve columnas, no
 // una celda puntual) queda marcado como incompleto, porque casi cualquier
-// columna depende de casi cualquier movimiento de ese mes.
+// columna depende de casi cualquier movimiento de ese mes. Acá cada entrada
+// de "detallePorMes" es un objeto { total, incompleto } (a diferencia de la
+// de arriba, que guarda el número directo) porque, a diferencia del total
+// del mes, la conversión SÍ puede fallar concepto por concepto.
 function historicoFlujoEnEuros(conceptoIdsIncluidos) {
   const porMes = {};
+  const detallePorMes = {};
   const mesesUsados = new Set();
   const incompletos = new Set();
   state.movimientos.forEach(m => {
@@ -525,60 +584,137 @@ function historicoFlujoEnEuros(conceptoIdsIncluidos) {
     if (!porMes[mes]) porMes[mes] = filaMetricasVacia();
     const clave = (m.tipo === "ingreso" ? "ingreso" : "gasto") + (tipoGasto === "fijo" ? "Fijo" : "Variable");
     porMes[mes][clave] += valor;
-    if (!ok) incompletos.add(mes);
+    if (!detallePorMes[mes]) detallePorMes[mes] = {};
+    if (!detallePorMes[mes][clave]) detallePorMes[mes][clave] = {};
+    if (!detallePorMes[mes][clave][m.concepto_id]) detallePorMes[mes][clave][m.concepto_id] = { total: 0, incompleto: false };
+    detallePorMes[mes][clave][m.concepto_id].total += valor;
+    if (!ok) { detallePorMes[mes][clave][m.concepto_id].incompleto = true; incompletos.add(mes); }
     mesesUsados.add(mes);
   });
-  return { porMes, mesesUsados, incompletos };
+  return { porMes, detallePorMes, mesesUsados, incompletos };
+}
+
+// Junta el desglose por concepto de una celda del histórico (mismo insumo
+// que arma detallePorMes de arriba) en las líneas que muestra el popup del
+// botón "i". Cada entrada puede ser un número puntual (histórico por
+// moneda) o un objeto { total, incompleto } (histórico en euros) — se
+// admiten los dos formatos acá para no duplicar esta función.
+function lineasPorConceptoHistoricoFlujo(porConcepto, unidad) {
+  const ids = Object.keys(porConcepto).sort((a, b) => nombreConceptoOrdenable(a).localeCompare(nombreConceptoOrdenable(b)));
+  if (ids.length === 0) return [{ texto: "Sin movimientos este mes", monto: "" }];
+  return ids.map(id => {
+    const entrada = porConcepto[id];
+    const total = typeof entrada === "number" ? entrada : entrada.total;
+    const incompleto = typeof entrada === "number" ? false : entrada.incompleto;
+    return { texto: nombreConceptoOrdenable(id) + (incompleto ? " ⚠" : ""), monto: `${total.toFixed(2)}${unidad}` };
+  });
+}
+
+// Arma el detalle (botón "i") de UNA celda de la Histórica de Flujo de caja
+// — a pedido de Nadia, mismo botón "i" que ya tiene la Histórica de
+// Distribución (ver celdaImporte/registrarDetalle de distribucion.js).
+// Para las seis columnas de importe (Ingresos/Gastos totales-fijos-
+// variables) el detalle es por CONCEPTO, igual que en Mensual (ver
+// detalleFijoVariable más arriba); "Ingresos/Gastos totales" combina fijo +
+// variable (un concepto es siempre uno u otro, nunca los dos, así que no
+// hace falta sumarlos clave a clave). Las tres columnas derivadas
+// (Proporción de gastos/% Ahorro/Cantidad ahorrada) no suman por concepto
+// —son una comparación entre dos totales, no un total en sí—, así que
+// muestran Ingresos totales contra Gastos totales de ese mes.
+// Se guarda en la MISMA lista que usa Mensual (detallesFijoVariable, prefijo
+// "fijovar"): el listener de setupFlujoCaja ya escucha ese prefijo, así que
+// no hace falta uno nuevo para la Histórica.
+function detalleCeldaHistoricoFlujo(columna, mes, metricas, detalleMes, unidad) {
+  const titulo = `${columna.tituloCompleto} — ${formatoMesLegible(mes)}`;
+  let grupos;
+  if (columna.clave === "ingresoTotal" || columna.clave === "gastoTotal") {
+    const claveFijo = columna.clave === "ingresoTotal" ? "ingresoFijo" : "gastoFijo";
+    const claveVariable = columna.clave === "ingresoTotal" ? "ingresoVariable" : "gastoVariable";
+    const fusion = {
+      ...((detalleMes && detalleMes[claveFijo]) || {}),
+      ...((detalleMes && detalleMes[claveVariable]) || {}),
+    };
+    grupos = [{ etiqueta: null, lineas: lineasPorConceptoHistoricoFlujo(fusion, unidad) }];
+  } else if (["ingresoFijo", "ingresoVariable", "gastoFijo", "gastoVariable"].includes(columna.clave)) {
+    grupos = [{ etiqueta: null, lineas: lineasPorConceptoHistoricoFlujo((detalleMes && detalleMes[columna.clave]) || {}, unidad) }];
+  } else {
+    grupos = [{
+      etiqueta: null,
+      lineas: [
+        { texto: "Ingresos totales", monto: `${metricas.ingresoTotal.toFixed(2)}${unidad}` },
+        { texto: "Gastos totales", monto: `${metricas.gastoTotal.toFixed(2)}${unidad}` },
+      ],
+    }];
+  }
+  return registrarDetalle(detallesFijoVariable, "fijovar", titulo, grupos);
 }
 
 // Celda de importe (columnas de Ingresos/Gastos): mismo criterio de color
 // que el resto de la app (celdaImporte, importada de distribucion.js) —
-// verde si es mayor a cero, rojo si es menor, guión gris en cero. Sin botón
-// "i" ni semáforo (no se pidieron acá).
-function celdaMontoHistoricoFlujo(v, incompleto) {
-  return celdaImporte(v, false, incompleto, null);
+// verde si es mayor a cero, rojo si es menor, guión gris en cero. Con botón
+// "i" (a pedido de Nadia, mismo que en la Histórica de Distribución) que
+// abre el desglose por concepto de esa celda.
+function celdaMontoHistoricoFlujo(v, incompleto, detalleRef) {
+  return celdaImporte(v, false, incompleto, detalleRef);
 }
 
-// Celda de porcentaje (Proporción de gastos / Ahorro): "–" si ese mes no
-// tuvo ingresos (no se puede calcular "% de qué"). "colorear"=true pinta
-// verde/rojo según el signo (para Ahorro: ahorrar es positivo, gastar de
-// más es negativo); "Proporción de gastos" no se pinta a propósito (gastar
-// más o menos no es "bueno" o "malo" en sí mismo). Mismo armado de
-// valor-espejo/valor-numero/valor-adornos que celdaImporte, para que las
-// columnas se alineen igual que las de importe.
-function celdaPorcentajeHistoricoFlujo(v, colorear, incompleto) {
+// Celda de porcentaje (Proporción de gastos / % Ahorro): "–" si ese mes no
+// tuvo ingresos (no se puede calcular "% de qué"). "modoColor" decide cómo
+// se pinta: "signo" (% Ahorro: ahorrar es positivo=verde, gastar de más es
+// negativo=rojo) o "gastoVsIngreso" (Proporción de gastos: gastar MENOS del
+// 100% de lo que entró es lo bueno=verde, 100% o más es rojo — a pedido de
+// Nadia, no se pinta según el signo del número sino contra ese umbral, ya
+// que un porcentaje siempre es positivo). Mismo armado de valor-espejo/
+// valor-numero/valor-adornos que celdaImporte (con su mismo botón "i", si
+// se pasa detalleRef), para que las columnas se alineen igual que las de
+// importe.
+function celdaPorcentajeHistoricoFlujo(v, modoColor, incompleto, detalleRef) {
   const marca = incompleto
     ? `<span class="valor-incompleto" title="Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración &gt; Tipo de cambio">⚠</span>`
     : "";
+  const boton = detalleRef
+    ? `<button type="button" class="btn-detalle" data-detalle="${detalleRef}" title="Ver el detalle de este total">i</button>`
+    : "";
   const espejo = `<span class="valor-espejo">${marca}</span>`;
-  if (v == null) return `<td class="valor-cero"><span class="valor-wrap">${espejo}<span class="valor-numero">–</span><span class="valor-adornos"></span></span></td>`;
-  const clase = colorear ? (v > 0 ? "valor-positivo" : v < 0 ? "valor-negativo" : "valor-cero") : "";
-  return `<td class="${clase}"><span class="valor-wrap">${espejo}<span class="valor-numero">${v.toFixed(1)}%</span><span class="valor-adornos"></span></span></td>`;
+  const adornos = `<span class="valor-adornos">${boton}</span>`;
+  if (v == null) return `<td class="valor-cero"><span class="valor-wrap">${espejo}<span class="valor-numero">–</span>${adornos}</span></td>`;
+  let clase = "";
+  if (modoColor === "signo") clase = v > 0 ? "valor-positivo" : v < 0 ? "valor-negativo" : "valor-cero";
+  else if (modoColor === "gastoVsIngreso") clase = v < 100 ? "valor-positivo" : "valor-negativo";
+  return `<td class="${clase}"><span class="valor-wrap">${espejo}<span class="valor-numero">${v.toFixed(1)}%</span>${adornos}</span></td>`;
 }
 
-function celdaHistoricoFlujo(columna, metricas, incompleto) {
-  if (columna.clave === "proporcionGastos") return celdaPorcentajeHistoricoFlujo(metricas.proporcionGastos, false, incompleto);
-  if (columna.clave === "ahorroPct") return celdaPorcentajeHistoricoFlujo(metricas.ahorroPct, true, incompleto);
+function celdaHistoricoFlujo(columna, mes, metricas, incompleto, detalleMes, unidad) {
+  const detalleRef = detalleCeldaHistoricoFlujo(columna, mes, metricas, detalleMes, unidad);
+  if (columna.clave === "proporcionGastos") return celdaPorcentajeHistoricoFlujo(metricas.proporcionGastos, "gastoVsIngreso", incompleto, detalleRef);
+  if (columna.clave === "ahorroPct") return celdaPorcentajeHistoricoFlujo(metricas.ahorroPct, "signo", incompleto, detalleRef);
   // Gastos en negativo acá (mismo signo que las tarjetas de Gastos de
   // Mensual); metricas.gastoFijo/gastoVariable/gastoTotal vienen en
   // positivo (ver metricasDelMes).
-  if (columna.clave === "gastoTotal") return celdaMontoHistoricoFlujo(-metricas.gastoTotal, incompleto);
-  if (columna.clave === "gastoFijo") return celdaMontoHistoricoFlujo(-metricas.gastoFijo, incompleto);
-  if (columna.clave === "gastoVariable") return celdaMontoHistoricoFlujo(-metricas.gastoVariable, incompleto);
-  return celdaMontoHistoricoFlujo(metricas[columna.clave], incompleto);
+  if (columna.clave === "gastoTotal") return celdaMontoHistoricoFlujo(-metricas.gastoTotal, incompleto, detalleRef);
+  if (columna.clave === "gastoFijo") return celdaMontoHistoricoFlujo(-metricas.gastoFijo, incompleto, detalleRef);
+  if (columna.clave === "gastoVariable") return celdaMontoHistoricoFlujo(-metricas.gastoVariable, incompleto, detalleRef);
+  return celdaMontoHistoricoFlujo(metricas[columna.clave], incompleto, detalleRef);
 }
 
-function tablaHistoricoFlujo(porMes, mesesUsados, orden, incompletosPorMes) {
+function tablaHistoricoFlujo(porMes, detallePorMes, mesesUsados, orden, incompletosPorMes, unidad) {
   let listaMeses = Array.from(mesesUsados).sort(); // "YYYY-MM" ordena bien como texto
   if (orden === "desc") listaMeses.reverse();
 
-  let tabla = `<table class="pivot distrib-pivot"><tr><th>Mes</th>` +
-    COLUMNAS_HISTORICO_FLUJO.map(c => `<th>${c.titulo}</th>`).join("") + `</tr>`;
+  // "Mes" ocupa las dos filas del encabezado (rowspan=2), así no queda una
+  // celda vacía rara al lado de los títulos de grupo.
+  let tabla = `<table class="pivot distrib-pivot pivot-agrupado">` +
+    `<tr><th rowspan="2">Mes</th>` +
+    GRUPOS_HISTORICO_FLUJO.map(g => `<th colspan="${g.columnas.length}" class="pivot-grupo-titulo">${g.titulo}</th>`).join("") +
+    `</tr><tr>` +
+    COLUMNAS_HISTORICO_FLUJO.map(c => `<th>${c.tituloCorto}</th>`).join("") +
+    `</tr>`;
   listaMeses.forEach(mes => {
     const metricas = metricasDelMes(porMes[mes] || filaMetricasVacia());
     const incompleto = incompletosPorMes ? incompletosPorMes.has(mes) : false;
+    const detalleMes = (detallePorMes && detallePorMes[mes]) || {};
     tabla += `<tr><td>${formatoMesLegible(mes)}</td>` +
-      COLUMNAS_HISTORICO_FLUJO.map(c => celdaHistoricoFlujo(c, metricas, incompleto)).join("") +
+      COLUMNAS_HISTORICO_FLUJO.map(c => celdaHistoricoFlujo(c, mes, metricas, incompleto, detalleMes, unidad)).join("") +
       `</tr>`;
   });
   tabla += `</table>`;
@@ -586,7 +722,7 @@ function tablaHistoricoFlujo(porMes, mesesUsados, orden, incompletosPorMes) {
 }
 
 function renderSeccionHistoricaFlujoMoneda(moneda, conceptoIdsIncluidos, orden) {
-  const { porMes, mesesUsados } = historicoFlujoPorMoneda(moneda.id, conceptoIdsIncluidos);
+  const { porMes, detallePorMes, mesesUsados } = historicoFlujoPorMoneda(moneda.id, conceptoIdsIncluidos);
   if (mesesUsados.size === 0) {
     return `
       <div class="card">
@@ -596,7 +732,7 @@ function renderSeccionHistoricaFlujoMoneda(moneda, conceptoIdsIncluidos, orden) 
         </details>
       </div>`;
   }
-  const tabla = tablaHistoricoFlujo(porMes, mesesUsados, orden, null);
+  const tabla = tablaHistoricoFlujo(porMes, detallePorMes, mesesUsados, orden, null, " " + moneda.nombre);
   return `
     <div class="card card-ancho">
       <details class="collapsible" open>
@@ -607,7 +743,7 @@ function renderSeccionHistoricaFlujoMoneda(moneda, conceptoIdsIncluidos, orden) 
 }
 
 function renderSeccionHistoricaFlujoEuros(conceptoIdsIncluidos, orden) {
-  const { porMes, mesesUsados, incompletos } = historicoFlujoEnEuros(conceptoIdsIncluidos);
+  const { porMes, detallePorMes, mesesUsados, incompletos } = historicoFlujoEnEuros(conceptoIdsIncluidos);
   if (mesesUsados.size === 0) {
     return `
       <div class="card">
@@ -617,7 +753,7 @@ function renderSeccionHistoricaFlujoEuros(conceptoIdsIncluidos, orden) {
         </details>
       </div>`;
   }
-  const tabla = tablaHistoricoFlujo(porMes, mesesUsados, orden, incompletos);
+  const tabla = tablaHistoricoFlujo(porMes, detallePorMes, mesesUsados, orden, incompletos, " €");
   return `
     <div class="card card-ancho">
       <details class="collapsible" open>
