@@ -247,13 +247,32 @@ table.distrib-pivot th:first-child, table.distrib-pivot td:first-child {
 /* Histórica de Flujo de caja: encabezado agrupado en dos filas (a pedido de
    Nadia, para achicar el ancho de la tabla y el scroll horizontal) — la de
    arriba agrupa "Ingresos"/"Gastos"/"Ahorro" con colspan=3, la de abajo
-   tiene el nombre corto de cada columna adentro de su grupo. El título de
-   grupo va más chico y gris (no compite con los nombres de columna de
-   abajo, que son los que hay que leer fila a fila) y con un borde propio
-   para separarlo de la fila de nombres cortos. */
+   tiene el nombre corto de cada columna adentro de su grupo. Con el ancho
+   de columna calculado según el contenido (más angosto en "Totales" que en
+   "Fijos"/"Variables", según el mes), un título de grupo centrado quedaba
+   corrido hacia la derecha y por arriba de "Totales" no se veía nada — daba
+   la sensación de que esa columna había quedado afuera del grupo. Por eso
+   el título de grupo lleva ADEMÁS un fondo gris claro y un borde a la
+   izquierda: así la caja del grupo se ve entera (las tres columnas
+   sombreadas de punta a punta), no hace falta que el TEXTO caiga
+   justo arriba de cada columna para que se entienda cuáles son. El borde de
+   la izquierda también separa un grupo del anterior (y de "Mes"). Más chico
+   y gris que la fila de nombres cortos de abajo, que es la que hay que leer
+   fila a fila.
+   El padding de esta tabla en particular (no el de distrib-pivot en
+   general, que usan otras pantallas) se achica de 12px a 6px por lado, y
+   los huecos de los adornos/i de cada celda de 34px a 22px: entre las dos
+   cosas la tabla ocupa bastante menos ancho y hay menos scroll horizontal. */
 table.pivot-agrupado th.pivot-grupo-titulo {
   font-size: 11px; text-transform: uppercase; letter-spacing: .02em;
-  color: var(--muted); border-bottom: 1px solid var(--border);
+  color: var(--muted); background: var(--bg);
+  border-bottom: 1px solid var(--border); border-left: 1px solid var(--border);
+}
+table.pivot-agrupado.distrib-pivot th, table.pivot-agrupado.distrib-pivot td {
+  padding-left: 6px; padding-right: 6px;
+}
+table.pivot-agrupado .valor-adornos, table.pivot-agrupado .valor-espejo {
+  width: 22px; gap: 2px;
 }
 /* El número va centrado en la celda, con los adornos (el botón "i" y el
    semáforo) colgando a la derecha y un hueco vacío del mismo ancho —el
