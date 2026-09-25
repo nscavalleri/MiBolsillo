@@ -749,13 +749,19 @@ details.collapsible[open] summary { margin-bottom: 10px; }
 .card-fijovar { flex: 1; min-width: 0; }
 .fijovar-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .fijovar-header h3 { margin: 0; font-size: 14px; }
-.fijovar-monto {
-  margin-top: 8px; font-size: 16px; font-weight: 700;
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
-}
+.fijovar-monto { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+/* Un .fijovar-item por moneda mostrada (uno solo si está "Convertir todo a
+   Euros"): el importe con su semáforo arriba, el promedio histórico abajo.
+   Mismo semáforo (clases .semaforo-*) y mismo criterio de color que ya
+   usaba la columna "Promedio" del reporte de arriba (semaforoContraPromedio
+   en distribucion.js): compara este mes contra el promedio de los meses
+   anteriores usando el mismo umbral (distribucion_umbral_promedio_pct). */
+.fijovar-item { display: flex; flex-direction: column; gap: 2px; }
+.fijovar-linea { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 700; }
 .fijovar-monto .positivo { color: var(--income); }
 .fijovar-monto .negativo { color: var(--expense); }
 .fijovar-monto .cero { color: var(--muted); font-weight: 400; }
+.fijovar-promedio { font-size: 12px; color: var(--muted); font-weight: 400; }
 @media (max-width: 480px) {
   .card-fijovar-fila { flex-direction: column; }
 }

@@ -577,6 +577,51 @@ function totalesFijoVariablePorMoneda(mes, conceptoIdsIncluidos, monedaIdsInclui
   return { porConceptoMoneda, totalesPorMoneda };
 }
 
+// Promedio histórico de gasto (egreso) por tipo ("fijo"/"variable"), para el
+// semáforo y el promedio de estas dos tarjetas. Mismo criterio que
+// historicoPorConcepto de más arriba (no cuenta el mes que se está mirando;
+// un mes al que le faltó algún tipo de cambio no entra en el promedio en
+// euros), pero acá se suma TODO lo que sea egreso de ese tipo junto, sin
+// separar por concepto — es el promedio de "cuánto gasté fijo/variable por
+// mes", no el de un concepto en particular.
+function historicoFijoVariable(mesExcluido, conceptoIdsIncluidos) {
+  const porMoneda = { fijo: {}, variable: {} };  // tipo -> moneda_id -> { mes: total }
+  const enEuros = { fijo: {}, variable: {} };    // tipo -> { mes: total }
+  const faltaTasa = { fijo: {}, variable: {} };  // tipo -> { mes: true }
+  state.movimientos.forEach(m => {
+    if (m.tipo !== "egreso") return;
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    const mes = String(m.fecha).slice(0, 7);
+    if (mes === mesExcluido) return;
+    const tipo = tipoGastoDe(m.concepto_id);
+    const val = -Number(m.monto);
+
+    if (!porMoneda[tipo][m.moneda_id]) porMoneda[tipo][m.moneda_id] = {};
+    porMoneda[tipo][m.moneda_id][mes] = (porMoneda[tipo][m.moneda_id][mes] || 0) + val;
+
+    const { valor, ok } = convertirAEuros(mes, m.moneda_id, val);
+    enEuros[tipo][mes] = (enEuros[tipo][mes] || 0) + valor;
+    if (!ok) faltaTasa[tipo][mes] = true;
+  });
+  return { porMoneda, enEuros, faltaTasa };
+}
+
+// Línea "Prom. X" debajo de cada importe de las tarjetas de Gastos
+// fijos/variables. Igual que celdaPromedio() del reporte de arriba: "–"
+// cuando no hay meses anteriores con qué comparar, y ⚠ cuando a algún mes
+// anterior le faltó el tipo de cambio de alguna moneda (así que ese mes no
+// entró en el promedio y el número mostrado puede estar incompleto).
+function textoPromedio(promedio, incompleto, unidad) {
+  if (promedio == null) return `<span class="fijovar-promedio">Promedio: –</span>`;
+  const marca = incompleto ? "⚠ " : "";
+  const sufijo = unidad ? " " + unidad : "";
+  return `<span class="fijovar-promedio">${marca}Promedio: ${promedio.toFixed(2)}${sufijo}</span>`;
+}
+
+function spanSemaforo(sem) {
+  return `<span class="semaforo ${sem.clase}"${sem.titulo ? ` title="${escaparAtributo(sem.titulo)}"` : ""}></span>`;
+}
+
 function nombreConceptoOrdenable(id) {
   const c = state.conceptos.find(x => String(x.id) === String(id));
   return c ? c.nombre : "";
@@ -620,7 +665,7 @@ function detalleFijoVariable(tipo, titulo, datosEuros, datosPorMoneda, monedaIds
   return registrarDetalle(detallesFijoVariable, "fijovar", titulo, grupos);
 }
 
-function tarjetaFijoVariable(tipo, titulo, mes, datosEuros, datosPorMoneda, monedaIdsOrdenadas) {
+function tarjetaFijoVariable(tipo, titulo, mes, datosEuros, datosPorMoneda, monedaIdsOrdenadas, historico) {
   const tituloDetalle = `${titulo} — ${formatoMesLegible(mes)}`;
   let montoHtml;
   if (datosEuros) {
@@ -628,18 +673,39 @@ function tarjetaFijoVariable(tipo, titulo, mes, datosEuros, datosPorMoneda, mone
     const marca = datosEuros.totalIncompleto[tipo]
       ? `<span class="valor-incompleto" title="Falta cargar el tipo de cambio de alguna moneda para este mes, en Configuración &gt; Tipo de cambio">⚠</span>`
       : "";
-    montoHtml = v
-      ? `<span class="${v > 0 ? "positivo" : "negativo"}">${marca}${v.toFixed(2)} €</span>`
-      : `<span class="cero">–</span>`;
+    const clase = v > 0 ? "positivo" : v < 0 ? "negativo" : "cero";
+    // El promedio y el semáforo comparan contra los meses ANTERIORES (nunca
+    // contra este mismo mes) usando el mismo umbral y el mismo criterio que
+    // la columna "Promedio" del reporte de arriba (semaforoContraPromedio):
+    // verde/rojo según si gastaste más o menos del umbral de diferencia, y
+    // ámbar cuando estás dentro de ese margen.
+    const { promedio, incompleto } = promediar(historico.enEuros[tipo], historico.faltaTasa[tipo]);
+    const sem = semaforoContraPromedio(v, promedio, "€");
+    montoHtml = `
+      <div class="fijovar-item">
+        <span class="fijovar-linea">${marca}<span class="${clase}">${v ? v.toFixed(2) : "–"} €</span>${spanSemaforo(sem)}</span>
+        ${textoPromedio(promedio, incompleto, "€")}
+      </div>`;
+  } else if (monedaIdsOrdenadas.length === 0) {
+    montoHtml = `<div class="fijovar-item"><span class="fijovar-linea"><span class="cero">–</span></span></div>`;
   } else {
     const totalesTipo = datosPorMoneda.totalesPorMoneda[tipo];
-    const idsConMonto = Object.keys(totalesTipo).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
-    montoHtml = idsConMonto.length === 0
-      ? `<span class="cero">–</span>`
-      : idsConMonto.map(monedaId => {
-          const v = totalesTipo[monedaId];
-          return `<span class="${v > 0 ? "positivo" : "negativo"}">${v.toFixed(2)} ${nombreMoneda(monedaId)}</span>`;
-        }).join("");
+    // Se muestran TODAS las monedas que tuvieron algo ese mes en cualquiera
+    // de las dos tarjetas (no solo en esta), igual que hace la tabla de
+    // arriba con sus columnas: así, si una moneda tuvo movimientos variables
+    // pero ninguno fijo ese mes, la tarjeta de Fijos también la lista en
+    // 0.00 en vez de omitirla.
+    montoHtml = monedaIdsOrdenadas.map(monedaId => {
+      const v = totalesTipo[monedaId] || 0;
+      const clase = v > 0 ? "positivo" : v < 0 ? "negativo" : "cero";
+      const { promedio } = promediar(historico.porMoneda[tipo][monedaId]);
+      const sem = semaforoContraPromedio(v, promedio, nombreMoneda(monedaId));
+      return `
+        <div class="fijovar-item">
+          <span class="fijovar-linea"><span class="${clase}">${v ? v.toFixed(2) : "–"} ${nombreMoneda(monedaId)}</span>${spanSemaforo(sem)}</span>
+          ${textoPromedio(promedio, false, nombreMoneda(monedaId))}
+        </div>`;
+    }).join("");
   }
   const detalleRef = detalleFijoVariable(tipo, tituloDetalle, datosEuros, datosPorMoneda, monedaIdsOrdenadas);
   return `
@@ -655,11 +721,12 @@ function tarjetaFijoVariable(tipo, titulo, mes, datosEuros, datosPorMoneda, mone
 function renderFijoVariable(mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
   detallesFijoVariable = [];
   const cont = document.getElementById("distribFijoVariable");
+  const historico = historicoFijoVariable(mes, conceptoIdsIncluidos);
   if (state.distribucion.convertirEuros) {
     const datosEuros = totalesFijoVariableEnEuros(mes, conceptoIdsIncluidos);
     cont.innerHTML =
-      tarjetaFijoVariable("fijo", "Gastos fijos", mes, datosEuros, null, []) +
-      tarjetaFijoVariable("variable", "Gastos variables", mes, datosEuros, null, []);
+      tarjetaFijoVariable("fijo", "Gastos fijos", mes, datosEuros, null, [], historico) +
+      tarjetaFijoVariable("variable", "Gastos variables", mes, datosEuros, null, [], historico);
     return;
   }
   const datosPorMoneda = totalesFijoVariablePorMoneda(mes, conceptoIdsIncluidos, monedaIdsIncluidas);
@@ -667,8 +734,8 @@ function renderFijoVariable(mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
     new Set([...Object.keys(datosPorMoneda.totalesPorMoneda.fijo), ...Object.keys(datosPorMoneda.totalesPorMoneda.variable)])
   ).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
   cont.innerHTML =
-    tarjetaFijoVariable("fijo", "Gastos fijos", mes, null, datosPorMoneda, monedaIdsOrdenadas) +
-    tarjetaFijoVariable("variable", "Gastos variables", mes, null, datosPorMoneda, monedaIdsOrdenadas);
+    tarjetaFijoVariable("fijo", "Gastos fijos", mes, null, datosPorMoneda, monedaIdsOrdenadas, historico) +
+    tarjetaFijoVariable("variable", "Gastos variables", mes, null, datosPorMoneda, monedaIdsOrdenadas, historico);
 }
 
 function renderReporte() {
