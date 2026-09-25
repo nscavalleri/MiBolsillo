@@ -211,6 +211,10 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 
 <div id="sub-movimientos">
 <button class="btn-agregar" id="btnAgregar">+ Agregar</button>
+<!-- Cambio de moneda: abre js/cambio-moneda.js, un modal aparte del de
+     Agregar de arriba (ese carga un solo movimiento por vez) que carga DOS
+     de un saque, un egreso "Desde" y un ingreso "Hacia". -->
+<button class="secondary" id="btnCambioMoneda" type="button">Cambio de moneda</button>
 
 <div class="card">
 <h3 style="margin-top:0;">Filtros</h3>
@@ -408,6 +412,46 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <select id="origen" required></select>
 
 <button type="submit" class="primary" id="btnGuardar">Guardar</button>
+</form>
+</div>
+</div>
+
+<!-- MODAL: cambio de moneda (Gastos > Movimientos). Un solo formulario
+     que, al guardar, crea DOS movimientos con la misma fecha y la misma
+     descripción: un egreso con los datos de "Desde" y un ingreso con los
+     de "Hacia" (js/cambio-moneda.js). -->
+<div class="modal-overlay" id="cambioMonedaOverlay">
+<div class="modal-box">
+<button class="modal-close" id="cambioMonedaClose">✕</button>
+<h3>Cambio de moneda</h3>
+<form id="formCambioMoneda">
+<label for="cambioFecha">Fecha</label>
+<input type="date" id="cambioFecha" required />
+
+<label for="cambioDescripcion">Descripción</label>
+<input type="text" id="cambioDescripcion" placeholder="Ej: cambio dólares a euros" />
+
+<div class="modal-subtitulo">Desde (de dónde sale la plata)</div>
+<label for="cambioDesdeMonto">Cantidad</label>
+<input type="number" id="cambioDesdeMonto" step="0.01" min="0" placeholder="0.00" required />
+
+<label for="cambioDesdeMoneda">Moneda</label>
+<select id="cambioDesdeMoneda" required></select>
+
+<label for="cambioDesdeOrigen">Origen (cuenta)</label>
+<select id="cambioDesdeOrigen" required></select>
+
+<div class="modal-subtitulo">Hacia (a dónde entra la plata)</div>
+<label for="cambioHaciaMonto">Cantidad</label>
+<input type="number" id="cambioHaciaMonto" step="0.01" min="0" placeholder="0.00" required />
+
+<label for="cambioHaciaMoneda">Moneda</label>
+<select id="cambioHaciaMoneda" required></select>
+
+<label for="cambioHaciaOrigen">Origen (cuenta)</label>
+<select id="cambioHaciaOrigen" required></select>
+
+<button type="submit" class="primary" id="btnGuardarCambioMoneda">Guardar</button>
 </form>
 </div>
 </div>

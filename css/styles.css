@@ -518,6 +518,13 @@ table.distrib-pivot td.col-promedio { color: var(--muted); }
 }
 .modal-box h3 { margin-top: 0; }
 .modal-close { float: right; background: none; border: none; font-size: 20px; color: var(--muted); cursor: pointer; }
+/* Subtítulo de sección adentro de un modal (por ahora, "Desde"/"Hacia" del
+   modal de Cambio de moneda, ver js/cambio-moneda.js): una línea arriba
+   para separar visualmente de los campos del bloque anterior. */
+.modal-subtitulo {
+  margin: 18px 0 4px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-weight: 700; font-size: 14px;
+}
 
 /* Cuerpo del modal de "¿estás de acuerdo?" (confirmar-modal.js). El renglón
    del resumen es lo que se mira primero para decidir, así que va separado
