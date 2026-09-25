@@ -11,6 +11,27 @@ import { avisarError } from './aviso-modal.js';
 // no "Editar conceptos").
 const TITULO_EDITAR = { conceptos: "Editar concepto", monedas: "Editar moneda", origenes: "Editar origen" };
 
+// Conceptos "de sistema": la propia app los usa para cargar movimientos
+// automáticos — "Cambio de moneda" desde js/cambio-moneda.js y
+// "Conciliación" desde el botón "Δ" de Gastos > Conciliación
+// (js/conciliacion.js) — buscándolos por NOMBRE, igual que esEuros() en
+// distribucion.js (los ids cambian de instalación a instalación). Si Nadia
+// les cambiara acá el tipo fijo/variable, los desactivara o los eliminara,
+// esas pantallas dejarían de encontrarlos y la carga automática se
+// rompería; por eso su fila aparece grisada, sin tipo ni interruptor
+// tocables y sin botones de editar ni eliminar — nada más un ícono con la
+// explicación al pasar el mouse (se acepta "conciliación" con o sin tilde,
+// igual que en conciliacion.js).
+const CONCEPTOS_SISTEMA = {
+  "cambio de moneda": "Concepto del sistema para cargar automáticamente los movimientos de cambio.",
+  "conciliación": "Concepto del sistema para cargar automáticamente los movimientos de conciliación.",
+  "conciliacion": "Concepto del sistema para cargar automáticamente los movimientos de conciliación.",
+};
+
+function descripcionConceptoSistema(nombre) {
+  return CONCEPTOS_SISTEMA[String(nombre || "").trim().toLowerCase()] || null;
+}
+
 export function renderConfigLista(tabla, items, contenedorId) {
   const el = document.getElementById(contenedorId);
   // Por ahora "Tipo" (Fijo/Variable) es un campo propio de Conceptos, no de
@@ -31,12 +52,38 @@ export function renderConfigLista(tabla, items, contenedorId) {
     : "";
   el.innerHTML = encabezado + items.map(it => {
     const esFijo = it.tipo_gasto === "fijo";
+    const descripcionSistema = esConceptos ? descripcionConceptoSistema(it.nombre) : null;
     // Chip de texto (no otro switch mudo al lado del de Activo): dice "Fijo"
     // o "Variable" directamente, así no hace falta memorizar qué lado es
     // cuál — el encabezado de arriba es un refuerzo, no la única pista.
+    // Para un concepto de sistema es un <span>, no un <button>: no tiene
+    // data-toggle-tipo, así que ni siquiera queda enganchado ningún listener.
     const chipTipo = esConceptos
-      ? `<button type="button" class="tipo-chip ${esFijo ? "fijo" : "variable"}" data-toggle-tipo="${tabla}:${it.id}" title="Tocá para cambiar entre Fijo y Variable">${esFijo ? "Fijo" : "Variable"}</button>`
+      ? (descripcionSistema
+          ? `<span class="tipo-chip tipo-chip-disabled ${esFijo ? "fijo" : "variable"}">${esFijo ? "Fijo" : "Variable"}</span>`
+          : `<button type="button" class="tipo-chip ${esFijo ? "fijo" : "variable"}" data-toggle-tipo="${tabla}:${it.id}" title="Tocá para cambiar entre Fijo y Variable">${esFijo ? "Fijo" : "Variable"}</button>`)
       : "";
+
+    if (descripcionSistema) {
+      // Fila grisada de un concepto de sistema: se ve el nombre y el estado
+      // actual (tipo/activo) pero nada es tocable — ni tipo, ni el
+      // interruptor (queda con "disabled"), ni editar/eliminar (esos
+      // botones directamente no se dibujan). El "title" de la fila entera
+      // muestra la explicación al pasar el mouse por cualquier parte,
+      // reforzada con el ícono ℹ del lugar donde iban editar/eliminar.
+      return `
+      <div class="config-item config-item-sistema" title="${descripcionSistema}">
+        <span class="nombre ${it.activo ? "" : "inactivo"}">${it.nombre}</span>
+        ${chipTipo}
+        <label class="switch switch-disabled">
+          <input type="checkbox" ${it.activo ? "checked" : ""} disabled />
+          <span class="slider"></span>
+        </label>
+        <span class="icon-btn icon-btn-info" title="${descripcionSistema}">ℹ</span>
+      </div>
+    `;
+    }
+
     return `
     <div class="config-item">
       <span class="nombre ${it.activo ? "" : "inactivo"}">${it.nombre}</span>

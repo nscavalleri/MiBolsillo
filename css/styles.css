@@ -589,6 +589,15 @@ input:checked + .slider:before { transform: translateX(16px); }
   color: var(--muted);
 }
 .tipo-chip.fijo { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+/* Fila de un concepto "de sistema" (Cambio de moneda, Conciliación): ver el
+   comentario de CONCEPTOS_SISTEMA en js/configuracion.js. Nada de la fila es
+   tocable — ni el tipo, ni el interruptor de activo/inactivo, ni
+   editar/eliminar (esos dos botones ni se dibujan) — así que toda la fila
+   se ve apagada y el cursor no cambia a "mano" en ningún control. */
+.config-item-sistema { opacity: .55; }
+.tipo-chip-disabled { cursor: default; }
+.switch-disabled, .switch-disabled .slider { cursor: default; }
+.icon-btn-info { cursor: help; }
 /* Monto de una reserva (Configuración > Reservas), entre el nombre y el
    interruptor de activo/inactivo. */
 .reserva-monto { font-size: 14px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
