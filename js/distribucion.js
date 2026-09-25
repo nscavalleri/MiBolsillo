@@ -15,6 +15,17 @@
 // cada concepto seleccionado (sin semáforo: acá solo importa el número).
 // Ambas parten de los mismos tildes de conceptos y monedas.
 //
+// "Flujo de caja" es una tercera pestaña (a pedido de Nadia) con las
+// tarjetas de Gastos/Ingresos fijos y variables (ver más abajo). Tiene su
+// PROPIA lista de "Conceptos a incluir" (conceptos.incluir_en_flujo_caja,
+// otra columna aparte, igual mecánica que incluir_en_distribucion) para
+// poder armar un conjunto de conceptos relevante para el flujo de caja
+// distinto del que se usa en Mensual/Histórica, sin pisarse entre las dos.
+// Sí comparte con esas dos pestañas la selección de Monedas / "Convertir
+// todo a Euros" de arriba (eso no se pidió separar) y el mes elegido en
+// Mensual (un solo "mes actual" para toda la sección, editable desde
+// cualquiera de las dos pestañas que lo usan).
+//
 // Todo se calcula al vuelo a partir de state.movimientos en cada render, en
 // vez de guardar una "foto" mensual como si fuera una conciliación. Se
 // eligió así porque si en algún momento se corrige un movimiento de un mes
@@ -57,32 +68,47 @@ function mesActualTexto() {
 // del navegador/sistema operativo (por eso aparecía en inglés, sin forma
 // confiable de forzarlo). Para tenerlo siempre en español se arman dos
 // <select> propios (mes y año) en vez de depender del control nativo.
-function poblarSelectMes() {
-  const sel = document.getElementById("distribMesNombre");
+//
+// Mensual y Flujo de caja tienen cada una su PROPIO par de <select> en el
+// HTML (distribMesNombre/distribAnio y distribFlujoMesNombre/distribFlujoAnio)
+// para que el selector de mes se vea en las dos pestañas sin tener que saltar
+// a Mensual solo para cambiar de mes — pero los dos pares reflejan el mismo
+// state.distribucion.mes (un solo "mes actual" para toda la sección), así que
+// estas funciones reciben el prefijo del par que corresponda y
+// escribirMesSeleccionado() siempre escribe los dos pares a la vez para que
+// no se desincronicen.
+function poblarSelectMes(prefijo) {
+  const sel = document.getElementById(prefijo + "MesNombre");
+  if (!sel) return;
   sel.innerHTML = MESES.map((nombre, i) => {
     const valor = String(i + 1).padStart(2, "0");
     return `<option value="${valor}">${nombre}</option>`;
   }).join("");
 }
 
-function poblarSelectAnio() {
-  const sel = document.getElementById("distribAnio");
+function poblarSelectAnio(prefijo) {
+  const sel = document.getElementById(prefijo + "Anio");
+  if (!sel) return;
   const anioActual = new Date().getFullYear();
   const anios = [];
   for (let a = anioActual - 5; a <= anioActual + 1; a++) anios.push(a);
   sel.innerHTML = anios.map(a => `<option value="${a}">${a}</option>`).join("");
 }
 
-function leerMesSeleccionado() {
-  const mes = document.getElementById("distribMesNombre").value;
-  const anio = document.getElementById("distribAnio").value;
+function leerMesSeleccionado(prefijo) {
+  const mes = document.getElementById(prefijo + "MesNombre").value;
+  const anio = document.getElementById(prefijo + "Anio").value;
   return anio + "-" + mes;
 }
 
 function escribirMesSeleccionado(mesTexto) {
   const [anio, mes] = mesTexto.split("-");
-  document.getElementById("distribMesNombre").value = mes;
-  document.getElementById("distribAnio").value = anio;
+  ["distrib", "distribFlujo"].forEach(prefijo => {
+    const selMes = document.getElementById(prefijo + "MesNombre");
+    const selAnio = document.getElementById(prefijo + "Anio");
+    if (selMes) selMes.value = mes;
+    if (selAnio) selAnio.value = anio;
+  });
 }
 
 function escaparAtributo(texto) {
@@ -426,6 +452,13 @@ function renderCheckboxesConceptos() {
   renderCheckboxesTabla("conceptos", state.conceptos, "distribConceptosCheckboxes", "Todavía no hay conceptos cargados.", "incluir_en_distribucion", true);
 }
 
+// Lista de conceptos de Flujo de caja: misma función reutilizable, pero
+// guarda en su propia columna (conceptos.incluir_en_flujo_caja) para que
+// tildar/destildar acá no toque para nada la lista de Mensual/Histórica.
+function renderCheckboxesConceptosFlujo() {
+  renderCheckboxesTabla("conceptos", state.conceptos, "distribFlujoConceptosCheckboxes", "Todavía no hay conceptos cargados.", "incluir_en_flujo_caja", true);
+}
+
 function renderCheckboxesMonedas() {
   renderCheckboxesTabla("monedas", state.monedas, "distribMonedasCheckboxes", "Todavía no hay monedas cargadas.", "incluir_en_distribucion", false);
   // Mientras "Convertir todo a Euros" está tildado, estos tildes no tienen
@@ -519,19 +552,27 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
   cont.innerHTML = html;
 }
 
-// --- Tarjetas "Gastos fijos" / "Gastos variables" -------------------------
+// --- Flujo de caja: tarjetas "Gastos fijos/variables" e "Ingresos --------
+// --- fijos/variables" --------------------------------------------------
 //
-// Debajo del reporte del mes, dos tarjetas con el total de EGRESOS de ese
-// mes separados según conceptos.tipo_gasto ("fijo" o "variable", ver
-// Configuración > Conceptos). Solo cuentan egresos a propósito: la
-// clasificación fijo/variable es de GASTOS — si un concepto que en general
-// es de ingreso tuviera alguna vez un movimiento cargado como egreso, ese sí
-// entraría, pero un ingreso normal no se cuenta acá aunque su concepto
-// tenga un tipo_gasto asignado.
+// Pestaña propia de Distribución (a pedido de Nadia), con cuatro tarjetas:
+// el total de EGRESOS del mes separado en Gastos fijos/variables, y el
+// total de INGRESOS del mes separado en Ingresos fijos/variables — las dos
+// parejas según conceptos.tipo_gasto ("fijo" o "variable", ver
+// Configuración > Conceptos). Cada tarjeta solo cuenta movimientos de SU
+// tipo a propósito (Gastos = egresos, Ingresos = ingresos): la
+// clasificación fijo/variable es del CONCEPTO, no del movimiento, así que
+// un concepto que normalmente es de ingreso pero tuviera alguna vez un
+// movimiento cargado como egreso entraría en Gastos ese mes, y viceversa.
 //
-// Respetan los mismos "Conceptos a incluir" / "Monedas a incluir" (o
-// "Convertir todo a Euros") que el reporte de arriba, así que cambiar esos
-// filtros mueve las tarjetas igual que mueve la tabla.
+// Las cuatro tarjetas usan las mismas funciones de cálculo parametrizadas
+// por "tipoMovimiento" ("egreso" o "ingreso") en vez de tener una copia
+// para cada una — sería el mismo código repetido dos veces si no.
+//
+// Tienen su propia lista de "Conceptos a incluir" (conceptos.
+// incluir_en_flujo_caja), independiente de la que usan Mensual/Histórica,
+// pero comparten con esas dos pestañas la selección de "Monedas a incluir"
+// / "Convertir todo a Euros" de arriba (eso no se pidió separar).
 let detallesFijoVariable = [];
 
 function tipoGastoDe(conceptoId) {
@@ -542,17 +583,25 @@ function tipoGastoDe(conceptoId) {
   return c && c.tipo_gasto === "fijo" ? "fijo" : "variable";
 }
 
-function totalesFijoVariableEnEuros(mes, conceptoIdsIncluidos) {
+// signo: +1 para que un ingreso quede en positivo (igual que en el resto de
+// la app) y -1 para que un egreso quede en negativo — mismo criterio que
+// usa renderReporte() más arriba con sus movimientos.
+function signoDe(tipoMovimiento) {
+  return tipoMovimiento === "ingreso" ? 1 : -1;
+}
+
+function totalesFijoVariableEnEuros(tipoMovimiento, mes, conceptoIdsIncluidos) {
   const porConcepto = { fijo: {}, variable: {} };  // tipo -> concepto_id -> total en €
   const incompletos = { fijo: {}, variable: {} };  // tipo -> concepto_id -> true
   const totales = { fijo: 0, variable: 0 };
   const totalIncompleto = { fijo: false, variable: false };
+  const signo = signoDe(tipoMovimiento);
   state.movimientos.forEach(m => {
-    if (m.tipo !== "egreso") return;
+    if (m.tipo !== tipoMovimiento) return;
     if (String(m.fecha).slice(0, 7) !== mes) return;
     if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
     const tipo = tipoGastoDe(m.concepto_id);
-    const { valor, ok } = convertirAEuros(mes, m.moneda_id, -Number(m.monto));
+    const { valor, ok } = convertirAEuros(mes, m.moneda_id, signo * Number(m.monto));
     porConcepto[tipo][m.concepto_id] = (porConcepto[tipo][m.concepto_id] || 0) + valor;
     totales[tipo] += valor;
     if (!ok) { incompletos[tipo][m.concepto_id] = true; totalIncompleto[tipo] = true; }
@@ -560,16 +609,17 @@ function totalesFijoVariableEnEuros(mes, conceptoIdsIncluidos) {
   return { porConcepto, incompletos, totales, totalIncompleto };
 }
 
-function totalesFijoVariablePorMoneda(mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
+function totalesFijoVariablePorMoneda(tipoMovimiento, mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
   const porConceptoMoneda = { fijo: {}, variable: {} }; // tipo -> concepto_id -> moneda_id -> total
   const totalesPorMoneda = { fijo: {}, variable: {} };  // tipo -> moneda_id -> total
+  const signo = signoDe(tipoMovimiento);
   state.movimientos.forEach(m => {
-    if (m.tipo !== "egreso") return;
+    if (m.tipo !== tipoMovimiento) return;
     if (String(m.fecha).slice(0, 7) !== mes) return;
     if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
     if (!monedaIdsIncluidas.has(String(m.moneda_id))) return;
     const tipo = tipoGastoDe(m.concepto_id);
-    const val = -Number(m.monto);
+    const val = signo * Number(m.monto);
     if (!porConceptoMoneda[tipo][m.concepto_id]) porConceptoMoneda[tipo][m.concepto_id] = {};
     porConceptoMoneda[tipo][m.concepto_id][m.moneda_id] = (porConceptoMoneda[tipo][m.concepto_id][m.moneda_id] || 0) + val;
     totalesPorMoneda[tipo][m.moneda_id] = (totalesPorMoneda[tipo][m.moneda_id] || 0) + val;
@@ -577,24 +627,26 @@ function totalesFijoVariablePorMoneda(mes, conceptoIdsIncluidos, monedaIdsInclui
   return { porConceptoMoneda, totalesPorMoneda };
 }
 
-// Promedio histórico de gasto (egreso) por tipo ("fijo"/"variable"), para el
-// semáforo y el promedio de estas dos tarjetas. Mismo criterio que
-// historicoPorConcepto de más arriba (no cuenta el mes que se está mirando;
-// un mes al que le faltó algún tipo de cambio no entra en el promedio en
-// euros), pero acá se suma TODO lo que sea egreso de ese tipo junto, sin
-// separar por concepto — es el promedio de "cuánto gasté fijo/variable por
-// mes", no el de un concepto en particular.
-function historicoFijoVariable(mesExcluido, conceptoIdsIncluidos) {
+// Promedio histórico (de gasto o de ingreso, según tipoMovimiento) por tipo
+// ("fijo"/"variable"), para el semáforo y el promedio de las tarjetas de
+// Flujo de caja. Mismo criterio que historicoPorConcepto de más arriba (no
+// cuenta el mes que se está mirando; un mes al que le faltó algún tipo de
+// cambio no entra en el promedio en euros), pero acá se suma TODO lo que
+// sea de ese tipo junto, sin separar por concepto — es el promedio de
+// "cuánto gasté/ingresé fijo/variable por mes", no el de un concepto en
+// particular.
+function historicoFijoVariable(tipoMovimiento, mesExcluido, conceptoIdsIncluidos) {
   const porMoneda = { fijo: {}, variable: {} };  // tipo -> moneda_id -> { mes: total }
   const enEuros = { fijo: {}, variable: {} };    // tipo -> { mes: total }
   const faltaTasa = { fijo: {}, variable: {} };  // tipo -> { mes: true }
+  const signo = signoDe(tipoMovimiento);
   state.movimientos.forEach(m => {
-    if (m.tipo !== "egreso") return;
+    if (m.tipo !== tipoMovimiento) return;
     if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
     const mes = String(m.fecha).slice(0, 7);
     if (mes === mesExcluido) return;
     const tipo = tipoGastoDe(m.concepto_id);
-    const val = -Number(m.monto);
+    const val = signo * Number(m.monto);
 
     if (!porMoneda[tipo][m.moneda_id]) porMoneda[tipo][m.moneda_id] = {};
     porMoneda[tipo][m.moneda_id][mes] = (porMoneda[tipo][m.moneda_id][mes] || 0) + val;
@@ -718,24 +770,47 @@ function tarjetaFijoVariable(tipo, titulo, mes, datosEuros, datosPorMoneda, mone
     </div>`;
 }
 
-function renderFijoVariable(mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
-  detallesFijoVariable = [];
-  const cont = document.getElementById("distribFijoVariable");
-  const historico = historicoFijoVariable(mes, conceptoIdsIncluidos);
+// Arma un par de tarjetas (fijo/variable) para un contenedor y un
+// tipoMovimiento puntual ("egreso" -> Gastos, "ingreso" -> Ingresos). Se
+// llama una vez por cada par (ver renderFlujoCaja), pasándole el título que
+// corresponda a cada una.
+function renderGrupoFijoVariable(contenedorId, tipoMovimiento, tituloFijo, tituloVariable, mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
+  const cont = document.getElementById(contenedorId);
+  if (!cont) return;
+  const historico = historicoFijoVariable(tipoMovimiento, mes, conceptoIdsIncluidos);
   if (state.distribucion.convertirEuros) {
-    const datosEuros = totalesFijoVariableEnEuros(mes, conceptoIdsIncluidos);
+    const datosEuros = totalesFijoVariableEnEuros(tipoMovimiento, mes, conceptoIdsIncluidos);
     cont.innerHTML =
-      tarjetaFijoVariable("fijo", "Gastos fijos", mes, datosEuros, null, [], historico) +
-      tarjetaFijoVariable("variable", "Gastos variables", mes, datosEuros, null, [], historico);
+      tarjetaFijoVariable("fijo", tituloFijo, mes, datosEuros, null, [], historico) +
+      tarjetaFijoVariable("variable", tituloVariable, mes, datosEuros, null, [], historico);
     return;
   }
-  const datosPorMoneda = totalesFijoVariablePorMoneda(mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  const datosPorMoneda = totalesFijoVariablePorMoneda(tipoMovimiento, mes, conceptoIdsIncluidos, monedaIdsIncluidas);
   const monedaIdsOrdenadas = Array.from(
     new Set([...Object.keys(datosPorMoneda.totalesPorMoneda.fijo), ...Object.keys(datosPorMoneda.totalesPorMoneda.variable)])
   ).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
   cont.innerHTML =
-    tarjetaFijoVariable("fijo", "Gastos fijos", mes, null, datosPorMoneda, monedaIdsOrdenadas, historico) +
-    tarjetaFijoVariable("variable", "Gastos variables", mes, null, datosPorMoneda, monedaIdsOrdenadas, historico);
+    tarjetaFijoVariable("fijo", tituloFijo, mes, null, datosPorMoneda, monedaIdsOrdenadas, historico) +
+    tarjetaFijoVariable("variable", tituloVariable, mes, null, datosPorMoneda, monedaIdsOrdenadas, historico);
+}
+
+// Pestaña "Flujo de caja": las cuatro tarjetas (Gastos fijos/variables,
+// Ingresos fijos/variables). Usa su PROPIA lista de conceptos
+// (incluir_en_flujo_caja), no la de Mensual/Histórica. detallesFijoVariable
+// se reinicia acá UNA sola vez para las cuatro tarjetas (no una vez por
+// grupo): así las referencias "fijovar:0", "fijovar:1", etc. que arma cada
+// una no se pisan entre el grupo de Gastos y el de Ingresos.
+function renderFlujoCaja() {
+  detallesFijoVariable = [];
+  const mes = state.distribucion.mes || mesActualTexto();
+  const conceptoIdsIncluidos = new Set(
+    state.conceptos.filter(c => c.incluir_en_flujo_caja !== false).map(c => String(c.id))
+  );
+  const monedaIdsIncluidas = new Set(
+    state.monedas.filter(m => m.incluir_en_distribucion !== false).map(m => String(m.id))
+  );
+  renderGrupoFijoVariable("distribFijoVariable", "egreso", "Gastos fijos", "Gastos variables", mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  renderGrupoFijoVariable("distribFijoVariableIngresos", "ingreso", "Ingresos fijos", "Ingresos variables", mes, conceptoIdsIncluidos, monedaIdsIncluidas);
 }
 
 function renderReporte() {
@@ -748,8 +823,6 @@ function renderReporte() {
   const monedaIdsIncluidas = new Set(
     state.monedas.filter(m => m.incluir_en_distribucion !== false).map(m => String(m.id))
   );
-
-  renderFijoVariable(mes, conceptoIdsIncluidos, monedaIdsIncluidas);
 
   if (state.distribucion.convertirEuros) {
     renderReporteEnEuros(cont, mes, conceptoIdsIncluidos);
@@ -1041,18 +1114,30 @@ export function renderDistribucion() {
   const chkEuros = document.getElementById("distribConvertirEuros");
   if (chkEuros) chkEuros.checked = state.distribucion.convertirEuros;
   renderCheckboxesConceptos();
+  renderCheckboxesConceptosFlujo();
   renderCheckboxesMonedas();
   renderReporte();
   renderHistorico();
+  renderFlujoCaja();
 }
 
 export function setupDistribucion() {
-  poblarSelectMes();
-  poblarSelectAnio();
-  ["distribMesNombre", "distribAnio"].forEach(id => {
-    document.getElementById(id).addEventListener("change", () => {
-      state.distribucion.mes = leerMesSeleccionado();
-      renderReporte();
+  poblarSelectMes("distrib");
+  poblarSelectAnio("distrib");
+  poblarSelectMes("distribFlujo");
+  poblarSelectAnio("distribFlujo");
+  // Mensual y Flujo de caja comparten state.distribucion.mes: cambiar el
+  // mes desde cualquiera de las dos pestañas actualiza el otro selector (ver
+  // escribirMesSeleccionado) y vuelve a renderizar las dos, para que no
+  // queden desincronizadas si el mes se cambia mientras se está en la otra.
+  ["distrib", "distribFlujo"].forEach(prefijo => {
+    ["MesNombre", "Anio"].forEach(sufijo => {
+      document.getElementById(prefijo + sufijo).addEventListener("change", () => {
+        state.distribucion.mes = leerMesSeleccionado(prefijo);
+        escribirMesSeleccionado(state.distribucion.mes);
+        renderReporte();
+        renderFlujoCaja();
+      });
     });
   });
 

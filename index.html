@@ -84,10 +84,14 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div class="tabs subtabs" id="distribucionSubtabs">
 <button class="tab-btn active" data-distribsub="mensual">Mensual</button>
 <button class="tab-btn" data-distribsub="historica">Histórica</button>
+<button class="tab-btn" data-distribsub="flujo">Flujo de caja</button>
 </div>
 
 <!-- Compartido entre Mensual e Histórica: qué conceptos y monedas entran
-     en los reportes de esta sección. -->
+     en los reportes de esas dos pestañas. Flujo de caja tiene su propia
+     lista de "Conceptos a incluir" aparte (ver más abajo, adentro de
+     #distrib-flujo), pero comparte con estas dos la selección de Monedas /
+     "Convertir todo a Euros". -->
 <div class="card">
 <details class="collapsible">
 <summary>Conceptos a incluir</summary>
@@ -120,12 +124,6 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <h3 style="margin-top:0;">Reporte del mes</h3>
 <div id="distribReporte"></div>
 </div>
-
-<!-- Total de egresos del mes separados en Fijos / Variables
-     (conceptos.tipo_gasto, ver Configuración > Conceptos). Respeta los
-     mismos "Conceptos a incluir" / "Monedas a incluir" (o "Convertir todo a
-     Euros") de arriba. -->
-<div id="distribFijoVariable" class="card-fijovar-fila"></div>
 </div>
 
 <div id="distrib-historica" style="display:none;">
@@ -138,6 +136,34 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 
 <div id="distribHistoricoSecciones"></div>
+</div>
+
+<!-- Flujo de caja: Gastos fijos/variables e Ingresos fijos/variables del mes
+     (conceptos.tipo_gasto, ver Configuración > Conceptos), separados en
+     egresos (Gastos) e ingresos (Ingresos). Tiene su PROPIA lista de
+     "Conceptos a incluir" (conceptos.incluir_en_flujo_caja), independiente
+     de la de arriba, pero respeta la misma selección de "Monedas a incluir"
+     / "Convertir todo a Euros" de arriba y el mismo mes elegido en
+     Mensual. -->
+<div id="distrib-flujo" style="display:none;">
+<div class="card">
+<details class="collapsible">
+<summary>Conceptos a incluir</summary>
+<div id="distribFlujoConceptosCheckboxes" class="check-grid"></div>
+</details>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0;">Mes</h3>
+<label for="distribFlujoMesNombre">Elegí el mes y año</label>
+<div class="mes-selector">
+<select id="distribFlujoMesNombre"></select>
+<select id="distribFlujoAnio"></select>
+</div>
+</div>
+
+<div id="distribFijoVariable" class="card-fijovar-fila"></div>
+<div id="distribFijoVariableIngresos" class="card-fijovar-fila"></div>
 </div>
 </div>
 </div>
