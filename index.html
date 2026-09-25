@@ -46,6 +46,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <button class="tab-btn active" data-subtab="snapshot">Snapshot</button>
 <button class="tab-btn" data-subtab="evolucion">Evolución</button>
 <button class="tab-btn" data-subtab="distribucion">Distribución</button>
+<button class="tab-btn" data-subtab="flujo">Flujo de caja</button>
 </div>
 
 <div id="sub-snapshot">
@@ -84,14 +85,14 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div class="tabs subtabs" id="distribucionSubtabs">
 <button class="tab-btn active" data-distribsub="mensual">Mensual</button>
 <button class="tab-btn" data-distribsub="historica">Histórica</button>
-<button class="tab-btn" data-distribsub="flujo">Flujo de caja</button>
 </div>
 
 <!-- Compartido entre Mensual e Histórica: qué conceptos y monedas entran
-     en los reportes de esas dos pestañas. Flujo de caja tiene su propia
-     lista de "Conceptos a incluir" aparte (ver más abajo, adentro de
-     #distrib-flujo), pero comparte con estas dos la selección de Monedas /
-     "Convertir todo a Euros". -->
+     en los reportes de esas dos pestañas. Dashboard > Flujo de caja (pestaña
+     propia de Dashboard, no una sub-pestaña de acá, ver más abajo #sub-flujo)
+     usa la misma selección de Monedas / "Convertir todo a Euros" de acá (no
+     tiene una propia), pero su propia lista de "Conceptos a incluir"
+     (independiente de esta). -->
 <div class="card">
 <details class="collapsible">
 <summary>Conceptos a incluir</summary>
@@ -137,15 +138,20 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 
 <div id="distribHistoricoSecciones"></div>
 </div>
+</div>
 
-<!-- Flujo de caja: Gastos fijos/variables e Ingresos fijos/variables del mes
+<!-- Flujo de caja: pestaña propia de Dashboard, a la altura de Snapshot/
+     Evolución/Distribución (no una sub-pestaña de Distribución, a pedido de
+     Nadia). Ingresos fijos/variables y Gastos fijos/variables del mes
      (conceptos.tipo_gasto, ver Configuración > Conceptos), separados en
-     egresos (Gastos) e ingresos (Ingresos). Tiene su PROPIA lista de
-     "Conceptos a incluir" (conceptos.incluir_en_flujo_caja), independiente
-     de la de arriba, pero respeta la misma selección de "Monedas a incluir"
-     / "Convertir todo a Euros" de arriba y el mismo mes elegido en
-     Mensual. -->
-<div id="distrib-flujo" style="display:none;">
+     ingresos (Ingresos) y egresos (Gastos) — Ingresos arriba, Gastos abajo,
+     a pedido de Nadia. Tiene su PROPIA lista de "Conceptos a incluir"
+     (conceptos.incluir_en_flujo_caja) y su PROPIO mes elegido
+     (state.flujoCaja.mes), independientes de los de Mensual/Histórica;
+     respeta la misma selección de "Monedas a incluir" / "Convertir todo a
+     Euros" de Distribución (eso sí es compartido, ver el comentario de
+     arriba de #sub-distribucion). -->
+<div id="sub-flujo" style="display:none;">
 <div class="card">
 <details class="collapsible">
 <summary>Conceptos a incluir</summary>
@@ -162,9 +168,8 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 </div>
 
-<div id="distribFijoVariable" class="card-fijovar-fila"></div>
 <div id="distribFijoVariableIngresos" class="card-fijovar-fila"></div>
-</div>
+<div id="distribFijoVariable" class="card-fijovar-fila"></div>
 </div>
 </div>
 

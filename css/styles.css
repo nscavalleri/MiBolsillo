@@ -747,6 +747,10 @@ details.collapsible[open] summary { margin-bottom: 10px; }
    apretado a la mitad del ancho. */
 .card-fijovar-fila { display: flex; gap: 10px; }
 .card-fijovar { flex: 1; min-width: 0; }
+/* Tarjeta "Ingresos totales" / "Gastos totales": misma tarjeta que Fijos/
+   Variables, con un borde de color a la izquierda para marcarla como el
+   resumen de las otras dos (Fijos + Variables), ver js/flujo-caja.js. */
+.card-fijovar-total { border-left: 3px solid var(--accent); }
 .fijovar-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .fijovar-header h3 { margin: 0; font-size: 14px; }
 .fijovar-monto { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }

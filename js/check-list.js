@@ -8,9 +8,11 @@
 //
 // conBotonesTodos agrega un único checkbox "Todos" arriba de la lista:
 // tildado marca todos los ítems, destildado los destilda a todos, de un
-// tirón en vez de ítem por ítem. Si la selección está mezclada (algunos
-// tildados y otros no), se muestra en su estado "indeterminado" (el
-// tradicional guioncito) en vez de tildado o destildado.
+// tirón en vez de ítem por ítem. "Todos" aparece tildado solo cuando TODOS
+// los ítems están marcados; apenas falta uno (selección mezclada o
+// ninguno marcado), aparece destildado como cualquier checkbox sin marcar
+// — a propósito, a pedido de Nadia, en vez del estado "indeterminado" (el
+// guioncito) que se usaba antes.
 
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
@@ -33,7 +35,6 @@ export function renderCheckboxesTabla(tabla, items, contenedorId, vacioTexto, ca
   }
 
   const todosMarcados = items.every(it => it[campo] !== false);
-  const algunoMarcado = items.some(it => it[campo] !== false);
 
   const todosHtml = conBotonesTodos
     ? `<label class="check-item check-item-todos">
@@ -65,7 +66,6 @@ export function renderCheckboxesTabla(tabla, items, contenedorId, vacioTexto, ca
   if (conBotonesTodos) {
     const chkTodos = cont.querySelector("[data-marcar-todos]");
     if (chkTodos) {
-      chkTodos.indeterminate = !todosMarcados && algunoMarcado;
       chkTodos.addEventListener("change", () => marcarTodos(tabla, items, campo, chkTodos.checked));
     }
   }

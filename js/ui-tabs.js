@@ -24,15 +24,21 @@ export function setupAllTabs() {
     gastos: "section-gastos",
     configuracion: "section-configuracion",
   });
+  // Snapshot, Evolución, Distribución y Flujo de caja son independientes
+  // entre sí (Mensual, Histórica y Flujo de caja cada una tiene su propio
+  // mes, ver js/distribucion.js y js/flujo-caja.js), así que no hace falta
+  // re-renderizar ninguna al mostrarla: cambiar de pestaña acá solo cambia
+  // qué está a la vista. Flujo de caja es una pestaña más de Dashboard (no
+  // una sub-pestaña de Distribución), a pedido de Nadia.
   setupTabGroup("dashboardSubtabs", "subtab", {
     snapshot: "sub-snapshot",
     evolucion: "sub-evolucion",
     distribucion: "sub-distribucion",
+    flujo: "sub-flujo",
   });
   setupTabGroup("distribucionSubtabs", "distribsub", {
     mensual: "distrib-mensual",
     historica: "distrib-historica",
-    flujo: "distrib-flujo",
   });
   setupTabGroup("gastosSubtabs", "subtab", {
     movimientos: "sub-movimientos",

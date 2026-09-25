@@ -16,6 +16,7 @@ import { renderConfigLista } from './configuracion.js';
 import { poblarSelects } from './modal.js';
 import { renderConciliacion } from './conciliacion.js';
 import { renderDistribucion } from './distribucion.js';
+import { renderFlujoCaja } from './flujo-caja.js';
 import { renderTipoCambio } from './tipo-cambio.js';
 import { renderReservas } from './reservas.js';
 import { renderAsignacion } from './asignacion.js';
@@ -111,6 +112,7 @@ function renderTodo() {
   poblarFiltros();
   renderConciliacion();
   renderDistribucion();
+  renderFlujoCaja();
   renderTipoCambio();
   renderReservas();
   renderAsignacion();

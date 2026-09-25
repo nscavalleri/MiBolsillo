@@ -38,6 +38,11 @@ export const state = {
   // dispositivo entres. "ordenHistorico" en cambio sí arranca de cero cada
   // vez que se entra.
   distribucion: { mes: "", ordenHistorico: "asc", convertirEuros: false },
+  // Dashboard > Distribución > Flujo de caja: tiene su PROPIO "mes" (no el
+  // de arriba), para poder mirar un mes distinto del que está elegido en
+  // Mensual — a propósito, a pedido de Nadia. Se completa con el mes actual
+  // la primera vez que se renderiza, igual que distribucion.mes.
+  flujoCaja: { mes: "" },
   // Configuración > Tipo de cambio: una fila por cada combinación
   // mes-moneda con un valor cargado (tabla tipos_cambio). La usa
   // "Convertir todo a Euros" de Distribución para pasar todo a euros.
