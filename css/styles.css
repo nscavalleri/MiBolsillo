@@ -617,6 +617,20 @@ table.distrib-pivot td.col-promedio { color: var(--muted); }
    (mismo criterio que la segunda línea de cada movimiento en Gastos). */
 .config-item .info { flex: 1; min-width: 0; }
 .config-item .detalle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+/* Configuración > Conceptos: etiquetas con la Moneda/Origen por defecto de
+   ese concepto (si tiene alguno cargado, ver editar-modal.js), debajo del
+   nombre — mismo lugar que ocupa la descripción de Reservas, pero acá
+   puede haber hasta dos (una por campo). No son botones ni se pueden
+   tocar: solo muestran lo que ya está guardado, se cambia desde el ✎. Un
+   fondo apenas distinto del blanco de la tarjeta (no el celeste de
+   .tipo-chip, que ese sí es un control) para que se lean como una
+   etiqueta chica y no como otro botón más de la fila. */
+.config-item-etiquetas { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.chip-defecto {
+  display: inline-block; padding: 2px 8px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--bg);
+  font-size: 11px; color: var(--muted); white-space: nowrap;
+}
 .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider {

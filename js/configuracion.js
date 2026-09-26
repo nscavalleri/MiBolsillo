@@ -6,6 +6,7 @@ import { cargarTodo } from './data-service.js';
 import { pedirConfirmacion } from './confirmar-modal.js';
 import { abrirModalEditar } from './editar-modal.js';
 import { avisarError } from './aviso-modal.js';
+import { nombreMoneda, nombreOrigen } from './lookups.js';
 
 // Título lindo para el modal de editar, según la tabla ("Editar concepto",
 // no "Editar conceptos").
@@ -30,6 +31,26 @@ const CONCEPTOS_SISTEMA = {
 
 function descripcionConceptoSistema(nombre) {
   return CONCEPTOS_SISTEMA[String(nombre || "").trim().toLowerCase()] || null;
+}
+
+// Nadia pidió poder ver, en la lista, qué moneda/origen por defecto tiene
+// cargado cada concepto (hasta ahora solo se veía adentro del modal de
+// editar) "como con una etiqueta con el valor elegido". Se arman hasta dos
+// etiquetas chicas (una por cada campo que SÍ tenga algo cargado; si un
+// concepto no tiene ninguno de los dos, no se dibuja nada acá — mismo
+// criterio que la descripción opcional de Reservas, que tampoco muestra
+// una línea vacía). El nombre de la moneda/origen sale de lookups.js, así
+// que si algún día se referenciara un id ya borrado se vería
+// "(moneda eliminada)"/"(origen eliminado)" en vez de romperse.
+function etiquetasDefectoConcepto(it) {
+  const partes = [];
+  if (it.moneda_defecto_id != null) {
+    partes.push(`<span class="chip-defecto">Moneda: ${nombreMoneda(it.moneda_defecto_id)}</span>`);
+  }
+  if (it.origen_defecto_id != null) {
+    partes.push(`<span class="chip-defecto">Origen: ${nombreOrigen(it.origen_defecto_id)}</span>`);
+  }
+  return partes.length ? `<div class="config-item-etiquetas">${partes.join("")}</div>` : "";
 }
 
 export function renderConfigLista(tabla, items, contenedorId) {
@@ -63,6 +84,7 @@ export function renderConfigLista(tabla, items, contenedorId) {
           ? `<span class="tipo-chip tipo-chip-disabled ${esFijo ? "fijo" : "variable"}">${esFijo ? "Fijo" : "Variable"}</span>`
           : `<button type="button" class="tipo-chip ${esFijo ? "fijo" : "variable"}" data-toggle-tipo="${tabla}:${it.id}" title="Tocá para cambiar entre Fijo y Variable">${esFijo ? "Fijo" : "Variable"}</button>`)
       : "";
+    const etiquetasDefecto = esConceptos ? etiquetasDefectoConcepto(it) : "";
 
     if (descripcionSistema) {
       // Fila grisada de un concepto de sistema: se ve el nombre y el estado
@@ -73,7 +95,10 @@ export function renderConfigLista(tabla, items, contenedorId) {
       // reforzada con el ícono ℹ del lugar donde iban editar/eliminar.
       return `
       <div class="config-item config-item-sistema" title="${descripcionSistema}">
-        <span class="nombre ${it.activo ? "" : "inactivo"}">${it.nombre}</span>
+        <div class="info">
+          <span class="nombre ${it.activo ? "" : "inactivo"}">${it.nombre}</span>
+          ${etiquetasDefecto}
+        </div>
         ${chipTipo}
         <label class="switch switch-disabled">
           <input type="checkbox" ${it.activo ? "checked" : ""} disabled />
@@ -86,7 +111,10 @@ export function renderConfigLista(tabla, items, contenedorId) {
 
     return `
     <div class="config-item">
-      <span class="nombre ${it.activo ? "" : "inactivo"}">${it.nombre}</span>
+      <div class="info">
+        <span class="nombre ${it.activo ? "" : "inactivo"}">${it.nombre}</span>
+        ${etiquetasDefecto}
+      </div>
       ${chipTipo}
       <label class="switch">
         <input type="checkbox" ${it.activo ? "checked" : ""} data-toggle="${tabla}:${it.id}" />
