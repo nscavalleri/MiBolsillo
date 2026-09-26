@@ -302,6 +302,35 @@ function celdaPromedio(promedio, incompleto) {
   return `<td class="col-promedio">${marca}${promedio.toFixed(2)}</td>`;
 }
 
+// La celda de la columna "Proporción" (va después de "Promedio", a pedido
+// de Nadia): qué porcentaje representa el total de ESTE concepto dentro
+// del total de ingresos (si dio positivo ese mes) o del total de egresos
+// (si dio negativo) — ingresos y egresos se suman POR SEPARADO, sumarlos
+// juntos no tendría sentido (un gasto grande no "compite" por espacio con
+// un ingreso, son dos bolsas distintas). Mismo color que la columna del
+// importe: verde si es ingreso, rojo si es egreso — reusa las clases
+// valor-positivo/valor-negativo/valor-cero que ya existen (mismo criterio
+// que celdaImporte), así que no hace falta CSS nuevo. No lleva el
+// circulito del semáforo ni el botón "i": es un porcentaje derivado del
+// total de al lado, no un total en sí mismo con su propio detalle.
+function celdaProporcion(v, totalIngreso, totalEgreso) {
+  if (!v) return `<td class="valor-cero">–</td>`;
+  if (v > 0) {
+    const pct = totalIngreso > 0 ? (v / totalIngreso) * 100 : 0;
+    return `<td class="valor-positivo">${pct.toFixed(1)}%</td>`;
+  }
+  const pct = totalEgreso > 0 ? (-v / totalEgreso) * 100 : 0;
+  return `<td class="valor-negativo">${pct.toFixed(1)}%</td>`;
+}
+
+// La fila "Total" no muestra proporción (queda en blanco): ese número es
+// ingresos MENOS egresos ya mezclados, así que no hay un "total de qué"
+// único contra el que compararlo — no sería ni el total de ingresos ni el
+// de egresos, sería otra cosa.
+function celdaProporcionVacia() {
+  return `<td class="valor-cero">–</td>`;
+}
+
 // Una celda de importe: verde si es mayor a cero, rojo si es menor, y un
 // guión gris si no hubo movimientos (mismo criterio de color que el resto
 // de la app: var(--income) / var(--expense)). En Mensual además va, al lado
@@ -523,10 +552,20 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
   // historicoPorConcepto). Se calcula una vez para toda la tabla.
   const { enEuros, faltaTasa } = historicoPorConcepto(mes);
 
+  // Total de ingresos y de egresos del mes, sumados aparte, para la
+  // columna "Proporción" de cada fila (ver celdaProporcion). Sale de
+  // "totales", que ya tiene el total en euros de cada concepto.
+  let totalIngresoEuros = 0;
+  let totalEgresoEuros = 0;
+  Object.values(totales).forEach(v => {
+    if (v > 0) totalIngresoEuros += v;
+    else if (v < 0) totalEgresoEuros += -v;
+  });
+
   let total = 0;
   let totalIncompleto = false;
   const movsPorMonedaTotal = {};
-  let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th><th>Total (€)</th><th class="col-promedio">Promedio (€)</th></tr>`;
+  let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th><th>Total (€)</th><th class="col-promedio">Promedio (€)</th><th>Proporción (€)</th></tr>`;
   conceptosConDatos.forEach(c => {
     const v = totales[c.id] || 0;
     total += v;
@@ -542,6 +581,7 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
     html += `<tr><td>${c.nombre}</td>` +
       celdaImporte(v, semaforoContraPromedio(v, promedio, "€"), !!incompletos[c.id], detalleRef) +
       celdaPromedio(promedio, incompleto) +
+      celdaProporcion(v, totalIngresoEuros, totalEgresoEuros) +
       `</tr>`;
   });
   const detalleTotalRef = detalleConceptoEnEuros(
@@ -557,6 +597,7 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
   html += `<tr class="total-row"><td>Total</td>` +
     celdaImporte(total, semaforoContraPromedio(total, promedioTotal, "€"), totalIncompleto, detalleTotalRef) +
     celdaPromedio(promedioTotal, totalPromIncompleto) +
+    celdaProporcionVacia() +
     `</tr>`;
   html += `</table></div>`;
   html += `<p class="tipo-cambio-nota">Convertido a euros con los tipos de cambio de Configuración &gt; Tipo de cambio, para este mismo mes. ⚠ = falta cargar el tipo de cambio de alguna moneda ese mes, ese total está incompleto. Tocá el botón "i" de cada celda para ver el detalle.</p>`;
@@ -609,6 +650,24 @@ function renderReporte() {
 
   const listaMonedaIds = Array.from(monedaIdsUsadas).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
 
+  // Total de ingresos y de egresos de cada moneda, sumados aparte, para la
+  // columna "Proporción" de cada fila (ver celdaProporcion): cada concepto
+  // se compara contra el total de su propio signo en esa moneda, no contra
+  // la suma de todo junto. Sale de porConceptoMoneda, que ya tiene el total
+  // de cada concepto en cada moneda.
+  const totalIngresoPorMoneda = {};
+  const totalEgresoPorMoneda = {};
+  listaMonedaIds.forEach(monedaId => {
+    let ingreso = 0, egreso = 0;
+    Object.values(porConceptoMoneda).forEach(fila => {
+      const v = fila[monedaId] || 0;
+      if (v > 0) ingreso += v;
+      else if (v < 0) egreso += -v;
+    });
+    totalIngresoPorMoneda[monedaId] = ingreso;
+    totalEgresoPorMoneda[monedaId] = egreso;
+  });
+
   // El promedio histórico de cada concepto en cada moneda, sin contar este
   // mes. Acá no se convierte nada: cada moneda se promedia con la suya, que
   // es lo mismo que hace el resto de esta tabla.
@@ -616,7 +675,7 @@ function renderReporte() {
 
   let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th>` +
     listaMonedaIds.map(id =>
-      `<th>${nombreMoneda(id)}</th><th class="col-promedio">Prom. ${nombreMoneda(id)}</th>`
+      `<th>${nombreMoneda(id)}</th><th class="col-promedio">Prom. ${nombreMoneda(id)}</th><th>% ${nombreMoneda(id)}</th>`
     ).join("") + `</tr>`;
 
   // Solo se listan los conceptos que tuvieron movimientos ese mes (para no
@@ -645,7 +704,8 @@ function renderReporte() {
           : null;
         const { promedio } = promediar(porMoneda[c.id + "|" + monedaId]);
         html += celdaImporte(v, semaforoContraPromedio(v, promedio, nombreMoneda(monedaId)), false, detalleRef) +
-          celdaPromedio(promedio, false);
+          celdaPromedio(promedio, false) +
+          celdaProporcion(v, totalIngresoPorMoneda[monedaId], totalEgresoPorMoneda[monedaId]);
       });
       html += `</tr>`;
     });
@@ -666,7 +726,8 @@ function renderReporte() {
       const v = totales[monedaId] || 0;
       const { promedio } = promediar(sumarPorMes(idsMostrados.map(id => porMoneda[id + "|" + monedaId])));
       return celdaImporte(v, semaforoContraPromedio(v, promedio, nombreMoneda(monedaId)), false, detalleRef) +
-        celdaPromedio(promedio, false);
+        celdaPromedio(promedio, false) +
+        celdaProporcionVacia();
     }).join("") + `</tr>`;
   html += `</table></div>`;
 
