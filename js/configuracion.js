@@ -53,6 +53,33 @@ function etiquetasDefectoConcepto(it) {
   return partes.length ? `<div class="config-item-etiquetas">${partes.join("")}</div>` : "";
 }
 
+// Nadia pidió poder marcar, desde la UI, si un concepto "es ingreso o
+// egreso" — la columna conceptos.tipo_concepto_principal ya existía en la
+// base (apunta a la tabla tipo_concepto: 1 = Ingreso, 2 = Egreso, 3 = No
+// aplica) y ya se USABA para sugerir el tipo al elegir un concepto en
+// Agregar/Editar movimiento (ver tipoSegunConcepto en js/modal.js), pero
+// hasta ahora no había forma de verla ni cambiarla desde ningún lado de la
+// app. Los nombres ("Ingreso"/"Egreso"/"No aplica") se dejan fijos acá, en
+// vez de leerlos de la tabla tipo_concepto: esa tabla tiene RLS prendido
+// SIN ninguna política (ver RIESGOS.md), así que si la app la consultara
+// le devolvería 0 filas sin ningún error — mismo motivo por el que
+// tipoSegunConcepto en modal.js ya trabaja directo con los números 1/2/3
+// en vez de buscar el nombre en esa tabla.
+const NOMBRE_TIPO_PRINCIPAL = { 1: "Ingreso", 2: "Egreso", 3: "No aplica" };
+
+// Chip de texto igual en espíritu al de Fijo/Variable (mismo tamaño,
+// mismo patrón de toggle), pero con los colores de ingreso/egreso de
+// siempre (var(--income)/var(--expense), los mismos que ya usan los
+// montos de Gastos y los gráficos de Distribución) en vez del celeste de
+// Tipo, para que se lea de un vistazo como una cosa distinta. Un concepto
+// sin tipo_concepto_principal cargado (no debería pasar, pero por las
+// dudas) se trata como Egreso — mismo criterio de respaldo que ya usa
+// tipoSegunConcepto() en modal.js.
+function chipSignoConcepto(tabla, it) {
+  const esIngreso = it.tipo_concepto_principal === 1;
+  return `<button type="button" class="tipo-chip ${esIngreso ? "ingreso" : "egreso"}" data-toggle-signo="${tabla}:${it.id}" title="Tocá para cambiar entre Ingreso y Egreso">${esIngreso ? "Ingreso" : "Egreso"}</button>`;
+}
+
 export function renderConfigLista(tabla, items, contenedorId) {
   const el = document.getElementById(contenedorId);
   // Por ahora "Tipo" (Fijo/Variable) es un campo propio de Conceptos, no de
@@ -67,6 +94,7 @@ export function renderConfigLista(tabla, items, contenedorId) {
     ? `<div class="config-item config-list-header">
          <span class="col-nombre"></span>
          <span class="col-tipo">Tipo</span>
+         <span class="col-signo">Signo</span>
          <span class="col-activo">Estado</span>
          <span class="col-acciones"></span>
        </div>`
@@ -84,6 +112,17 @@ export function renderConfigLista(tabla, items, contenedorId) {
           ? `<span class="tipo-chip tipo-chip-disabled ${esFijo ? "fijo" : "variable"}">${esFijo ? "Fijo" : "Variable"}</span>`
           : `<button type="button" class="tipo-chip ${esFijo ? "fijo" : "variable"}" data-toggle-tipo="${tabla}:${it.id}" title="Tocá para cambiar entre Fijo y Variable">${esFijo ? "Fijo" : "Variable"}</button>`)
       : "";
+    // "Cambio de moneda"/"Conciliación" ya vienen con tipo_concepto_principal
+    // = 3 ("No aplica") cargado en la base: pueden generar tanto un ingreso
+    // como un egreso según el movimiento real, así que acá NO se ofrece
+    // como un tercer estado tocable del toggle (que es a propósito binario,
+    // Ingreso/Egreso nomás, como pidió Nadia) — se muestra fijo y grisado,
+    // igual de intocable que el resto de su fila.
+    const chipSigno = esConceptos
+      ? (descripcionSistema
+          ? `<span class="tipo-chip tipo-chip-disabled">${NOMBRE_TIPO_PRINCIPAL[it.tipo_concepto_principal] || "No aplica"}</span>`
+          : chipSignoConcepto(tabla, it))
+      : "";
     const etiquetasDefecto = esConceptos ? etiquetasDefectoConcepto(it) : "";
 
     if (descripcionSistema) {
@@ -100,6 +139,7 @@ export function renderConfigLista(tabla, items, contenedorId) {
           ${etiquetasDefecto}
         </div>
         ${chipTipo}
+        ${chipSigno}
         <label class="switch switch-disabled">
           <input type="checkbox" ${it.activo ? "checked" : ""} disabled />
           <span class="slider"></span>
@@ -116,6 +156,7 @@ export function renderConfigLista(tabla, items, contenedorId) {
         ${etiquetasDefecto}
       </div>
       ${chipTipo}
+      ${chipSigno}
       <label class="switch">
         <input type="checkbox" ${it.activo ? "checked" : ""} data-toggle="${tabla}:${it.id}" />
         <span class="slider"></span>
@@ -132,6 +173,21 @@ export function renderConfigLista(tabla, items, contenedorId) {
       const actual = items.find(x => String(x.id) === String(id));
       const nuevoTipo = actual && actual.tipo_gasto === "fijo" ? "variable" : "fijo";
       const { error } = await getClient().from(tab).update({ tipo_gasto: nuevoTipo }).eq("id", id);
+      if (error) { avisarError("Error: " + error.message); return; }
+      await cargarTodo();
+    });
+  });
+
+  // Toggle de Ingreso/Egreso (tipo_concepto_principal): igual patrón que el
+  // de Tipo de arriba, pero guardando 1 (Ingreso) o 2 (Egreso) — nunca 3
+  // ("No aplica"), que queda reservado a los conceptos de sistema y no es
+  // alcanzable tocando este chip.
+  el.querySelectorAll("[data-toggle-signo]").forEach(chip => {
+    chip.addEventListener("click", async () => {
+      const [tab, id] = chip.dataset.toggleSigno.split(":");
+      const actual = items.find(x => String(x.id) === String(id));
+      const nuevoSigno = actual && actual.tipo_concepto_principal === 1 ? 2 : 1;
+      const { error } = await getClient().from(tab).update({ tipo_concepto_principal: nuevoSigno }).eq("id", id);
       if (error) { avisarError("Error: " + error.message); return; }
       await cargarTodo();
     });

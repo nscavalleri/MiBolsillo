@@ -316,42 +316,57 @@ function celdaPromedio(promedio, incompleto) {
 // (que si puede estar viendo una moneda por vez), no otra vista de esa
 // misma tabla.
 //
-// Colores: acá cada porción es un CONCEPTO (no un signo), así que hace
-// falta un color por concepto y no el verde/rojo de ingreso/egreso de
-// siempre — total, dentro del gráfico de Gastos, TODAS las porciones ya
-// son gastos, pintarlas todas de rojo no distinguiría nada. El color de
-// cada concepto sale de un hash simple de su id (no del orden en que
-// aparece ese mes), para que sea SIEMPRE el mismo color de mes a mes,
-// aunque el orden de mayor a menor cambie. Paleta categórica de 8 colores.
+// Colores: se probaron dos paletas categóricas (un color fijo por CONCEPTO,
+// vía hash de su id — ver el historial de esas dos versiones en el
+// changelog) pero a Nadia siguieron sin convencerle. Pidió cambiar el
+// enfoque por completo: "vamos a tomar el rosa que usamos pa[ra] mi sitio
+// para la proporción mayor de gastos y el celeste para la proporción mayor
+// de ingresos y desp[u]es and[a] haciendo un degrade de cada un[o] de esos
+// colores para el resto (...) va a quedar como los egresos en escala de
+// rosas e ingresos en escala de celestes".
 //
-// Nadia pidió (después de ver la paleta genérica original) que los colores
-// "sean acordes a la aplicación" en vez de desentonar. Un primer intento
-// ancló dos colores en var(--accent)/var(--brand-fucsia) pero rellenó el
-// resto con tonos medios (L de OKLCH ~0.55-0.66) que, aunque técnicamente
-// bien saturados, Nadia vio "más pasteles, no tan duros" al lado del
-// celeste y el fucsia de la app (que son vívidos: mucho croma Y bastante
-// claros). Esta versión sube la claridad de los otros seis colores para
-// buscar ese mismo look "duro" (croma al máximo posible en gamut sRGB para
-// cada matiz, en vez de una claridad pareja de 0.6) y evita a propósito la
-// franja oliva/mostaza (matices ~60-140°), que se ve "tierra" aunque el
-// número de saturación sea alto. El primer y el quinto color siguen
-// siendo, LITERALMENTE, var(--accent) (#04C6DA) y var(--brand-fucsia)
-// (#FF6061) tal cual están en css/styles.css. Validado con la skill de
-// dataviz (validate_palette.js, modo "light"): ALL CHECKS PASS, con el
-// mismo WARN de contraste que ya tenía la paleta anterior (varios de estos
-// colores, sobre fondo blanco, no llegan al contraste ideal de 3:1 — por
-// eso cada porción SIEMPRE va acompañada de su nombre y porcentaje en la
-// lista de al lado, que es justo la "etiqueta visible" que ese chequeo
-// pide como compensación).
-const PALETA_CATEGORICA = ["#04c6da", "#3858ff", "#dea805", "#bf2bdd", "#ff6061", "#a052fe", "#05c992", "#0383fc"];
+// Entonces ahora el color de cada porción NO depende de qué concepto es
+// (ya no hay paleta categórica ni hash) sino de su POSICIÓN dentro de ese
+// gráfico puntual, de mayor a menor: la porción más grande usa el color de
+// la app tal cual (var(--brand-fucsia) #FF6061 en Gastos, var(--accent)
+// #04C6DA en Ingresos) y las que siguen se van aclarando hacia blanco a
+// medida que su proporción es menor. Como "porciones" ya viene ordenado de
+// mayor a menor (ver graficoCircularHtml más abajo), la posición en el
+// arreglo ES el ranking — no hace falta guardar nada aparte. El aclarado
+// usa TODO el rango disponible (0 a TINT_MAXIMO) sin importar cuántas
+// porciones haya ese mes, para que un mes con pocos conceptos no quede con
+// todas las porciones casi del mismo tono. "Otros" sigue siendo gris
+// neutro fijo, fuera de la escala: no es "la porción más chica del
+// degradé", es la bolsa de conceptos chicos agrupados.
+const COLOR_BASE_GASTOS = "#ff6061"; // var(--brand-fucsia)
+const COLOR_BASE_INGRESOS = "#04c6da"; // var(--accent)
 const COLOR_OTROS = "#9aa0a6";
 
-function colorCategorico(id) {
-  if (id === "otros") return COLOR_OTROS;
-  const texto = String(id);
-  let hash = 0;
-  for (let i = 0; i < texto.length; i++) hash = (hash * 31 + texto.charCodeAt(i)) >>> 0;
-  return PALETA_CATEGORICA[hash % PALETA_CATEGORICA.length];
+// Mezcla "hex" hacia blanco en una fracción de 0 (el color tal cual) a 1
+// (blanco puro). RGB simple alcanza acá: a diferencia de la paleta
+// categórica anterior (que necesitaba distinguirse bajo daltonismo entre
+// colores DISTINTOS), este degradé es todo el mismo matiz — con que se vea
+// prolijo de mayor a menor sobra, no hace falta el cálculo perceptual
+// OKLCH de la skill de dataviz.
+function aclararColor(hex, fraccion) {
+  const limpio = hex.replace("#", "");
+  const r = parseInt(limpio.slice(0, 2), 16), g = parseInt(limpio.slice(2, 4), 16), b = parseInt(limpio.slice(4, 6), 16);
+  const mezclar = (c) => Math.round(c + (255 - c) * fraccion);
+  return "#" + [r, g, b].map(mezclar).map(v => v.toString(16).padStart(2, "0")).join("");
+}
+
+// Tope del aclarado (no se llega a blanco puro = 1, quedaría ilegible
+// sobre el fondo blanco de la tarjeta): la porción más chica llega, como
+// mucho, a un 82% de mezcla con blanco.
+const TINT_MAXIMO = 0.82;
+
+// indice/total son la posición (0 = la más grande) y la cantidad total de
+// porciones "propias" de ESE gráfico (sin contar "Otros", que tiene su
+// propio color fijo) — ver dónde se llama, en graficoCircularHtml.
+function colorEscala(colorBase, indice, total) {
+  if (total <= 1) return colorBase; // una sola porción: el color de la app tal cual, sin aclarar
+  const fraccion = (indice / (total - 1)) * TINT_MAXIMO;
+  return aclararColor(colorBase, fraccion);
 }
 
 function puntoEnCirculo(cx, cy, r, anguloGrados) {
@@ -363,8 +378,9 @@ function puntoEnCirculo(cx, cy, r, anguloGrados) {
 // porcentajes ordenada de mayor a menor al lado, a partir de una lista de
 // { id, nombre, valor (siempre positivo acá), incompleto }. "etiqueta" y
 // "mes" son solo para el título del popup de "Otros" (ver más abajo), no
-// afectan el dibujo.
-function graficoCircularHtml(items, total, textoVacio, etiqueta, mes) {
+// afectan el dibujo. "colorBase" es el color de la app (fucsia o celeste)
+// del que sale, por ranking, el degradé de esta porción — ver colorEscala.
+function graficoCircularHtml(items, total, textoVacio, etiqueta, mes, colorBase) {
   if (items.length === 0 || total <= 0) {
     return `<p class="empty">${textoVacio}</p>`;
   }
@@ -401,6 +417,16 @@ function graficoCircularHtml(items, total, textoVacio, etiqueta, mes) {
     }]);
   }
 
+  // Color de cada porción por ranking (ver el comentario de más arriba de
+  // COLOR_BASE_GASTOS): "otros" (si está) queda afuera del degradé, con su
+  // gris fijo; el resto se numera de 0 (la más grande) en adelante SOLO
+  // entre ellas mismas, para que el degradé use todo el rango disponible
+  // sin importar si hubo que agrupar "Otros" o no.
+  const propios = porciones.filter(p => p.id !== "otros");
+  propios.forEach((p, i) => { p.color = colorEscala(colorBase, i, propios.length); });
+  const otros = porciones.find(p => p.id === "otros");
+  if (otros) otros.color = COLOR_OTROS;
+
   // Cada porción es un sector circular (<path> con un arco), calculado a
   // partir del ángulo acumulado, empezando arriba (12 en punto) y en
   // sentido horario. cx/cy/r dejan margen adentro del viewBox de 180x180
@@ -414,7 +440,7 @@ function graficoCircularHtml(items, total, textoVacio, etiqueta, mes) {
       // Un solo concepto (100%): un <path> de arco no puede cerrar un
       // círculo completo (el punto de inicio y el de fin coinciden), así
       // que en ese caso especial se dibuja un <circle> entero.
-      svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${colorCategorico(p.id)}"><title>${escaparAtributo(p.nombre)}: ${pct.toFixed(1)}%</title></circle>`;
+      svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${p.color}"><title>${escaparAtributo(p.nombre)}: ${pct.toFixed(1)}%</title></circle>`;
       return;
     }
     const anguloGrados = (p.valor / total) * 360;
@@ -425,7 +451,7 @@ function graficoCircularHtml(items, total, textoVacio, etiqueta, mes) {
     const [x2, y2] = puntoEnCirculo(cx, cy, r, fin);
     const arcoGrande = anguloGrados > 180 ? 1 : 0;
     const d = `M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${arcoGrande} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`;
-    svg += `<path d="${d}" fill="${colorCategorico(p.id)}"><title>${escaparAtributo(p.nombre)}: ${pct.toFixed(1)}%</title></path>`;
+    svg += `<path d="${d}" fill="${p.color}"><title>${escaparAtributo(p.nombre)}: ${pct.toFixed(1)}%</title></path>`;
   });
 
   const lista = porciones.map(p => {
@@ -440,7 +466,7 @@ function graficoCircularHtml(items, total, textoVacio, etiqueta, mes) {
       ? `<button type="button" class="btn-detalle" data-detalle="${p.detalleRef}" title="Ver qué conceptos son &quot;Otros&quot;">i</button>`
       : "";
     return `<div class="grafico-circular-item">` +
-      `<span class="grafico-circular-punto" style="background:${colorCategorico(p.id)}"></span>` +
+      `<span class="grafico-circular-punto" style="background:${p.color}"></span>` +
       `<span class="grafico-circular-nombre">${p.nombre}${marca}</span>` +
       boton +
       `<span class="grafico-circular-pct">${pct.toFixed(1)}%</span>` +
@@ -481,8 +507,8 @@ function renderGraficosProporcion(mes, conceptoIdsIncluidos) {
     }
   });
 
-  contGastos.innerHTML = graficoCircularHtml(gastos, totalGasto, "No hay gastos en ese mes para los conceptos seleccionados.", "Gastos", mes);
-  contIngresos.innerHTML = graficoCircularHtml(ingresos, totalIngreso, "No hay ingresos en ese mes para los conceptos seleccionados.", "Ingresos", mes);
+  contGastos.innerHTML = graficoCircularHtml(gastos, totalGasto, "No hay gastos en ese mes para los conceptos seleccionados.", "Gastos", mes, COLOR_BASE_GASTOS);
+  contIngresos.innerHTML = graficoCircularHtml(ingresos, totalIngreso, "No hay ingresos en ese mes para los conceptos seleccionados.", "Ingresos", mes, COLOR_BASE_INGRESOS);
 }
 
 // Una celda de importe: verde si es mayor a cero, rojo si es menor, y un
