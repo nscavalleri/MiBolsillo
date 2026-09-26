@@ -518,6 +518,21 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <select id="editarItemOrigen"></select>
 </div>
 
+<!-- Solo para Conceptos: si el concepto es Ingreso o Egreso por defecto
+     (conceptos.tipo_concepto_principal) — mismo campo que el chip "Signo"
+     de la lista (ver js/configuracion.js), acá editable desde el modal
+     también. No es .tipo-toggle (ver el comentario de esa clase en
+     css/styles.css): es su propio toggle, .signo-toggle, para no
+     enganchar ni ser enganchado por los listeners de Agregar/Editar
+     movimiento. -->
+<div id="editarItemSignoGrupo" style="display:none;">
+<label>Signo por defecto (Ingreso o Egreso)</label>
+<div class="signo-toggle">
+<button type="button" data-tipo="egreso" id="editarItemSignoEgreso">Egreso</button>
+<button type="button" data-tipo="ingreso" id="editarItemSignoIngreso">Ingreso</button>
+</div>
+</div>
+
 <button type="submit" class="primary">Guardar</button>
 </form>
 </div>

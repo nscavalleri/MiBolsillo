@@ -19,6 +19,18 @@
 // preferencia guardada, no una lista de opciones disponibles hoy para
 // cargar un movimiento) más una opción en blanco al principio, porque
 // dejarlo sin definir es válido.
+//
+// campoSigno es igual de opcional (por ahora, solo Conceptos, con
+// "tipo_concepto_principal"): si ESE concepto es Ingreso o Egreso por
+// defecto — mismo campo que ya se puede tocar desde el chip "Signo" de la
+// lista (ver js/configuracion.js), acá editable desde el modal también.
+// A diferencia de Moneda/Origen, este campo NO tiene una opción "Sin
+// definir": es un toggle a propósito binario (Ingreso/Egreso nomás),
+// igual criterio que el chip de la lista — un concepto sin
+// tipo_concepto_principal cargado arranca mostrando Egreso, pero al
+// guardar siempre queda en 1 o 2, nunca en null ni en 3 ("No aplica",
+// reservado para los conceptos de sistema, que ni siquiera tienen botón
+// de editar — ver CONCEPTOS_SISTEMA en configuracion.js).
 
 import { state } from './state.js';
 import { getClient } from './config.js';
@@ -26,6 +38,11 @@ import { cargarTodo } from './data-service.js';
 import { avisarError } from './aviso-modal.js';
 
 let contextoActual = null;
+// Selección actual del toggle de Signo ("ingreso" | "egreso"), mientras el
+// modal está abierto — mismo patrón que state.tipoActual en modal.js, pero
+// con su propia variable: este modal no comparte nada con el de Agregar/
+// Editar movimiento (ver el comentario de .signo-toggle en css/styles.css).
+let signoActual = "egreso";
 
 function poblarSelectOpcional(selectEl, lista, valorActual) {
   const opciones = lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -34,11 +51,17 @@ function poblarSelectOpcional(selectEl, lista, valorActual) {
   selectEl.value = valorActual != null ? String(valorActual) : "";
 }
 
+function marcarSignoActivo() {
+  document.getElementById("editarItemSignoIngreso").classList.toggle("active", signoActual === "ingreso");
+  document.getElementById("editarItemSignoEgreso").classList.toggle("active", signoActual === "egreso");
+}
+
 export function abrirModalEditar({
   tabla, id, nombre, cantidad, campoCantidad, descripcion, campoDescripcion, titulo,
   campoMoneda, monedaId, campoOrigen, origenId,
+  campoSigno, signoValor,
 }) {
-  contextoActual = { tabla, id, campoCantidad, campoDescripcion, campoMoneda, campoOrigen };
+  contextoActual = { tabla, id, campoCantidad, campoDescripcion, campoMoneda, campoOrigen, campoSigno };
 
   document.getElementById("editarItemTitulo").textContent = titulo || "Editar";
   document.getElementById("editarItemNombre").value = nombre || "";
@@ -83,6 +106,17 @@ export function abrirModalEditar({
     grupoOrigen.style.display = "none";
   }
 
+  const grupoSigno = document.getElementById("editarItemSignoGrupo");
+  if (campoSigno) {
+    grupoSigno.style.display = "block";
+    // Mismo respaldo que el chip de la lista: sin nada cargado (o
+    // cualquier valor que no sea 1) se muestra como Egreso.
+    signoActual = signoValor === 1 ? "ingreso" : "egreso";
+    marcarSignoActivo();
+  } else {
+    grupoSigno.style.display = "none";
+  }
+
   document.getElementById("editarItemOverlay").classList.add("open");
   document.getElementById("editarItemNombre").focus();
 }
@@ -95,10 +129,19 @@ function cerrarModalEditar() {
 export function setupEditarModal() {
   document.getElementById("editarItemClose").addEventListener("click", cerrarModalEditar);
 
+  document.getElementById("editarItemSignoEgreso").addEventListener("click", () => {
+    signoActual = "egreso";
+    marcarSignoActivo();
+  });
+  document.getElementById("editarItemSignoIngreso").addEventListener("click", () => {
+    signoActual = "ingreso";
+    marcarSignoActivo();
+  });
+
   document.getElementById("formEditarItem").addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!contextoActual) return;
-    const { tabla, id, campoCantidad, campoDescripcion, campoMoneda, campoOrigen } = contextoActual;
+    const { tabla, id, campoCantidad, campoDescripcion, campoMoneda, campoOrigen, campoSigno } = contextoActual;
 
     const nombre = document.getElementById("editarItemNombre").value.trim();
     if (!nombre) return;
@@ -129,6 +172,11 @@ export function setupEditarModal() {
     if (campoOrigen) {
       const valor = document.getElementById("editarItemOrigen").value;
       payload[campoOrigen] = valor === "" ? null : valor;
+    }
+    // Ingreso/Egreso por defecto: binario a propósito (ver el comentario de
+    // campoSigno más arriba) — siempre guarda 1 o 2, nunca null ni 3.
+    if (campoSigno) {
+      payload[campoSigno] = signoActual === "ingreso" ? 1 : 2;
     }
 
     const { error } = await getClient().from(tabla).update(payload).eq("id", id);

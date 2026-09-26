@@ -206,13 +206,15 @@ export function renderConfigLista(tabla, items, contenedorId) {
       const [tab, id] = btn.dataset.editarItem.split(":");
       const actual = items.find(x => String(x.id) === String(id));
       if (!actual) return;
-      // Moneda/origen por defecto: solo para Conceptos (ver el comentario
-      // de arriba de editar-modal.js). Acá no hace falta pasar la lista de
-      // monedas/orígenes: el modal ya la lee de state.js directamente.
+      // Moneda/origen y Signo (Ingreso/Egreso) por defecto: solo para
+      // Conceptos (ver el comentario de arriba de editar-modal.js). Acá no
+      // hace falta pasar la lista de monedas/orígenes: el modal ya la lee
+      // de state.js directamente.
       const extra = tab === "conceptos"
         ? {
             campoMoneda: "moneda_defecto_id", monedaId: actual.moneda_defecto_id,
             campoOrigen: "origen_defecto_id", origenId: actual.origen_defecto_id,
+            campoSigno: "tipo_concepto_principal", signoValor: actual.tipo_concepto_principal,
           }
         : {};
       abrirModalEditar({ tabla: tab, id, nombre: actual.nombre, titulo: TITULO_EDITAR[tab], ...extra });

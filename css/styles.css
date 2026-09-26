@@ -556,14 +556,23 @@ table.distrib-pivot td.col-promedio { color: var(--muted); }
 .filtros-grid label { margin-top: 0; }
 @media (min-width: 480px) { .filtros-grid { grid-template-columns: repeat(3, 1fr); } }
 
-/* Tipo toggle */
-.tipo-toggle { display: flex; gap: 8px; margin-top: 10px; }
-.tipo-toggle button {
+/* Tipo toggle. .signo-toggle (Editar concepto, ver editar-modal.js) es
+   visualmente IGUAL a .tipo-toggle (Agregar/Editar movimiento) — mismos
+   estilos, mismos colores var(--income)/var(--expense) — pero con su
+   propia clase a propósito: setupModal() en js/modal.js engancha sus
+   listeners con document.querySelectorAll(".tipo-toggle button") SIN
+   acotar a su propio formulario, así que si el toggle de Editar concepto
+   usara la misma clase, esos listeners también se le engancharían a él
+   (y viceversa, marcarToggleActivo() lo pisaría con el tipo del gasto que
+   se esté cargando en Gastos > Movimientos). Con una clase distinta,
+   ninguno de los dos toggles se entera del otro. */
+.tipo-toggle, .signo-toggle { display: flex; gap: 8px; margin-top: 10px; }
+.tipo-toggle button, .signo-toggle button {
   flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
   background: #fff; font-size: 14px; cursor: pointer;
 }
-.tipo-toggle button.active[data-tipo="ingreso"] { background: var(--income); color: white; border-color: var(--income); }
-.tipo-toggle button.active[data-tipo="egreso"] { background: var(--expense); color: white; border-color: var(--expense); }
+.tipo-toggle button.active[data-tipo="ingreso"], .signo-toggle button.active[data-tipo="ingreso"] { background: var(--income); color: white; border-color: var(--income); }
+.tipo-toggle button.active[data-tipo="egreso"], .signo-toggle button.active[data-tipo="egreso"] { background: var(--expense); color: white; border-color: var(--expense); }
 
 /* Modal: todos (Agregar gasto, Editar concepto/moneda/origen/reserva,
    Detalle de una celda) se muestran centrados y con las cuatro esquinas
