@@ -302,33 +302,143 @@ function celdaPromedio(promedio, incompleto) {
   return `<td class="col-promedio">${marca}${promedio.toFixed(2)}</td>`;
 }
 
-// La celda de la columna "Proporción" (va después de "Promedio", a pedido
-// de Nadia): qué porcentaje representa el total de ESTE concepto dentro
-// del total de ingresos (si dio positivo ese mes) o del total de egresos
-// (si dio negativo) — ingresos y egresos se suman POR SEPARADO, sumarlos
-// juntos no tendría sentido (un gasto grande no "compite" por espacio con
-// un ingreso, son dos bolsas distintas). Mismo color que la columna del
-// importe: verde si es ingreso, rojo si es egreso — reusa las clases
-// valor-positivo/valor-negativo/valor-cero que ya existen (mismo criterio
-// que celdaImporte), así que no hace falta CSS nuevo. No lleva el
-// circulito del semáforo ni el botón "i": es un porcentaje derivado del
-// total de al lado, no un total en sí mismo con su propio detalle.
-function celdaProporcion(v, totalIngreso, totalEgreso) {
-  if (!v) return `<td class="valor-cero">–</td>`;
-  if (v > 0) {
-    const pct = totalIngreso > 0 ? (v / totalIngreso) * 100 : 0;
-    return `<td class="valor-positivo">${pct.toFixed(1)}%</td>`;
-  }
-  const pct = totalEgreso > 0 ? (-v / totalEgreso) * 100 : 0;
-  return `<td class="valor-negativo">${pct.toFixed(1)}%</td>`;
+// --- Gráficos circulares de Ingresos/Gastos (Dashboard > Distribución >
+// Mensual) ------------------------------------------------------------
+//
+// Primero se había puesto esto como una columna "Proporción" al lado de
+// "Promedio" (qué % representa cada concepto del total de ingresos o de
+// egresos de ese mes). Nadia pidió después sacar esa columna y mostrarlo
+// en cambio como dos gráficos circulares (uno de Gastos, uno de
+// Ingresos), con esos mismos porcentajes en una lista ordenada de mayor a
+// menor al lado de cada uno — ver renderGraficosProporcion más abajo, que
+// arma los dos. SIEMPRE en euros, sin importar si "Convertir todo a
+// Euros" está tildado o no: son un resumen aparte de la tabla de arriba
+// (que si puede estar viendo una moneda por vez), no otra vista de esa
+// misma tabla.
+//
+// Colores: acá cada porción es un CONCEPTO (no un signo), así que hace
+// falta un color por concepto y no el verde/rojo de ingreso/egreso de
+// siempre — total, dentro del gráfico de Gastos, TODAS las porciones ya
+// son gastos, pintarlas todas de rojo no distinguiría nada. El color de
+// cada concepto sale de un hash simple de su id (no del orden en que
+// aparece ese mes), para que sea SIEMPRE el mismo color de mes a mes,
+// aunque el orden de mayor a menor cambie. Paleta categórica de 8 colores
+// (validada para que ningún par adyacente se confunda con daltonismo).
+const PALETA_CATEGORICA = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"];
+const COLOR_OTROS = "#9aa0a6";
+
+function colorCategorico(id) {
+  if (id === "otros") return COLOR_OTROS;
+  const texto = String(id);
+  let hash = 0;
+  for (let i = 0; i < texto.length; i++) hash = (hash * 31 + texto.charCodeAt(i)) >>> 0;
+  return PALETA_CATEGORICA[hash % PALETA_CATEGORICA.length];
 }
 
-// La fila "Total" no muestra proporción (queda en blanco): ese número es
-// ingresos MENOS egresos ya mezclados, así que no hay un "total de qué"
-// único contra el que compararlo — no sería ni el total de ingresos ni el
-// de egresos, sería otra cosa.
-function celdaProporcionVacia() {
-  return `<td class="valor-cero">–</td>`;
+function puntoEnCirculo(cx, cy, r, anguloGrados) {
+  const rad = (anguloGrados * Math.PI) / 180;
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+// Arma un gráfico circular (SVG, sin librería externa) + la lista de
+// porcentajes ordenada de mayor a menor al lado, a partir de una lista de
+// { id, nombre, valor (siempre positivo acá), incompleto }.
+function graficoCircularHtml(items, total, textoVacio) {
+  if (items.length === 0 || total <= 0) {
+    return `<p class="empty">${textoVacio}</p>`;
+  }
+  const ordenados = items.slice().sort((a, b) => b.valor - a.valor);
+
+  // Hasta 7 porciones propias; el resto (si hay más conceptos que eso) se
+  // junta en "Otros" para no saturar el gráfico ni la lista de un color
+  // por cada uno.
+  const TOPE = 7;
+  let porciones = ordenados;
+  if (ordenados.length > TOPE) {
+    const resto = ordenados.slice(TOPE);
+    porciones = ordenados.slice(0, TOPE).concat([{
+      id: "otros",
+      nombre: `Otros (${resto.length})`,
+      valor: resto.reduce((s, it) => s + it.valor, 0),
+      incompleto: resto.some(it => it.incompleto),
+    }]);
+  }
+
+  // Cada porción es un sector circular (<path> con un arco), calculado a
+  // partir del ángulo acumulado, empezando arriba (12 en punto) y en
+  // sentido horario. cx/cy/r dejan margen adentro del viewBox de 180x180
+  // para que no se corte el borde de ninguna porción.
+  const cx = 90, cy = 90, r = 80;
+  let anguloAcum = -90;
+  let svg = "";
+  porciones.forEach(p => {
+    const pct = (p.valor / total) * 100;
+    if (porciones.length === 1) {
+      // Un solo concepto (100%): un <path> de arco no puede cerrar un
+      // círculo completo (el punto de inicio y el de fin coinciden), así
+      // que en ese caso especial se dibuja un <circle> entero.
+      svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${colorCategorico(p.id)}"><title>${escaparAtributo(p.nombre)}: ${pct.toFixed(1)}%</title></circle>`;
+      return;
+    }
+    const anguloGrados = (p.valor / total) * 360;
+    const inicio = anguloAcum;
+    const fin = anguloAcum + anguloGrados;
+    anguloAcum = fin;
+    const [x1, y1] = puntoEnCirculo(cx, cy, r, inicio);
+    const [x2, y2] = puntoEnCirculo(cx, cy, r, fin);
+    const arcoGrande = anguloGrados > 180 ? 1 : 0;
+    const d = `M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${arcoGrande} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`;
+    svg += `<path d="${d}" fill="${colorCategorico(p.id)}"><title>${escaparAtributo(p.nombre)}: ${pct.toFixed(1)}%</title></path>`;
+  });
+
+  const lista = porciones.map(p => {
+    const pct = (p.valor / total) * 100;
+    const marca = p.incompleto
+      ? `<span class="valor-incompleto" title="A algún movimiento de este concepto le falta el tipo de cambio de alguna moneda para este mes">⚠</span>`
+      : "";
+    return `<div class="grafico-circular-item">` +
+      `<span class="grafico-circular-punto" style="background:${colorCategorico(p.id)}"></span>` +
+      `<span class="grafico-circular-nombre">${p.nombre}${marca}</span>` +
+      `<span class="grafico-circular-pct">${pct.toFixed(1)}%</span>` +
+      `</div>`;
+  }).join("");
+
+  return `<div class="grafico-circular">` +
+    `<svg viewBox="0 0 180 180" class="grafico-circular-svg">${svg}</svg>` +
+    `<div class="grafico-circular-lista">${lista}</div>` +
+    `</div>`;
+}
+
+// Separa los conceptos del mes en Ingresos (dieron positivo) y Gastos
+// (dieron negativo), todo convertido a euros con totalesEnEurosDelMes
+// (la misma conversión que usa "Convertir todo a Euros" de la tabla de
+// arriba), y arma los dos gráficos. Usa los mismos "Conceptos a incluir"
+// tildados arriba, compartidos con el resto de Mensual/Histórica.
+function renderGraficosProporcion(mes, conceptoIdsIncluidos) {
+  const contGastos = document.getElementById("distribGraficoGastos");
+  const contIngresos = document.getElementById("distribGraficoIngresos");
+  if (!contGastos || !contIngresos) return;
+
+  const { totales, incompletos } = totalesEnEurosDelMes(mes, conceptoIdsIncluidos);
+  const ingresos = [];
+  const gastos = [];
+  let totalIngreso = 0;
+  let totalGasto = 0;
+  state.conceptos.forEach(c => {
+    const v = totales[c.id];
+    if (!v) return;
+    const incompleto = !!incompletos[c.id];
+    if (v > 0) {
+      ingresos.push({ id: c.id, nombre: c.nombre, valor: v, incompleto });
+      totalIngreso += v;
+    } else {
+      gastos.push({ id: c.id, nombre: c.nombre, valor: -v, incompleto });
+      totalGasto += -v;
+    }
+  });
+
+  contGastos.innerHTML = graficoCircularHtml(gastos, totalGasto, "No hay gastos en ese mes para los conceptos seleccionados.");
+  contIngresos.innerHTML = graficoCircularHtml(ingresos, totalIngreso, "No hay ingresos en ese mes para los conceptos seleccionados.");
 }
 
 // Una celda de importe: verde si es mayor a cero, rojo si es menor, y un
@@ -552,20 +662,10 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
   // historicoPorConcepto). Se calcula una vez para toda la tabla.
   const { enEuros, faltaTasa } = historicoPorConcepto(mes);
 
-  // Total de ingresos y de egresos del mes, sumados aparte, para la
-  // columna "Proporción" de cada fila (ver celdaProporcion). Sale de
-  // "totales", que ya tiene el total en euros de cada concepto.
-  let totalIngresoEuros = 0;
-  let totalEgresoEuros = 0;
-  Object.values(totales).forEach(v => {
-    if (v > 0) totalIngresoEuros += v;
-    else if (v < 0) totalEgresoEuros += -v;
-  });
-
   let total = 0;
   let totalIncompleto = false;
   const movsPorMonedaTotal = {};
-  let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th><th>Total (€)</th><th class="col-promedio">Promedio (€)</th><th>Proporción (€)</th></tr>`;
+  let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th><th>Total (€)</th><th class="col-promedio">Promedio (€)</th></tr>`;
   conceptosConDatos.forEach(c => {
     const v = totales[c.id] || 0;
     total += v;
@@ -581,7 +681,6 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
     html += `<tr><td>${c.nombre}</td>` +
       celdaImporte(v, semaforoContraPromedio(v, promedio, "€"), !!incompletos[c.id], detalleRef) +
       celdaPromedio(promedio, incompleto) +
-      celdaProporcion(v, totalIngresoEuros, totalEgresoEuros) +
       `</tr>`;
   });
   const detalleTotalRef = detalleConceptoEnEuros(
@@ -597,7 +696,6 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
   html += `<tr class="total-row"><td>Total</td>` +
     celdaImporte(total, semaforoContraPromedio(total, promedioTotal, "€"), totalIncompleto, detalleTotalRef) +
     celdaPromedio(promedioTotal, totalPromIncompleto) +
-    celdaProporcionVacia() +
     `</tr>`;
   html += `</table></div>`;
   html += `<p class="tipo-cambio-nota">Convertido a euros con los tipos de cambio de Configuración &gt; Tipo de cambio, para este mismo mes. ⚠ = falta cargar el tipo de cambio de alguna moneda ese mes, ese total está incompleto. Tocá el botón "i" de cada celda para ver el detalle.</p>`;
@@ -615,6 +713,12 @@ function renderReporte() {
   const monedaIdsIncluidas = new Set(
     state.monedas.filter(m => m.incluir_en_distribucion !== false).map(m => String(m.id))
   );
+
+  // Los gráficos circulares de Gastos/Ingresos van SIEMPRE en euros (ver
+  // renderGraficosProporcion), así que se arman acá afuera, antes de la
+  // rama de abajo — no dependen de si "Convertir todo a Euros" está
+  // tildado o no, eso solo cambia cómo se ve la TABLA.
+  renderGraficosProporcion(mes, conceptoIdsIncluidos);
 
   if (state.distribucion.convertirEuros) {
     renderReporteEnEuros(cont, mes, conceptoIdsIncluidos);
@@ -650,24 +754,6 @@ function renderReporte() {
 
   const listaMonedaIds = Array.from(monedaIdsUsadas).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
 
-  // Total de ingresos y de egresos de cada moneda, sumados aparte, para la
-  // columna "Proporción" de cada fila (ver celdaProporcion): cada concepto
-  // se compara contra el total de su propio signo en esa moneda, no contra
-  // la suma de todo junto. Sale de porConceptoMoneda, que ya tiene el total
-  // de cada concepto en cada moneda.
-  const totalIngresoPorMoneda = {};
-  const totalEgresoPorMoneda = {};
-  listaMonedaIds.forEach(monedaId => {
-    let ingreso = 0, egreso = 0;
-    Object.values(porConceptoMoneda).forEach(fila => {
-      const v = fila[monedaId] || 0;
-      if (v > 0) ingreso += v;
-      else if (v < 0) egreso += -v;
-    });
-    totalIngresoPorMoneda[monedaId] = ingreso;
-    totalEgresoPorMoneda[monedaId] = egreso;
-  });
-
   // El promedio histórico de cada concepto en cada moneda, sin contar este
   // mes. Acá no se convierte nada: cada moneda se promedia con la suya, que
   // es lo mismo que hace el resto de esta tabla.
@@ -675,7 +761,7 @@ function renderReporte() {
 
   let html = `<div class="pivot-wrap"><table class="pivot distrib-pivot"><tr><th>Concepto</th>` +
     listaMonedaIds.map(id =>
-      `<th>${nombreMoneda(id)}</th><th class="col-promedio">Prom. ${nombreMoneda(id)}</th><th>% ${nombreMoneda(id)}</th>`
+      `<th>${nombreMoneda(id)}</th><th class="col-promedio">Prom. ${nombreMoneda(id)}</th>`
     ).join("") + `</tr>`;
 
   // Solo se listan los conceptos que tuvieron movimientos ese mes (para no
@@ -704,8 +790,7 @@ function renderReporte() {
           : null;
         const { promedio } = promediar(porMoneda[c.id + "|" + monedaId]);
         html += celdaImporte(v, semaforoContraPromedio(v, promedio, nombreMoneda(monedaId)), false, detalleRef) +
-          celdaPromedio(promedio, false) +
-          celdaProporcion(v, totalIngresoPorMoneda[monedaId], totalEgresoPorMoneda[monedaId]);
+          celdaPromedio(promedio, false);
       });
       html += `</tr>`;
     });
@@ -726,8 +811,7 @@ function renderReporte() {
       const v = totales[monedaId] || 0;
       const { promedio } = promediar(sumarPorMes(idsMostrados.map(id => porMoneda[id + "|" + monedaId])));
       return celdaImporte(v, semaforoContraPromedio(v, promedio, nombreMoneda(monedaId)), false, detalleRef) +
-        celdaPromedio(promedio, false) +
-        celdaProporcionVacia();
+        celdaPromedio(promedio, false);
     }).join("") + `</tr>`;
   html += `</table></div>`;
 

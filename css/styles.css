@@ -940,3 +940,32 @@ table.tipo-cambio-tabla td:first-child { text-align: left; padding-left: 4px; }
   background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b;
   padding: 12px 14px; border-radius: var(--radius); margin: 16px; font-size: 13px; max-width: 480px; margin-left:auto; margin-right:auto;
 }
+
+/* Gráficos circulares de Gastos/Ingresos (Dashboard > Distribución >
+   Mensual, ver renderGraficosProporcion en js/distribucion.js). El SVG
+   (armado en JS con <path> de arco, sin librería externa) va a la
+   izquierda con un ancho fijo; la lista de porcentajes de mayor a menor
+   ocupa el resto y hace de leyenda (cada punto de color coincide con su
+   porción). En una pantalla angosta se apilan uno abajo del otro en vez
+   de achicar el círculo hasta ilegible. */
+.grafico-circular {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.grafico-circular-svg {
+  width: 140px; height: 140px; flex-shrink: 0;
+}
+.grafico-circular-svg path,
+.grafico-circular-svg circle {
+  stroke: var(--card); stroke-width: 2px;
+}
+.grafico-circular-lista {
+  flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 6px;
+}
+.grafico-circular-item {
+  display: flex; align-items: center; gap: 8px; font-size: 13px;
+}
+.grafico-circular-punto {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.grafico-circular-nombre { flex: 1; }
+.grafico-circular-pct { font-weight: 600; font-variant-numeric: tabular-nums; }
