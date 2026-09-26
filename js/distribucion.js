@@ -322,9 +322,28 @@ function celdaPromedio(promedio, incompleto) {
 // son gastos, pintarlas todas de rojo no distinguiría nada. El color de
 // cada concepto sale de un hash simple de su id (no del orden en que
 // aparece ese mes), para que sea SIEMPRE el mismo color de mes a mes,
-// aunque el orden de mayor a menor cambie. Paleta categórica de 8 colores
-// (validada para que ningún par adyacente se confunda con daltonismo).
-const PALETA_CATEGORICA = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"];
+// aunque el orden de mayor a menor cambie. Paleta categórica de 8 colores.
+//
+// Nadia pidió (después de ver la paleta genérica original) que los colores
+// "sean acordes a la aplicación" en vez de desentonar. Un primer intento
+// ancló dos colores en var(--accent)/var(--brand-fucsia) pero rellenó el
+// resto con tonos medios (L de OKLCH ~0.55-0.66) que, aunque técnicamente
+// bien saturados, Nadia vio "más pasteles, no tan duros" al lado del
+// celeste y el fucsia de la app (que son vívidos: mucho croma Y bastante
+// claros). Esta versión sube la claridad de los otros seis colores para
+// buscar ese mismo look "duro" (croma al máximo posible en gamut sRGB para
+// cada matiz, en vez de una claridad pareja de 0.6) y evita a propósito la
+// franja oliva/mostaza (matices ~60-140°), que se ve "tierra" aunque el
+// número de saturación sea alto. El primer y el quinto color siguen
+// siendo, LITERALMENTE, var(--accent) (#04C6DA) y var(--brand-fucsia)
+// (#FF6061) tal cual están en css/styles.css. Validado con la skill de
+// dataviz (validate_palette.js, modo "light"): ALL CHECKS PASS, con el
+// mismo WARN de contraste que ya tenía la paleta anterior (varios de estos
+// colores, sobre fondo blanco, no llegan al contraste ideal de 3:1 — por
+// eso cada porción SIEMPRE va acompañada de su nombre y porcentaje en la
+// lista de al lado, que es justo la "etiqueta visible" que ese chequeo
+// pide como compensación).
+const PALETA_CATEGORICA = ["#04c6da", "#3858ff", "#dea805", "#bf2bdd", "#ff6061", "#a052fe", "#05c992", "#0383fc"];
 const COLOR_OTROS = "#9aa0a6";
 
 function colorCategorico(id) {
@@ -342,8 +361,10 @@ function puntoEnCirculo(cx, cy, r, anguloGrados) {
 
 // Arma un gráfico circular (SVG, sin librería externa) + la lista de
 // porcentajes ordenada de mayor a menor al lado, a partir de una lista de
-// { id, nombre, valor (siempre positivo acá), incompleto }.
-function graficoCircularHtml(items, total, textoVacio) {
+// { id, nombre, valor (siempre positivo acá), incompleto }. "etiqueta" y
+// "mes" son solo para el título del popup de "Otros" (ver más abajo), no
+// afectan el dibujo.
+function graficoCircularHtml(items, total, textoVacio, etiqueta, mes) {
   if (items.length === 0 || total <= 0) {
     return `<p class="empty">${textoVacio}</p>`;
   }
@@ -351,16 +372,32 @@ function graficoCircularHtml(items, total, textoVacio) {
 
   // Hasta 7 porciones propias; el resto (si hay más conceptos que eso) se
   // junta en "Otros" para no saturar el gráfico ni la lista de un color
-  // por cada uno.
+  // por cada uno. Nadia pidió poder ver igual qué conceptos quedaron ahí
+  // adentro: "Otros" suma un botón "i" (mismo botón/popup que ya usan las
+  // celdas de la tabla de arriba, ver celdaImporte/registrarDetalle/
+  // mostrarDetalle) con cada uno de esos conceptos y su % del total — el
+  // mismo % que mostraría si tuviera su propia fila en la lista.
   const TOPE = 7;
   let porciones = ordenados;
   if (ordenados.length > TOPE) {
     const resto = ordenados.slice(TOPE);
+    const detalleRef = registrarDetalle(
+      detallesReporte, "reporte", `Otros (${resto.length}) — ${etiqueta} — ${formatoMesLegible(mes)}`,
+      [{
+        etiqueta: null,
+        lineas: resto.map(it => ({
+          texto: it.nombre + (it.incompleto ? " ⚠" : ""),
+          monto: `${((it.valor / total) * 100).toFixed(1)}%`,
+        })),
+        nota: "Son los conceptos de menor peso del mes, agrupados para no saturar el gráfico ni la lista.",
+      }]
+    );
     porciones = ordenados.slice(0, TOPE).concat([{
       id: "otros",
       nombre: `Otros (${resto.length})`,
       valor: resto.reduce((s, it) => s + it.valor, 0),
       incompleto: resto.some(it => it.incompleto),
+      detalleRef,
     }]);
   }
 
@@ -396,9 +433,16 @@ function graficoCircularHtml(items, total, textoVacio) {
     const marca = p.incompleto
       ? `<span class="valor-incompleto" title="A algún movimiento de este concepto le falta el tipo de cambio de alguna moneda para este mes">⚠</span>`
       : "";
+    // Solo "Otros" trae detalleRef (ver más arriba): es la única fila con
+    // botón "i", porque es la única que esconde información (qué conceptos
+    // se agruparon ahí adentro).
+    const boton = p.detalleRef
+      ? `<button type="button" class="btn-detalle" data-detalle="${p.detalleRef}" title="Ver qué conceptos son &quot;Otros&quot;">i</button>`
+      : "";
     return `<div class="grafico-circular-item">` +
       `<span class="grafico-circular-punto" style="background:${colorCategorico(p.id)}"></span>` +
       `<span class="grafico-circular-nombre">${p.nombre}${marca}</span>` +
+      boton +
       `<span class="grafico-circular-pct">${pct.toFixed(1)}%</span>` +
       `</div>`;
   }).join("");
@@ -437,8 +481,8 @@ function renderGraficosProporcion(mes, conceptoIdsIncluidos) {
     }
   });
 
-  contGastos.innerHTML = graficoCircularHtml(gastos, totalGasto, "No hay gastos en ese mes para los conceptos seleccionados.");
-  contIngresos.innerHTML = graficoCircularHtml(ingresos, totalIngreso, "No hay ingresos en ese mes para los conceptos seleccionados.");
+  contGastos.innerHTML = graficoCircularHtml(gastos, totalGasto, "No hay gastos en ese mes para los conceptos seleccionados.", "Gastos", mes);
+  contIngresos.innerHTML = graficoCircularHtml(ingresos, totalIngreso, "No hay ingresos en ese mes para los conceptos seleccionados.", "Ingresos", mes);
 }
 
 // Una celda de importe: verde si es mayor a cero, rojo si es menor, y un
