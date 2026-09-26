@@ -504,6 +504,20 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <textarea id="editarItemDescripcion" rows="3" placeholder="Ej: para el viaje de julio..."></textarea>
 </div>
 
+<!-- Solo para Conceptos (ver js/configuracion.js): moneda/origen por
+     defecto para ESE concepto — se usan para autocompletar Agregar/Editar
+     movimiento al elegirlo (ver js/modal.js), pero siempre se pueden
+     cambiar a mano ahí. "Sin definir" (vacío) es una opción válida. -->
+<div id="editarItemMonedaGrupo" style="display:none;">
+<label for="editarItemMoneda">Moneda por defecto (opcional)</label>
+<select id="editarItemMoneda"></select>
+</div>
+
+<div id="editarItemOrigenGrupo" style="display:none;">
+<label for="editarItemOrigen">Origen por defecto (opcional)</label>
+<select id="editarItemOrigen"></select>
+</div>
+
 <button type="submit" class="primary">Guardar</button>
 </form>
 </div>
