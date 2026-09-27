@@ -67,13 +67,17 @@ function etiquetasDefectoConcepto(it) {
 // en vez de buscar el nombre en esa tabla.
 const NOMBRE_TIPO_PRINCIPAL = { 1: "Ingreso", 2: "Egreso", 3: "No aplica" };
 
-// Chip de texto igual en espíritu al de Fijo/Variable (mismo tamaño,
-// mismo patrón de toggle), pero con los colores de ingreso/egreso de
-// siempre (var(--income)/var(--expense), los mismos que ya usan los
-// montos de Gastos y los gráficos de Distribución) en vez del celeste de
-// Tipo, para que se lea de un vistazo como una cosa distinta. Un concepto
-// sin tipo_concepto_principal cargado (no debería pasar, pero por las
-// dudas) se trata como Egreso — mismo criterio de respaldo que ya usa
+// Chip de texto igual en espíritu al de Fijo/Variable (mismo tamaño, mismo
+// patrón de toggle), con los colores celeste/fucsia de la app (var(--accent)/
+// var(--brand-fucsia)) para Ingreso/Egreso — los mismos que ya usan los
+// toggles de Agregar/Editar movimiento y de Editar concepto (ver entrada 25
+// del changelog). Antes este chip usaba var(--income)/var(--expense) (rojo/
+// verde, los mismos colores que los montos de Gastos y los gráficos de
+// Distribución) a propósito, para distinguirlo del celeste de Tipo — pero
+// Nadia después pidió que Ingreso/Egreso sea celeste/fucsia en TODOS lados
+// donde aparece, no solo en los dos modales (entrada 27). Un concepto sin
+// tipo_concepto_principal cargado (no debería pasar, pero por las dudas) se
+// trata como Egreso — mismo criterio de respaldo que ya usa
 // tipoSegunConcepto() en modal.js.
 function chipSignoConcepto(tabla, it) {
   const esIngreso = it.tipo_concepto_principal === 1;
@@ -90,16 +94,13 @@ export function renderConfigLista(tabla, items, contenedorId) {
     el.innerHTML = `<div class="empty">Todavía no agregaste nada acá.</div>`;
     return;
   }
-  const encabezado = esConceptos
-    ? `<div class="config-item config-list-header">
-         <span class="col-nombre"></span>
-         <span class="col-tipo">Tipo</span>
-         <span class="col-signo">Movimiento</span>
-         <span class="col-activo">Estado</span>
-         <span class="col-acciones"></span>
-       </div>`
-    : "";
-  el.innerHTML = encabezado + items.map(it => {
+  // Antes había acá un encabezado fijo ("Tipo" / "Movimiento" / "Estado")
+  // arriba de la lista. Nadia pidió sacarlo (ya sabe qué es cada chip, y en
+  // pantallas angostas el texto "Movimiento" quedaba cortado contra
+  // "Estado" pese al ajuste de word-break) — cada chip ya es autoexplicativo
+  // por su propio texto ("Fijo"/"Variable", "Ingreso"/"Egreso"), así que no
+  // hace falta rótulo de columna.
+  el.innerHTML = items.map(it => {
     const esFijo = it.tipo_gasto === "fijo";
     const descripcionSistema = esConceptos ? descripcionConceptoSistema(it.nombre) : null;
     // Chip de texto (no otro switch mudo al lado del de Activo): dice "Fijo"
