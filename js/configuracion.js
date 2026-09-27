@@ -94,7 +94,7 @@ export function renderConfigLista(tabla, items, contenedorId) {
     ? `<div class="config-item config-list-header">
          <span class="col-nombre"></span>
          <span class="col-tipo">Tipo</span>
-         <span class="col-signo">Signo</span>
+         <span class="col-signo">Movimiento</span>
          <span class="col-activo">Estado</span>
          <span class="col-acciones"></span>
        </div>`
