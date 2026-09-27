@@ -558,21 +558,28 @@ table.distrib-pivot td.col-promedio { color: var(--muted); }
 
 /* Tipo toggle. .signo-toggle (Editar concepto, ver editar-modal.js) es
    visualmente IGUAL a .tipo-toggle (Agregar/Editar movimiento) — mismos
-   estilos, mismos colores var(--income)/var(--expense) — pero con su
-   propia clase a propósito: setupModal() en js/modal.js engancha sus
-   listeners con document.querySelectorAll(".tipo-toggle button") SIN
-   acotar a su propio formulario, así que si el toggle de Editar concepto
-   usara la misma clase, esos listeners también se le engancharían a él
-   (y viceversa, marcarToggleActivo() lo pisaría con el tipo del gasto que
-   se esté cargando en Gastos > Movimientos). Con una clase distinta,
-   ninguno de los dos toggles se entera del otro. */
+   estilos — pero con su propia clase a propósito: setupModal() en
+   js/modal.js engancha sus listeners con
+   document.querySelectorAll(".tipo-toggle button") SIN acotar a su propio
+   formulario, así que si el toggle de Editar concepto usara la misma
+   clase, esos listeners también se le engancharían a él (y viceversa,
+   marcarToggleActivo() lo pisaría con el tipo del gasto que se esté
+   cargando en Gastos > Movimientos). Con una clase distinta, ninguno de
+   los dos toggles se entera del otro.
+   Colores: a pedido de Nadia, estos DOS toggles (Agregar/Editar
+   movimiento y el Signo de Editar concepto) usan el celeste/fucsia de la
+   app — var(--accent)/var(--brand-fucsia) — en vez del verde/rojo de
+   ingreso/egreso de siempre (var(--income)/var(--expense)), que sigue
+   siendo el color de esos dos en todo el resto de la app (montos de
+   Gastos, el chip "Signo" de la lista de Conceptos de la (23), los
+   gráficos de Distribución, etc. — ninguno de esos se tocó acá). */
 .tipo-toggle, .signo-toggle { display: flex; gap: 8px; margin-top: 10px; }
 .tipo-toggle button, .signo-toggle button {
   flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
   background: #fff; font-size: 14px; cursor: pointer;
 }
-.tipo-toggle button.active[data-tipo="ingreso"], .signo-toggle button.active[data-tipo="ingreso"] { background: var(--income); color: white; border-color: var(--income); }
-.tipo-toggle button.active[data-tipo="egreso"], .signo-toggle button.active[data-tipo="egreso"] { background: var(--expense); color: white; border-color: var(--expense); }
+.tipo-toggle button.active[data-tipo="ingreso"], .signo-toggle button.active[data-tipo="ingreso"] { background: var(--accent); color: white; border-color: var(--accent); }
+.tipo-toggle button.active[data-tipo="egreso"], .signo-toggle button.active[data-tipo="egreso"] { background: var(--brand-fucsia); color: white; border-color: var(--brand-fucsia); }
 
 /* Modal: todos (Agregar gasto, Editar concepto/moneda/origen/reserva,
    Detalle de una celda) se muestran centrados y con las cuatro esquinas
