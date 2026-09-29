@@ -13,6 +13,7 @@ import { setupFlujoCaja } from './flujo-caja.js';
 import { setupReservas } from './reservas.js';
 import { setupEditarModal } from './editar-modal.js';
 import { setupEvolucion } from './evolucion.js';
+import { setupPivot } from './dashboard.js';
 
 setupAllTabs();
 setupAuth();
@@ -27,6 +28,7 @@ setupFlujoCaja();
 setupReservas();
 setupEditarModal();
 setupEvolucion();
+setupPivot();
 
 // Al girar la rueda del mouse (o hacer scroll con el trackpad) sobre un
 // campo numérico enfocado, el navegador suma/resta de a uno por cada

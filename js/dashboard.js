@@ -7,19 +7,36 @@
 // incluir_en_distribucion que usa Distribución) para poder tener acá una
 // selección distinta de la de Distribución sin que se pisen entre sí.
 //
-// "Total (€)": a diferencia de Distribución (que convierte con el tipo de
-// cambio de un mes puntual), acá el pivot es un saldo acumulado de
-// siempre, sin un mes al que atarse. Por eso se usa, para cada moneda, el
-// tipo de cambio más reciente que haya cargado en Configuración > Tipo de
-// cambio (el último mes con un valor cargado), como mejor aproximación
-// disponible al valor actual. Si a alguna moneda todavía no le cargó
-// ningún tipo de cambio, esa conversión queda marcada con ⚠ en vez de
-// contarse como si fuera cero.
+// Selector de Mes (a pedido de Nadia): por defecto muestra el mes actual,
+// y ahí el pivot se sigue calculando EXACTO como siempre (ver
+// state.snapshot en state.js) — saldo acumulado de TODOS los movimientos
+// sin importar la fecha, convertido con el tipo de cambio más reciente
+// que haya cargado para cada moneda. Elegir otro mes en el selector arma
+// en cambio una foto histórica: solo entran los movimientos con fecha
+// hasta el fin de ese mes (state.snapshot.mes se compara como texto
+// "YYYY-MM", que ordena igual que una fecha), convertidos con el tipo de
+// cambio de ESE mes puntual (convertirAEuros, la misma función que ya usan
+// Evolución/Distribución/Flujo de caja) en vez del más reciente. Los dos
+// modos conviven en las mismas funciones de más abajo (construirPivot,
+// totalEnEuros) en vez de duplicarlas, recibiendo el mes de corte (o nada,
+// para el modo de siempre) como parámetro.
+//
+// saldoEnEurosPorOrigen() —la usa Gastos > Asignación— se sigue llamando
+// SIN mes: a Asignación le interesa la plata que hay HOY para repartir
+// entre las reservas, nunca una foto vieja, así que no se le suma el
+// selector.
+//
+// Si a alguna moneda con saldo le falta el tipo de cambio que corresponda
+// (el más reciente, o el de ese mes puntual, según el modo), esa
+// conversión queda marcada con ⚠ en vez de contarse como si fuera cero.
 
 import { state } from './state.js';
 import { nombreOrigen, nombreMoneda } from './lookups.js';
 import { renderCheckboxesTabla } from './check-list.js';
-import { celdaImporte } from './distribucion.js';
+import {
+  celdaImporte, convertirAEuros, formatoMesLegible, mesActualTexto,
+  poblarSelectMes, poblarSelectAnio, leerMesSeleccionado, escribirMesSeleccionado,
+} from './distribucion.js';
 
 function renderCheckboxesConceptosSnapshot() {
   renderCheckboxesTabla("conceptos", state.conceptos, "snapshotConceptosCheckboxes", "Todavía no hay conceptos cargados.", "incluir_en_snapshot", true);
@@ -55,13 +72,16 @@ function convertirAEurosMasReciente(monedaId, monto) {
 // total general), el equivalente en euros de cada uno. incompleto=true si
 // alguna moneda con saldo distinto de cero todavía no tiene tipo de
 // cambio cargado (esa parte no se cuenta ni de más ni de menos).
-function totalEnEuros(totalesPorMoneda, listaMonedaIds) {
+// "convertir" es la función de conversión a usar (una de las dos de más
+// abajo, según el modo — ver el comentario de arriba del archivo): así
+// esta función no necesita saber si el modo es "actual" o "mes puntual".
+function totalEnEuros(totalesPorMoneda, listaMonedaIds, convertir) {
   let total = 0;
   let incompleto = false;
   listaMonedaIds.forEach(monedaId => {
     const v = totalesPorMoneda[monedaId] || 0;
     if (!v) return;
-    const { valor, ok } = convertirAEurosMasReciente(monedaId, v);
+    const { valor, ok } = convertir(monedaId, v);
     total += valor;
     if (!ok) incompleto = true;
   });
@@ -74,7 +94,15 @@ function totalEnEuros(totalesPorMoneda, listaMonedaIds) {
 // Asignación pueda reusar exactamente el mismo cálculo (ver
 // saldoEnEurosPorOrigen más abajo) en vez de tener su propia copia que
 // después se desincronice.
-function construirPivot() {
+//
+// "mesCorte" es opcional (Asignación nunca lo manda, ver el comentario de
+// arriba del archivo): sin él, entran todos los movimientos sin importar
+// la fecha (el comportamiento de siempre). Con un "YYYY-MM", solo entran
+// los que tengan fecha hasta el FIN de ese mes — la comparación es de
+// texto entre dos "YYYY-MM" (el de la fecha del movimiento, recortada a
+// sus primeros 7 caracteres, contra mesCorte), que ordena igual que
+// comparar fechas de verdad.
+function construirPivot(mesCorte) {
   const conceptoIdsIncluidos = new Set(
     state.conceptos.filter(c => c.incluir_en_snapshot !== false).map(c => String(c.id))
   );
@@ -83,6 +111,7 @@ function construirPivot() {
   const monedaIdsUsadas = new Set();
   state.movimientos.forEach(m => {
     if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    if (mesCorte && String(m.fecha).slice(0, 7) > mesCorte) return;
     const signo = m.tipo === "ingreso" ? 1 : -1;
     const val = signo * Number(m.monto);
     if (!pivot[m.origen_id]) pivot[m.origen_id] = {};
@@ -116,16 +145,16 @@ function construirPivot() {
   return { pivot, listaMonedaIds, listaOrigenIds };
 }
 
-// La plata que hay hoy en cada cuenta, ya pasada a euros: es exactamente la
-// columna "Total (€)" del Snapshot, que es lo que Asignación reparte entre
-// las reservas. "incompleto" en una fila (y en el total) significa que a
-// alguna moneda de esa cuenta todavía no le cargaste el tipo de cambio, así
-// que ese total está incompleto (esa parte no se cuenta como cero).
+// La plata que hay HOY en cada cuenta, ya pasada a euros: es lo que
+// Asignación reparte entre las reservas. A propósito, SIEMPRE sin mesCorte
+// y con la tasa más reciente — el selector de mes de Snapshot (más abajo)
+// no le afecta para nada, Asignación siempre necesita la plata real de
+// ahora, nunca una foto vieja.
 export function saldoEnEurosPorOrigen() {
   const { pivot, listaMonedaIds, listaOrigenIds } = construirPivot();
   let huboIncompleto = false;
   const filas = listaOrigenIds.map(origenId => {
-    const { total, incompleto } = totalEnEuros(pivot[origenId], listaMonedaIds);
+    const { total, incompleto } = totalEnEuros(pivot[origenId], listaMonedaIds, convertirAEurosMasReciente);
     if (incompleto) huboIncompleto = true;
     return { origenId, total, incompleto };
   });
@@ -133,22 +162,43 @@ export function saldoEnEurosPorOrigen() {
 }
 
 export function renderPivot() {
+  if (!state.snapshot.mes) state.snapshot.mes = mesActualTexto();
+  // Mismo motivo que en distribucion.js/flujo-caja.js: un <select> recién
+  // poblado no queda "vacío" solo (el navegador hace propia su primera
+  // opción), así que se escribe el valor desde el estado en cada render.
+  escribirMesSeleccionado("snapshot", state.snapshot.mes);
   renderCheckboxesConceptosSnapshot();
 
-  const { pivot, listaMonedaIds, listaOrigenIds } = construirPivot();
+  const esMesActual = state.snapshot.mes === mesActualTexto();
+  const mesCorte = esMesActual ? null : state.snapshot.mes;
+  const convertir = esMesActual
+    ? convertirAEurosMasReciente
+    : (monedaId, monto) => convertirAEuros(state.snapshot.mes, monedaId, monto);
+
+  const { pivot, listaMonedaIds, listaOrigenIds } = construirPivot(mesCorte);
   const tabla = document.getElementById("pivotTable");
   const nota = document.getElementById("pivotNota");
+  const titulo = document.getElementById("pivotTitulo");
+  if (titulo) {
+    titulo.textContent = esMesActual
+      ? "Resumen por cuenta y moneda"
+      : `Resumen por cuenta y moneda — ${formatoMesLegible(state.snapshot.mes)}`;
+  }
 
   if (listaMonedaIds.length === 0) {
     const mensaje = state.movimientos.length === 0
       ? "Todavía no hay movimientos cargados."
-      : "No hay movimientos para los conceptos seleccionados.";
+      : esMesActual
+        ? "No hay movimientos para los conceptos seleccionados."
+        : "No hay movimientos hasta ese mes para los conceptos seleccionados.";
     tabla.innerHTML = `<tr><td class="empty">${mensaje}</td></tr>`;
     if (nota) nota.style.display = "none";
     return;
   }
 
-  const tituloIncompleto = "Falta cargar el tipo de cambio de alguna moneda en Configuración > Tipo de cambio (se usa el más reciente que tengas cargado para cada una)";
+  const tituloIncompleto = esMesActual
+    ? "Falta cargar el tipo de cambio de alguna moneda en Configuración > Tipo de cambio (se usa el más reciente que tengas cargado para cada una)"
+    : `Falta cargar el tipo de cambio de alguna moneda para ${formatoMesLegible(state.snapshot.mes)} en Configuración > Tipo de cambio`;
 
   let html = "<tr><th>Origen</th>" + listaMonedaIds.map(id => `<th>${nombreMoneda(id)}</th>`).join("") + "<th>Total (€)</th></tr>";
   const totales = {};
@@ -160,13 +210,13 @@ export function renderPivot() {
       totales[monedaId] = (totales[monedaId] || 0) + v;
       html += `<td>${v ? v.toFixed(2) : "–"}</td>`;
     });
-    const { total: totalFila, incompleto } = totalEnEuros(pivot[origenId], listaMonedaIds);
+    const { total: totalFila, incompleto } = totalEnEuros(pivot[origenId], listaMonedaIds, convertir);
     if (incompleto) huboIncompleto = true;
     html += celdaImporte(totalFila, false, incompleto, null, tituloIncompleto);
     html += "</tr>";
   });
 
-  const { total: totalGeneral, incompleto: totalGeneralIncompleto } = totalEnEuros(totales, listaMonedaIds);
+  const { total: totalGeneral, incompleto: totalGeneralIncompleto } = totalEnEuros(totales, listaMonedaIds, convertir);
   if (totalGeneralIncompleto) huboIncompleto = true;
   html += `<tr class="total-row"><td>Total</td>` +
     listaMonedaIds.map(id => `<td>${(totales[id] || 0).toFixed(2)}</td>`).join("") +
@@ -174,6 +224,21 @@ export function renderPivot() {
   tabla.innerHTML = html;
 
   if (nota) {
+    const textoNota = esMesActual
+      ? "⚠ = todavía no cargaste el tipo de cambio de alguna moneda en Configuración &gt; Tipo de cambio, ese Total (€) está incompleto. La conversión usa el tipo de cambio más reciente que tengas cargado para cada moneda."
+      : `⚠ = falta cargar el tipo de cambio de alguna moneda para ${formatoMesLegible(state.snapshot.mes)} en Configuración &gt; Tipo de cambio, así que ese total está incompleto.`;
+    nota.innerHTML = textoNota;
     nota.style.display = huboIncompleto ? "block" : "none";
   }
+}
+
+export function setupPivot() {
+  poblarSelectMes("snapshot");
+  poblarSelectAnio("snapshot");
+  ["MesNombre", "Anio"].forEach(sufijo => {
+    document.getElementById("snapshot" + sufijo).addEventListener("change", () => {
+      state.snapshot.mes = leerMesSeleccionado("snapshot");
+      renderPivot();
+    });
+  });
 }

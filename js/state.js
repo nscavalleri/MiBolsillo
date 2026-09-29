@@ -50,6 +50,18 @@ export const state = {
   // es compartido entre Mensual y Histórica de acá, a pedido de Nadia —
   // mismo mecanismo que Distribución (una sola lista arriba de las dos).
   flujoCaja: { mes: "", ordenHistorico: "asc" },
+  // Dashboard > Snapshot: qué mes mirar. Por defecto (string vacío) se
+  // completa con el mes actual la primera vez que se renderiza, igual que
+  // distribucion.mes/flujoCaja.mes — con esa diferencia: mientras el mes
+  // elegido siga siendo el actual, el pivot se calcula EXACTAMENTE como
+  // antes de que existiera este selector (todos los movimientos sin
+  // importar la fecha, con el tipo de cambio más reciente cargado). Elegir
+  // cualquier OTRO mes activa el modo "foto histórica": solo entran los
+  // movimientos con fecha hasta el fin de ese mes, convertidos con el tipo
+  // de cambio de ESE mes (mismo criterio que ya usan Evolución/Distribución/
+  // Flujo de caja), no con el más reciente. No tiene "ordenHistorico"
+  // porque Snapshot no tiene sub-pestaña Histórica.
+  snapshot: { mes: "" },
   // Configuración > Tipo de cambio: una fila por cada combinación
   // mes-moneda con un valor cargado (tabla tipos_cambio). La usa
   // "Convertir todo a Euros" de Distribución para pasar todo a euros.

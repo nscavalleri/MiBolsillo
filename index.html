@@ -57,8 +57,21 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </details>
 </div>
 
+<!-- Por defecto (mes actual) el pivot de abajo funciona exactamente
+     como siempre: saldo de TODOS los movimientos, tipo de cambio más
+     reciente. Elegir cualquier otro mes acá arma una foto histórica al
+     cierre de ese mes (ver el comentario de js/dashboard.js). -->
 <div class="card">
-<h3 style="margin-top:0;">Resumen por cuenta y moneda</h3>
+<h3 style="margin-top:0;">Mes</h3>
+<label for="snapshotMesNombre">Elegí el mes y año</label>
+<div class="mes-selector">
+<select id="snapshotMesNombre"></select>
+<select id="snapshotAnio"></select>
+</div>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0;" id="pivotTitulo">Resumen por cuenta y moneda</h3>
 <div class="pivot-wrap"><table class="pivot" id="pivotTable"></table></div>
 <p class="tipo-cambio-nota" id="pivotNota" style="display:none;">⚠ = todavía no cargaste el tipo de cambio de alguna moneda en Configuración &gt; Tipo de cambio, ese Total (€) está incompleto. La conversión usa el tipo de cambio más reciente que tengas cargado para cada moneda.</p>
 </div>
@@ -417,11 +430,11 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <label for="concepto">Concepto</label>
 <select id="concepto" required></select>
 
-<label for="descripcion">Descripción (opcional)</label>
-<input type="text" id="descripcion" placeholder="Ej: supermercado, alquiler..." />
-
 <label for="monto">Cantidad</label>
 <input type="number" id="monto" step="0.01" min="0" placeholder="0.00" required />
+
+<label for="descripcion">Descripción (opcional)</label>
+<input type="text" id="descripcion" placeholder="Ej: supermercado, alquiler..." />
 
 <label for="moneda">Moneda</label>
 <select id="moneda" required></select>
