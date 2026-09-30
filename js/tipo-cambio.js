@@ -1,10 +1,12 @@
 // Configuración > Tipo de cambio: una tabla con una fila por cada mes-año
 // que tiene movimientos cargados y una columna por cada moneda (menos
 // Euros: convertir euros a euros no aporta nada). En cada celda se ingresa
-// a cuánto equivalía 1 unidad de esa moneda en euros, ese mes. Con el
-// tiempo esto queda como el histórico de tipos de cambio a euros; por
-// ahora solo se guarda, todavía no se usa para convertir nada
-// automáticamente en ningún otro reporte.
+// a cuánto equivalía 1 unidad de esa moneda en euros, ese mes — CON DOS
+// EXCEPCIONES: Oro y Pesos (ver el párrafo de abajo y el comentario de
+// convertirAEuros en distribucion.js). Con el tiempo esto queda como el
+// histórico de tipos de cambio a euros; se usa para convertir en
+// Evolución/Distribución/Flujo de caja/Snapshot/Asignación (ver
+// convertirAEuros/convertirAEurosMasReciente).
 //
 // Se guarda en la tabla tipos_cambio (mes, moneda_id, valor_eur), con una
 // fila por combinación mes-moneda (columna UNIQUE en la base). Cada celda
@@ -16,12 +18,44 @@
 // las monedas cargadas (menos Euros), tuvieron o no movimientos en un mes
 // puntual: así se puede completar el tipo de cambio de una moneda para un
 // mes aunque ese mes en particular no haya tenido ningún gasto en ella.
+//
+// CASO ESPECIAL: Oro. Nadia aclaró que lo que carga en esa columna no es
+// un valor directo en euros como el resto: es cuántos DÓLARES vale 1
+// unidad de oro ese mes (así es como lo consigue cotizado). El código
+// (convertirAEuros/convertirAEurosMasReciente) ya sabe esto y encadena la
+// conversión a través del tipo de cambio de Dólares de ese mismo mes; acá
+// solo hace falta que el encabezado de esa columna lo aclare ("Oro (a
+// USD)") para que no se vuelva a cargar por error un valor en euros.
+//
+// CASO ESPECIAL: Pesos. Mismo motivo que Oro pero al revés: lo que se
+// carga en esa columna es cuántos PESOS vale 1 DÓLAR ese mes (por ejemplo
+// "1560"), no euros directos ni dólares por peso. El código encadena la
+// conversión dividiendo por este valor y multiplicando por el tipo de
+// cambio de Dólares de ese mismo mes (ver convertirAEuros); acá el
+// encabezado de esa columna lo aclara ("Pesos (por USD)"). OJO: los meses
+// que ya tenía cargados Nadia con el formato viejo (euros por peso, un
+// número chiquito tipo 0.000566) quedan tal cual están — Nadia los va a
+// volver a cargar ella misma, mes por mes, en el formato nuevo; no se
+// migraron automáticamente (decisión explícita de Nadia, ver el
+// changelog).
 
 import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { formatoMesLegible } from './distribucion.js';
 import { avisarError } from './aviso-modal.js';
+
+function normalizarNombreMoneda(nombre) {
+  return String(nombre).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+function esColumnaOro(nombreMoneda) {
+  return normalizarNombreMoneda(nombreMoneda) === "oro";
+}
+
+function esColumnaPesos(nombreMoneda) {
+  return normalizarNombreMoneda(nombreMoneda) === "pesos";
+}
 
 function valorGuardado(mes, monedaId) {
   const fila = state.tiposCambio.find(
@@ -55,7 +89,12 @@ export function renderTipoCambio() {
   }
 
   let tabla = `<table class="pivot distrib-pivot tipo-cambio-tabla"><tr><th>Mes</th>` +
-    monedas.map(m => `<th>${m.nombre}</th>`).join("") + `</tr>`;
+    monedas.map(m => {
+      const encabezado = esColumnaOro(m.nombre) ? `${m.nombre} (a USD)`
+        : esColumnaPesos(m.nombre) ? `${m.nombre} (por USD)`
+        : m.nombre;
+      return `<th>${encabezado}</th>`;
+    }).join("") + `</tr>`;
 
   meses.forEach(mes => {
     tabla += `<tr><td>${formatoMesLegible(mes)}</td>`;

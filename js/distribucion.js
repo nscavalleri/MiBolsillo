@@ -612,6 +612,33 @@ function detalleConceptoEnEuros(registro, prefijo, titulo, movsPorMoneda, mes) {
     let nota;
     if (esEuros(monedaId)) {
       nota = `Subtotal: ${subtotal.toFixed(2)} € (sin conversión)`;
+    } else if (esOro(monedaId)) {
+      // Ver el comentario grande de convertirAEuros: Oro se convierte en
+      // dos pasos (a dólares, después a euros), así que el detalle muestra
+      // los dos tipos de cambio encadenados en vez de uno solo.
+      const tasaOroAUsd = tasaAEuros(mes, monedaId);
+      const dolaresId = idMonedaDolares();
+      const tasaUsdAEur = dolaresId != null ? tasaAEuros(mes, dolaresId) : null;
+      if (tasaOroAUsd == null || tasaUsdAEur == null) {
+        nota = `Subtotal: ${subtotal.toFixed(2)} ${nombreMoneda(monedaId)} — falta el tipo de cambio de Oro o de Dólares de ${formatoMesLegible(mes)}, no se pudo convertir`;
+      } else {
+        const enUsd = subtotal * tasaOroAUsd;
+        const enEur = enUsd * tasaUsdAEur;
+        nota = `Subtotal: ${subtotal.toFixed(2)} ${nombreMoneda(monedaId)} × ${tasaOroAUsd} USD × ${tasaUsdAEur} = ${enEur.toFixed(2)} €`;
+      }
+    } else if (esPesos(monedaId)) {
+      // Ver el comentario grande de convertirAEuros: Pesos divide (al
+      // revés de Oro), porque el valor cargado es "pesos por dólar".
+      const tasaPesosPorUsd = tasaAEuros(mes, monedaId);
+      const dolaresId = idMonedaDolares();
+      const tasaUsdAEur = dolaresId != null ? tasaAEuros(mes, dolaresId) : null;
+      if (!tasaPesosPorUsd || tasaUsdAEur == null) {
+        nota = `Subtotal: ${subtotal.toFixed(2)} ${nombreMoneda(monedaId)} — falta el tipo de cambio de Pesos o de Dólares de ${formatoMesLegible(mes)}, no se pudo convertir`;
+      } else {
+        const enUsd = subtotal / tasaPesosPorUsd;
+        const enEur = enUsd * tasaUsdAEur;
+        nota = `Subtotal: ${subtotal.toFixed(2)} ${nombreMoneda(monedaId)} ÷ ${tasaPesosPorUsd} (Pesos por USD) × ${tasaUsdAEur} = ${enEur.toFixed(2)} €`;
+      }
     } else {
       const tasa = tasaAEuros(mes, monedaId);
       nota = tasa == null
@@ -647,9 +674,50 @@ export function esEuros(monedaId) {
   return !!m && m.nombre.trim().toLowerCase() === "euros";
 }
 
+// Compara nombres de moneda sin acentos (para "Oro"/"Dólares" no hace
+// falta, pero para "Dólares" sí: así no depende de que en la base esté
+// escrito con tilde exactamente igual).
+function normalizarNombreMoneda(nombre) {
+  return String(nombre).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+// true si esa moneda es "Oro": es la ÚNICA moneda cuyo tipo de cambio NO se
+// carga directo en euros (ver el comentario grande de convertirAEuros más
+// abajo). Se exporta para que dashboard.js (Snapshot en modo "tasa más
+// reciente") use exactamente el mismo criterio en vez de tener su propia
+// copia que después se desincronice.
+export function esOro(monedaId) {
+  const m = state.monedas.find(x => String(x.id) === String(monedaId));
+  return !!m && normalizarNombreMoneda(m.nombre) === "oro";
+}
+
+// true si esa moneda es "Pesos": es la OTRA moneda con conversión
+// especial (a pedido de Nadia, ver el changelog), pero al REVÉS de Oro —
+// ver el comentario grande de convertirAEuros. Se exporta por el mismo
+// motivo que esOro.
+export function esPesos(monedaId) {
+  const m = state.monedas.find(x => String(x.id) === String(monedaId));
+  return !!m && normalizarNombreMoneda(m.nombre) === "pesos";
+}
+
+// El id de la moneda "Dólares" — la que le hace falta a Oro y a Pesos
+// para el segundo paso de su conversión (ver convertirAEuros). null si esa
+// moneda todavía no está cargada en Configuración > Monedas. Se exporta
+// por el mismo motivo que esOro.
+export function idMonedaDolares() {
+  const m = state.monedas.find(x => normalizarNombreMoneda(x.nombre) === "dolares");
+  return m ? m.id : null;
+}
+
 // El tipo de cambio a euros de una moneda puntual, para un mes puntual
 // (tabla tipos_cambio, cargada en Configuración > Tipo de cambio). null si
 // todavía no se cargó ese mes para esa moneda.
+//
+// OJO con Oro: para esa moneda, lo que hay cargado en tipos_cambio son
+// DÓLARES por unidad de oro, no euros (ver el comentario de
+// convertirAEuros). Esta función no lo sabe ni le importa — es un lector
+// genérico de la tabla — así que no se la use suelta para Oro sin el
+// segundo paso (convertirAEuros ya lo hace bien).
 function tasaAEuros(mes, monedaId) {
   const fila = state.tiposCambio.find(
     tc => tc.mes === mes && String(tc.moneda_id) === String(monedaId)
@@ -660,8 +728,51 @@ function tasaAEuros(mes, monedaId) {
 // Convierte un importe (ya con signo, ingreso/egreso) de una moneda a
 // euros. ok=false cuando faltó el tipo de cambio y por lo tanto no se pudo
 // convertir (el importe se pierde, no se cuenta ni de más ni de menos).
+//
+// CASO ESPECIAL: Oro (a pedido de Nadia, ver el changelog). En
+// Configuración > Tipo de cambio, lo que se carga en la columna de Oro NO
+// es un valor directo en euros como en el resto de las monedas: es cuántos
+// DÓLARES vale 1 unidad de oro ese mes (así es como ella lo consigue
+// cotizado, por ejemplo "115" = 115 USD el gramo). Entonces convertir Oro a
+// euros son DOS pasos encadenados: el monto de oro se pasa primero a
+// dólares con su propio tipo de cambio de ese mes, y ese resultado recién
+// se pasa a euros con el tipo de cambio de DÓLARES de ESE MISMO mes (no el
+// de Oro, que ya se usó en el primer paso). Si falta cualquiera de los dos
+// tipos de cambio de ese mes — el de Oro o el de Dólares — la conversión
+// entera queda incompleta (ok=false): no alcanza con tener cargado uno
+// solo de los dos.
+//
+// CASO ESPECIAL: Pesos (a pedido de Nadia, mismo motivo que Oro, pero AL
+// REVÉS). Lo que se carga en la columna de Pesos no es "cuántos euros vale
+// 1 peso" sino cuántos PESOS vale 1 DÓLAR ese mes (por ejemplo "1560" = a
+// $1 le corresponden 1560 pesos), que es como se suele cotizar el peso
+// argentino y le ahorra a Nadia tener que calcular a mano el numerito
+// chiquito (0.000xxx) que le tocaría escribir si fuera directo a euros.
+// Como acá el valor cargado está "al revés" (pesos POR dólar, no dólares
+// por peso), el primer paso DIVIDE en vez de multiplicar: el monto de
+// pesos se divide por ese tipo de cambio para pasarlo a dólares, y recién
+// ese resultado se multiplica por el tipo de cambio de DÓLARES de ese
+// mismo mes para pasarlo a euros — mismo criterio que Oro para el segundo
+// paso y para qué cuenta como "incompleto".
 export function convertirAEuros(mes, monedaId, monto) {
   if (esEuros(monedaId)) return { valor: monto, ok: true };
+  if (esOro(monedaId)) {
+    const tasaOroAUsd = tasaAEuros(mes, monedaId);
+    const dolaresId = idMonedaDolares();
+    const tasaUsdAEur = dolaresId != null ? tasaAEuros(mes, dolaresId) : null;
+    if (tasaOroAUsd == null || tasaUsdAEur == null) return { valor: 0, ok: false };
+    return { valor: monto * tasaOroAUsd * tasaUsdAEur, ok: true };
+  }
+  if (esPesos(monedaId)) {
+    const tasaPesosPorUsd = tasaAEuros(mes, monedaId);
+    const dolaresId = idMonedaDolares();
+    const tasaUsdAEur = dolaresId != null ? tasaAEuros(mes, dolaresId) : null;
+    // "!tasaPesosPorUsd" (no "== null"): acá se divide por este número, así
+    // que un 0 cargado por error también tiene que contar como incompleto
+    // en vez de romper la cuenta con una división por cero.
+    if (!tasaPesosPorUsd || tasaUsdAEur == null) return { valor: 0, ok: false };
+    return { valor: (monto / tasaPesosPorUsd) * tasaUsdAEur, ok: true };
+  }
   const tasa = tasaAEuros(mes, monedaId);
   if (tasa == null) return { valor: 0, ok: false };
   return { valor: monto * tasa, ok: true };

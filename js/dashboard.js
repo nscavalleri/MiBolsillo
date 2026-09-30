@@ -29,6 +29,11 @@
 // Si a alguna moneda con saldo le falta el tipo de cambio que corresponda
 // (el más reciente, o el de ese mes puntual, según el modo), esa
 // conversión queda marcada con ⚠ en vez de contarse como si fuera cero.
+//
+// Oro y Pesos se convierten distinto que el resto (encadenado a través de
+// Dólares, ver el comentario grande de convertirAEurosMasReciente más
+// abajo, y el de convertirAEuros en distribucion.js para el detalle
+// completo).
 
 import { state } from './state.js';
 import { nombreOrigen, nombreMoneda } from './lookups.js';
@@ -36,6 +41,7 @@ import { renderCheckboxesTabla } from './check-list.js';
 import {
   celdaImporte, convertirAEuros, formatoMesLegible, mesActualTexto,
   poblarSelectMes, poblarSelectAnio, leerMesSeleccionado, escribirMesSeleccionado,
+  esOro, esPesos, idMonedaDolares,
 } from './distribucion.js';
 
 function renderCheckboxesConceptosSnapshot() {
@@ -52,6 +58,11 @@ function esEuros(monedaId) {
 // El tipo de cambio a euros más reciente cargado para una moneda (el de
 // mayor "mes" entre los que tiene esa moneda en tipos_cambio). null si
 // todavía no se cargó ninguno.
+//
+// OJO con Oro: igual que tasaAEuros en distribucion.js, esta función es un
+// lector genérico de tipos_cambio — para Oro devuelve dólares por unidad,
+// no euros. No se la use suelta para Oro sin el segundo paso (ver
+// convertirAEurosMasReciente más abajo).
 function tasaMasRecienteAEuros(monedaId) {
   const filas = state.tiposCambio.filter(
     tc => String(tc.moneda_id) === String(monedaId) && tc.valor_eur != null
@@ -61,8 +72,31 @@ function tasaMasRecienteAEuros(monedaId) {
   return Number(masReciente.valor_eur);
 }
 
+// CASO ESPECIAL Oro: mismo motivo y misma cuenta que convertirAEuros de
+// distribucion.js (ver el comentario grande ahí) pero con la tasa MÁS
+// RECIENTE de cada moneda en vez de la de un mes puntual — es lo que le
+// corresponde a este modo "tasa más reciente" (Snapshot en el mes actual,
+// y Asignación). esOro/idMonedaDolares se importan de distribucion.js para
+// no duplicar el criterio de "qué es Oro"/"cuál es Dólares".
+// CASO ESPECIAL Pesos: mismo motivo y misma cuenta que convertirAEuros de
+// distribucion.js (ver el comentario grande ahí) pero con la tasa MÁS
+// RECIENTE de cada moneda, igual que Oro más abajo.
 function convertirAEurosMasReciente(monedaId, monto) {
   if (esEuros(monedaId)) return { valor: monto, ok: true };
+  if (esOro(monedaId)) {
+    const tasaOroAUsd = tasaMasRecienteAEuros(monedaId);
+    const dolaresId = idMonedaDolares();
+    const tasaUsdAEur = dolaresId != null ? tasaMasRecienteAEuros(dolaresId) : null;
+    if (tasaOroAUsd == null || tasaUsdAEur == null) return { valor: 0, ok: false };
+    return { valor: monto * tasaOroAUsd * tasaUsdAEur, ok: true };
+  }
+  if (esPesos(monedaId)) {
+    const tasaPesosPorUsd = tasaMasRecienteAEuros(monedaId);
+    const dolaresId = idMonedaDolares();
+    const tasaUsdAEur = dolaresId != null ? tasaMasRecienteAEuros(dolaresId) : null;
+    if (!tasaPesosPorUsd || tasaUsdAEur == null) return { valor: 0, ok: false };
+    return { valor: (monto / tasaPesosPorUsd) * tasaUsdAEur, ok: true };
+  }
   const tasa = tasaMasRecienteAEuros(monedaId);
   if (tasa == null) return { valor: 0, ok: false };
   return { valor: monto * tasa, ok: true };
