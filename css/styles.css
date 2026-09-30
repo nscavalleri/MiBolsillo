@@ -373,6 +373,14 @@ table.distrib-pivot .valor-numero { flex: 1; text-align: right; }
 table.distrib-pivot th.col-promedio { color: var(--muted); font-weight: 600; }
 table.distrib-pivot td.col-promedio { color: var(--muted); }
 
+/* Número + botón "i" de la celda de Promedio (a pedido de Nadia, ver
+   detalleTopMeses en distribucion.js), en un span propio para que el botón
+   no empuje el número fuera del borde derecho de la celda (que ya viene
+   alineada a la derecha por table.pivot th, td de más arriba). A diferencia
+   de .valor-wrap de celdaImporte, no lleva "espejo": esta columna no
+   necesita compensar nada de ese lado. */
+.promedio-wrap { display: inline-flex; align-items: center; gap: 4px; }
+
 /* La tabla tiene su propio alto máximo y scrollea adentro suyo, en los dos
    sentidos. Es lo que hace posible que la fila con los nombres de las
    reservas quede clavada arriba al bajar: un encabezado "pegajoso" se pega

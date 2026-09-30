@@ -291,15 +291,24 @@ export function semaforoContraPromedio(total, promedio, unidad) {
 // importes) a propósito: el número que importa es el del mes, y el promedio
 // es solo la vara contra la que se lo compara. Si se pintara igual que los
 // demás, la tabla quedaría toda de colores y no se sabría dónde mirar.
-function celdaPromedio(promedio, incompleto) {
-  // Esta columna no tiene adornos (ni botón "i" ni circulito), así que no
-  // necesita el span de ancho fijo: el número se alinea solo contra el borde
-  // derecho de su celda.
+//
+// detalleRef (opcional, a pedido de Nadia, ver detalleTopMeses) agrega el
+// mismo botón "i" que usan las celdas de importe, acá para ver qué 5 meses
+// son los que más empujan este promedio para arriba o para abajo. El número
+// y el botón van en un span propio (.promedio-wrap) para que el botón no
+// rompa la alineación a la derecha del número — mismo motivo que el
+// .valor-wrap de celdaImporte, pero sin el "espejo": esta columna no
+// necesita compensar nada, porque su encabezado no se centra sobre el
+// número como sí pasa en las demás (ver el comentario de celdaImporte).
+function celdaPromedio(promedio, incompleto, detalleRef) {
   if (promedio == null) return `<td class="col-promedio valor-cero">–</td>`;
   const marca = incompleto
     ? `<span class="valor-incompleto" title="A algún mes anterior le falta el tipo de cambio de alguna moneda, en Configuración &gt; Tipo de cambio; esos meses no entran en el promedio">⚠</span>`
     : "";
-  return `<td class="col-promedio">${marca}${promedio.toFixed(2)}</td>`;
+  const boton = detalleRef
+    ? `<button type="button" class="btn-detalle" data-detalle="${detalleRef}" title="Ver qué meses influyen más en este promedio">i</button>`
+    : "";
+  return `<td class="col-promedio"><span class="promedio-wrap">${marca}<span class="promedio-numero">${promedio.toFixed(2)}</span>${boton}</span></td>`;
 }
 
 // --- Gráficos circulares de Ingresos/Gastos (Dashboard > Distribución >
@@ -584,6 +593,38 @@ export function registrarDetalle(registro, prefijo, titulo, grupos) {
   return `${prefijo}:${id}`;
 }
 
+// Detalle del botón "i" de la columna "Promedio" (a pedido de Nadia): qué 5
+// meses son los que más "empujan" ese promedio, para poder ver de un
+// vistazo qué meses lo suben o lo bajan sin tener que revisar el histórico
+// entero. Si el promedio es positivo (un concepto de ingreso) son los 5
+// meses con el valor MÁS ALTO; si es negativo (un gasto) son los 5 con el
+// valor MÁS BAJO (el más negativo) — en los dos casos, los que más se
+// alejan del cero hacia el lado que importa. "porMes" es el mismo { mes:
+// total } que ya arma historicoPorConcepto (o su suma, para la fila
+// "Total"); "mesesConFalta" (opcional) son los meses que promediar() dejó
+// afuera por faltarles el tipo de cambio — se excluyen acá también, porque
+// ese total no es real y no tiene sentido mostrarlo como "el mes que más
+// influyó". Devuelve null (sin botón) si no hay promedio o no queda ningún
+// mes para listar.
+function detalleTopMeses(registro, prefijo, titulo, porMes, mesesConFalta, promedio, unidad) {
+  if (!porMes || promedio == null) return null;
+  const meses = Object.keys(porMes).filter(mes => !(mesesConFalta && mesesConFalta[mes]));
+  if (meses.length === 0) return null;
+  const ascendente = promedio < 0;
+  const ordenados = meses
+    .map(mes => ({ mes, valor: porMes[mes] }))
+    .sort((a, b) => ascendente ? a.valor - b.valor : b.valor - a.valor)
+    .slice(0, 5);
+  const sufijo = unidad ? " " + unidad : "";
+  return registrarDetalle(registro, prefijo, titulo, [{
+    etiqueta: null,
+    lineas: ordenados.map(it => ({ texto: formatoMesLegible(it.mes), monto: `${it.valor.toFixed(2)}${sufijo}` })),
+    nota: ascendente
+      ? "Los 5 meses con el valor más bajo — los que más bajan este promedio."
+      : "Los 5 meses con el valor más alto — los que más suben este promedio.",
+  }]);
+}
+
 function formatoFechaCorta(fecha) {
   const partes = String(fecha).split("-");
   return partes.length === 3 ? `${partes[2]}/${partes[1]}` : fecha;
@@ -859,9 +900,12 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
       detallesReporte, "reporte", `${c.nombre} — ${formatoMesLegible(mes)}`, movsPorConcepto[c.id] || {}, mes
     );
     const { promedio, incompleto } = promediar(enEuros[c.id], faltaTasa[c.id]);
+    const detallePromedioRef = detalleTopMeses(
+      detallesReporte, "reporte", `${c.nombre} — Promedio (€)`, enEuros[c.id], faltaTasa[c.id], promedio, "€"
+    );
     html += `<tr><td>${c.nombre}</td>` +
       celdaImporte(v, semaforoContraPromedio(v, promedio, "€"), !!incompletos[c.id], detalleRef) +
-      celdaPromedio(promedio, incompleto) +
+      celdaPromedio(promedio, incompleto, detallePromedioRef) +
       `</tr>`;
   });
   const detalleTotalRef = detalleConceptoEnEuros(
@@ -870,13 +914,15 @@ function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
   // El promedio de la fila "Total" sale de los mismos conceptos que se están
   // mostrando, no de todos: si no, no cerraría con el total de arriba.
   const idsMostrados = conceptosConDatos.map(c => c.id);
-  const { promedio: promedioTotal, incompleto: totalPromIncompleto } = promediar(
-    sumarPorMes(idsMostrados.map(id => enEuros[id])),
-    unirMeses(idsMostrados.map(id => faltaTasa[id]))
+  const totalPorMes = sumarPorMes(idsMostrados.map(id => enEuros[id]));
+  const totalMesesConFalta = unirMeses(idsMostrados.map(id => faltaTasa[id]));
+  const { promedio: promedioTotal, incompleto: totalPromIncompleto } = promediar(totalPorMes, totalMesesConFalta);
+  const detalleTotalPromedioRef = detalleTopMeses(
+    detallesReporte, "reporte", `Total — Promedio (€)`, totalPorMes, totalMesesConFalta, promedioTotal, "€"
   );
   html += `<tr class="total-row"><td>Total</td>` +
     celdaImporte(total, semaforoContraPromedio(total, promedioTotal, "€"), totalIncompleto, detalleTotalRef) +
-    celdaPromedio(promedioTotal, totalPromIncompleto) +
+    celdaPromedio(promedioTotal, totalPromIncompleto, detalleTotalPromedioRef) +
     `</tr>`;
   html += `</table></div>`;
   html += `<p class="tipo-cambio-nota">Convertido a euros con los tipos de cambio de Configuración &gt; Tipo de cambio, para este mismo mes. ⚠ = falta cargar el tipo de cambio de alguna moneda ese mes, ese total está incompleto. Tocá el botón "i" de cada celda para ver el detalle.</p>`;
@@ -970,8 +1016,12 @@ function renderReporte() {
             )
           : null;
         const { promedio } = promediar(porMoneda[c.id + "|" + monedaId]);
+        const detallePromedioRef = detalleTopMeses(
+          detallesReporte, "reporte", `${c.nombre} — Promedio ${nombreMoneda(monedaId)}`,
+          porMoneda[c.id + "|" + monedaId], null, promedio, nombreMoneda(monedaId)
+        );
         html += celdaImporte(v, semaforoContraPromedio(v, promedio, nombreMoneda(monedaId)), false, detalleRef) +
-          celdaPromedio(promedio, false);
+          celdaPromedio(promedio, false, detallePromedioRef);
       });
       html += `</tr>`;
     });
@@ -990,9 +1040,14 @@ function renderReporte() {
           )
         : null;
       const v = totales[monedaId] || 0;
-      const { promedio } = promediar(sumarPorMes(idsMostrados.map(id => porMoneda[id + "|" + monedaId])));
+      const totalPorMesMoneda = sumarPorMes(idsMostrados.map(id => porMoneda[id + "|" + monedaId]));
+      const { promedio } = promediar(totalPorMesMoneda);
+      const detalleTotalPromedioRef = detalleTopMeses(
+        detallesReporte, "reporte", `Total — Promedio ${nombreMoneda(monedaId)}`,
+        totalPorMesMoneda, null, promedio, nombreMoneda(monedaId)
+      );
       return celdaImporte(v, semaforoContraPromedio(v, promedio, nombreMoneda(monedaId)), false, detalleRef) +
-        celdaPromedio(promedio, false);
+        celdaPromedio(promedio, false, detalleTotalPromedioRef);
     }).join("") + `</tr>`;
   html += `</table></div>`;
 
