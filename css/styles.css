@@ -264,6 +264,30 @@ table.distrib-pivot th, table.distrib-pivot td {
 table.distrib-pivot th:first-child, table.distrib-pivot td:first-child {
   text-align: left; padding-left: 4px;
 }
+
+/* Histórica de Distribución: encabezado clavado arriba al bajar (a pedido
+   de Nadia) — mismo criterio que Evolución/Asignación/Conciliación (ver
+   .evo-patrimonio-wrap más arriba): la tabla scrollea dentro de su propio
+   recuadro para que el thead se pueda pegar contra ESE borde en vez de
+   contra la página entera. Cada sección (una por moneda, o "Total en
+   Euros") tiene su propio recuadro, porque cada una vive en su propia
+   tarjeta colapsable — así el que está mirando no pierde el nombre de la
+   columna ni siquiera dentro de una sola sección larga. Mensual (Concepto/
+   Total/Promedio) usa la misma clase "distrib-pivot" pero arma su tabla
+   SIN <thead> (ver renderReporteEnEuros/renderReporte en distribucion.js),
+   así que esta regla no le afecta — no hacía falta separarla con otra
+   clase de tabla. */
+.distrib-historico-wrap {
+  max-height: calc(100vh - 260px);
+  min-height: 240px;
+  overflow: auto;
+}
+table.distrib-pivot thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--card);
+  box-shadow: 0 1px 0 var(--border);
+}
+
 /* Histórica de Flujo de caja: encabezado agrupado en dos filas (a pedido de
    Nadia, para achicar el ancho de la tabla y el scroll horizontal) — la de
    arriba agrupa "Ingresos"/"Gastos"/"Ahorro" con colspan=3, la de abajo
@@ -575,6 +599,15 @@ table.distrib-pivot td.col-promedio { color: var(--muted); }
 .filtros-grid > div { margin-bottom: 4px; }
 .filtros-grid label { margin-top: 0; }
 @media (min-width: 480px) { .filtros-grid { grid-template-columns: repeat(3, 1fr); } }
+
+/* Filtro de Cantidad: el signo (</=/>) y el número van uno al lado del
+   otro en vez de apilados, para que se lean como una sola condición
+   ("> 100") y no como dos campos sueltos. El select del signo es angosto
+   y de ancho fijo (le alcanza con mostrar un solo carácter); el número se
+   estira con lo que sobra. */
+.filtro-cantidad-fila { display: flex; gap: 6px; }
+.filtro-cantidad-fila select { flex: 0 0 56px; padding-left: 8px; padding-right: 8px; text-align: center; }
+.filtro-cantidad-fila input { flex: 1; min-width: 0; }
 
 /* Tipo toggle. .signo-toggle (Editar concepto, ver editar-modal.js) es
    visualmente IGUAL a .tipo-toggle (Agregar/Editar movimiento) — mismos

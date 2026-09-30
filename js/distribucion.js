@@ -1048,8 +1048,8 @@ function renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos
       </div>`;
   }
 
-  let tabla = `<table class="pivot distrib-pivot"><tr><th>Mes</th>` +
-    conceptosIncluidos.map(c => `<th>${c.nombre}</th>`).join("") + `</tr>`;
+  let tabla = `<table class="pivot distrib-pivot"><thead><tr><th>Mes</th>` +
+    conceptosIncluidos.map(c => `<th>${c.nombre}</th>`).join("") + `</tr></thead><tbody>`;
   listaMeses.forEach(mes => {
     tabla += `<tr><td>${formatoMesLegible(mes)}</td>`;
     conceptosIncluidos.forEach(c => {
@@ -1066,13 +1066,13 @@ function renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos
     });
     tabla += `</tr>`;
   });
-  tabla += `</table>`;
+  tabla += `</tbody></table>`;
 
   return `
     <div class="card card-ancho">
       <details class="collapsible" open>
         <summary>${moneda.nombre}</summary>
-        <div class="pivot-wrap">${tabla}</div>
+        <div class="pivot-wrap distrib-historico-wrap">${tabla}</div>
       </details>
     </div>`;
 }
@@ -1120,8 +1120,8 @@ function renderSeccionHistoricaEuros(conceptosIncluidos, conceptoIdsIncluidos, o
       </div>`;
   }
 
-  let tabla = `<table class="pivot distrib-pivot"><tr><th>Mes</th>` +
-    conceptosIncluidos.map(c => `<th>${c.nombre}</th>`).join("") + `</tr>`;
+  let tabla = `<table class="pivot distrib-pivot"><thead><tr><th>Mes</th>` +
+    conceptosIncluidos.map(c => `<th>${c.nombre}</th>`).join("") + `</tr></thead><tbody>`;
   listaMeses.forEach(mes => {
     tabla += `<tr><td>${formatoMesLegible(mes)}</td>`;
     conceptosIncluidos.forEach(c => {
@@ -1134,13 +1134,13 @@ function renderSeccionHistoricaEuros(conceptosIncluidos, conceptoIdsIncluidos, o
     });
     tabla += `</tr>`;
   });
-  tabla += `</table>`;
+  tabla += `</tbody></table>`;
 
   return `
     <div class="card card-ancho">
       <details class="collapsible" open>
         <summary>Total en Euros</summary>
-        <div class="pivot-wrap">${tabla}</div>
+        <div class="pivot-wrap distrib-historico-wrap">${tabla}</div>
         <p class="tipo-cambio-nota">⚠ = falta cargar el tipo de cambio de alguna moneda para ese mes. Tocá el botón "i" de cada celda para ver el detalle.</p>
       </details>
     </div>`;

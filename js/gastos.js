@@ -22,6 +22,20 @@ export function aplicarFiltros(lista) {
     // Busca dentro de la descripción del movimiento, sin distinguir
     // mayúsculas ni acentos.
     if (f.texto && !contieneTexto(m.descripcion, f.texto)) return false;
+    // Filtro de Cantidad: compara contra m.monto tal cual está guardado —
+    // siempre en positivo, el signo +/- de ingreso/egreso es aparte (ver
+    // m.tipo) y no entra en esta comparación, así que "> 100" encuentra
+    // tanto un ingreso de 150 como un egreso de -150. Solo se aplica si hay
+    // un número cargado en el campo; el signo (</=/>) solo no filtra nada.
+    if (f.cantidadValor !== "" && f.cantidadValor != null) {
+      const valor = Number(f.cantidadValor);
+      const monto = Number(m.monto);
+      if (f.cantidadSigno === ">" && !(monto > valor)) return false;
+      if (f.cantidadSigno === "<" && !(monto < valor)) return false;
+      // "=" con una pequeña tolerancia (medio centavo) para no fallar por
+      // errores de redondeo de punto flotante al comparar decimales.
+      if (f.cantidadSigno === "=" && Math.abs(monto - valor) >= 0.005) return false;
+    }
     return true;
   });
 }
@@ -190,14 +204,37 @@ export function setupFiltros() {
     });
   });
 
+  // Cantidad: el signo (</=/>) y el número del filtro. Igual que el campo
+  // de texto (ver arriba), el número se escucha con "input" y no con
+  // "change" — filtra mientras se escribe, sin salir del campo. El signo
+  // sí va con "change" (es un <select>, no tiene sentido escucharlo letra a
+  // letra), pero sin ningún número cargado todavía no filtra nada (ver
+  // aplicarFiltros), así que cambiar el signo antes de escribir un número
+  // no hace nada raro.
+  document.getElementById("filtroCantidadSigno").addEventListener("change", () => {
+    state.filtros.cantidadSigno = document.getElementById("filtroCantidadSigno").value;
+    state.paginacion.pagina = 1;
+    renderMovimientos();
+  });
+  document.getElementById("filtroCantidadValor").addEventListener("input", () => {
+    state.filtros.cantidadValor = document.getElementById("filtroCantidadValor").value;
+    state.paginacion.pagina = 1;
+    renderMovimientos();
+  });
+
   document.getElementById("btnLimpiarFiltros").addEventListener("click", () => {
-    state.filtros = { texto: "", mes: "", tipo: "", concepto: "", origen: "", moneda: "" };
+    state.filtros = {
+      texto: "", mes: "", tipo: "", concepto: "", origen: "", moneda: "",
+      cantidadSigno: ">", cantidadValor: "",
+    };
     document.getElementById("filtroTexto").value = "";
     document.getElementById("filtroMes").value = "";
     document.getElementById("filtroTipo").value = "";
     document.getElementById("filtroConcepto").value = "";
     document.getElementById("filtroOrigen").value = "";
     document.getElementById("filtroMoneda").value = "";
+    document.getElementById("filtroCantidadSigno").value = ">";
+    document.getElementById("filtroCantidadValor").value = "";
     state.paginacion.pagina = 1;
     renderMovimientos();
   });

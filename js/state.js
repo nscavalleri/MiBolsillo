@@ -10,7 +10,15 @@ export const state = {
   movimientos: [],
   tipoActual: "egreso",
   editandoId: null,
-  filtros: { texto: "", mes: "", tipo: "", concepto: "", origen: "", moneda: "" },
+  // Cantidad (a pedido de Nadia): un signo (</=/>) y un número, para
+  // filtrar Gastos > Movimientos por importe (ver aplicarFiltros en
+  // gastos.js). "cantidadSigno" arranca en ">" (el caso más común, "más de
+  // tanto") pero no filtra nada hasta que "cantidadValor" tenga un número
+  // cargado.
+  filtros: {
+    texto: "", mes: "", tipo: "", concepto: "", origen: "", moneda: "",
+    cantidadSigno: ">", cantidadValor: "",
+  },
   // Gastos > Movimientos: paginación de la lista. "porPagina" (10, 50 o
   // 100) arranca en 10 acá, pero cargarTodo() lo pisa enseguida con lo
   // último guardado en la tabla configuracion_general (clave

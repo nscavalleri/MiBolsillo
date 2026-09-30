@@ -278,6 +278,17 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <label for="filtroMoneda">Moneda</label>
 <select id="filtroMoneda"><option value="">Todos</option></select>
 </div>
+<div>
+<label for="filtroCantidadValor">Cantidad</label>
+<div class="filtro-cantidad-fila">
+<select id="filtroCantidadSigno">
+<option value=">">&gt;</option>
+<option value="=">=</option>
+<option value="<">&lt;</option>
+</select>
+<input type="number" id="filtroCantidadValor" step="0.01" min="0" placeholder="0.00" />
+</div>
+</div>
 </div>
 <button class="secondary" id="btnLimpiarFiltros" type="button">Limpiar filtros</button>
 </div>
