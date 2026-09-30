@@ -227,6 +227,26 @@ table.evolucion-pivot th:first-child, table.evolucion-pivot td:first-child {
 }
 table.evolucion-pivot .valor-wrap { justify-content: center; width: auto; }
 
+/* Encabezado clavado arriba al bajar (a pedido de Nadia) — mismo criterio
+   que ya usan Asignación y Conciliación (ver esos comentarios): un
+   encabezado "pegajoso" se pega al borde de lo que scrollea, así que si lo
+   que scrollea fuera la página entera (en vez de este recuadro propio) el
+   encabezado se iría hacia arriba con el resto de la página en vez de
+   quedarse a la vista, tapado además por la barra de arriba (header, que ya
+   es sticky con su propio top:0). Por eso la tabla tiene su propio alto
+   máximo y scrollea adentro suyo, y ahí sí el thead se puede clavar contra
+   el borde de ESE recuadro. */
+.evo-patrimonio-wrap {
+  max-height: calc(100vh - 260px);
+  min-height: 240px;
+  overflow: auto;
+}
+table.evolucion-pivot th, table.evolucion-pivot td { background: var(--card); }
+table.evolucion-pivot thead th {
+  position: sticky; top: 0; z-index: 2;
+  box-shadow: 0 1px 0 var(--border);
+}
+
 /* Distribución no se puede centrar igual, porque sus celdas llevan adornos
    pegados al número: el botón "i" y el circulito del semáforo. Centrando el
    grupo entero, el número quedaba corrido a la izquierda tantos pixeles como
