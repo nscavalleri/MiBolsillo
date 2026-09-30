@@ -73,7 +73,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div class="card">
 <h3 style="margin-top:0;" id="pivotTitulo">Resumen por cuenta y moneda</h3>
 <div class="pivot-wrap"><table class="pivot" id="pivotTable"></table></div>
-<p class="tipo-cambio-nota" id="pivotNota" style="display:none;">⚠ = todavía no cargaste el tipo de cambio de alguna moneda en Configuración &gt; Tipo de cambio, ese Total (€) está incompleto. La conversión usa el tipo de cambio más reciente que tengas cargado para cada moneda.</p>
+<p class="tipo-cambio-nota" id="pivotNota" style="display:none;">⚠ = falta cargar el tipo de cambio de alguna moneda para ese mes en Configuración &gt; Tipo de cambio, así que ese total está incompleto.</p>
 </div>
 </div>
 
@@ -390,7 +390,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <div id="configsub-tipo_cambio" style="display:none;">
 <div class="card">
 <h3 style="margin-top:0;">Tipo de cambio a Euros</h3>
-<p class="conciliacion-ayuda">Para cada mes con movimientos cargados, ingresá a cuánto equivalía 1 unidad de cada moneda en euros — con dos excepciones: <strong>Oro</strong>, que se ingresa en dólares (a cuántos dólares equivalía 1 unidad ese mes), y <strong>Pesos</strong>, que se ingresa como a cuántos pesos equivalía 1 dólar ese mes (por ejemplo 1560). En los dos casos la app hace sola la conversión a euros, usando el tipo de cambio de Dólares de ese mismo mes. Se guarda solo, apenas salís del campo.</p>
+<p class="conciliacion-ayuda">Para cada mes con movimientos cargados, ingresá a cuánto equivalía 1 unidad de cada moneda en euros — con dos excepciones: <strong>Oro</strong>, que se ingresa en dólares (a cuántos dólares equivalía 1 unidad ese mes), y <strong>Pesos</strong>, que se ingresa como a cuántos pesos equivalía 1 dólar ese mes (por ejemplo 1560). En los dos casos la app hace sola la conversión a euros, usando el tipo de cambio de Dólares de ese mismo mes. Se guarda solo, apenas salís del campo.<br><br>El campo Oro se convierte a dólares. Ej. 1 gr de oro 24k son 115 U$S.<br>El campo Pesos refiere al valor no oficial. Ej. 1 U$S equivale a 1560 pesos.</p>
 <div id="tablaTipoCambio"></div>
 </div>
 </div>

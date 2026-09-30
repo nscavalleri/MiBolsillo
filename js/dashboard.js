@@ -8,32 +8,43 @@
 // selección distinta de la de Distribución sin que se pisen entre sí.
 //
 // Selector de Mes (a pedido de Nadia): por defecto muestra el mes actual,
-// y ahí el pivot se sigue calculando EXACTO como siempre (ver
-// state.snapshot en state.js) — saldo acumulado de TODOS los movimientos
-// sin importar la fecha, convertido con el tipo de cambio más reciente
-// que haya cargado para cada moneda. Elegir otro mes en el selector arma
-// en cambio una foto histórica: solo entran los movimientos con fecha
-// hasta el fin de ese mes (state.snapshot.mes se compara como texto
-// "YYYY-MM", que ordena igual que una fecha), convertidos con el tipo de
-// cambio de ESE mes puntual (convertirAEuros, la misma función que ya usan
-// Evolución/Distribución/Flujo de caja) en vez del más reciente. Los dos
-// modos conviven en las mismas funciones de más abajo (construirPivot,
-// totalEnEuros) en vez de duplicarlas, recibiendo el mes de corte (o nada,
-// para el modo de siempre) como parámetro.
+// y ahí el pivot sigue mostrando el saldo de TODOS los movimientos sin
+// importar la fecha (a diferencia de elegir cualquier otro mes, que arma
+// una foto histórica y solo entran los movimientos con fecha hasta el fin
+// de ese mes — state.snapshot.mes se compara como texto "YYYY-MM", que
+// ordena igual que una fecha). Los dos modos conviven en construirPivot()
+// de más abajo, recibiendo el mes de corte (o nada, para "todos los
+// movimientos") como parámetro.
 //
-// saldoEnEurosPorOrigen() —la usa Gastos > Asignación— se sigue llamando
-// SIN mes: a Asignación le interesa la plata que hay HOY para repartir
-// entre las reservas, nunca una foto vieja, así que no se le suma el
-// selector.
+// La conversión a euros, en cambio, usa SIEMPRE el tipo de cambio del mes
+// elegido en el combo — sea el actual o cualquier otro —, con
+// convertirAEuros (la misma función que ya usan Evolución/Distribución/
+// Flujo de caja). Antes (entrada 29 del changelog) el mes actual era una
+// excepción y usaba "el tipo de cambio más reciente que tengas cargado"
+// para evitar quedar en ⚠ apenas empezaba el mes sin haberlo cargado
+// todavía. Se sacó esa excepción (entrada 32, a pedido de Nadia) porque
+// si ya se había cargado por adelantado el tipo de cambio de un mes
+// FUTURO, "más reciente" terminaba usando ese mes futuro en vez del que
+// decía el combo — más confuso que mostrar ⚠. Ahora, si el mes elegido
+// (sea el actual o no) todavía no tiene tipo de cambio cargado, se marca
+// ⚠ igual que en cualquier otra pantalla de la app.
 //
-// Si a alguna moneda con saldo le falta el tipo de cambio que corresponda
-// (el más reciente, o el de ese mes puntual, según el modo), esa
-// conversión queda marcada con ⚠ en vez de contarse como si fuera cero.
+// saldoEnEurosPorOrigen() —la usa Gastos > Asignación— también convierte
+// con el tipo de cambio del MES ACTUAL (el real, de hoy), igual que
+// Snapshot: hasta la entrada 33 usaba "la tasa más reciente que tengas
+// cargada", pero Nadia reportó que eso se rompía cuando cargaba un gasto
+// a futuro — se le armaba una fila de tipo de cambio para ESE mes futuro
+// en Configuración > Tipo de cambio, y "más reciente" terminaba usando la
+// del mes que todavía no llegó en vez de la del mes en curso. Se sacó esa
+// función (convertirAEurosMasReciente) del todo: ya no la usa nadie. Se
+// llama SIN mesCorte a propósito (entran todos los movimientos, sin
+// importar la fecha, incluidos los que Nadia carga a futuro): eso no
+// cambió, solo cambió CON QUÉ tipo de cambio se convierten.
 //
 // Oro y Pesos se convierten distinto que el resto (encadenado a través de
-// Dólares, ver el comentario grande de convertirAEurosMasReciente más
-// abajo, y el de convertirAEuros en distribucion.js para el detalle
-// completo).
+// Dólares) — ver el comentario grande de convertirAEuros en
+// distribucion.js, que es la única función de conversión que queda en la
+// app (acá y en Snapshot).
 
 import { state } from './state.js';
 import { nombreOrigen, nombreMoneda } from './lookups.js';
@@ -41,65 +52,10 @@ import { renderCheckboxesTabla } from './check-list.js';
 import {
   celdaImporte, convertirAEuros, formatoMesLegible, mesActualTexto,
   poblarSelectMes, poblarSelectAnio, leerMesSeleccionado, escribirMesSeleccionado,
-  esOro, esPesos, idMonedaDolares,
 } from './distribucion.js';
 
 function renderCheckboxesConceptosSnapshot() {
   renderCheckboxesTabla("conceptos", state.conceptos, "snapshotConceptosCheckboxes", "Todavía no hay conceptos cargados.", "incluir_en_snapshot", true);
-}
-
-// true si esa moneda es "Euros" (mismo criterio que distribucion.js /
-// tipo-cambio.js): convertir euros a euros es directo.
-function esEuros(monedaId) {
-  const m = state.monedas.find(x => String(x.id) === String(monedaId));
-  return !!m && m.nombre.trim().toLowerCase() === "euros";
-}
-
-// El tipo de cambio a euros más reciente cargado para una moneda (el de
-// mayor "mes" entre los que tiene esa moneda en tipos_cambio). null si
-// todavía no se cargó ninguno.
-//
-// OJO con Oro: igual que tasaAEuros en distribucion.js, esta función es un
-// lector genérico de tipos_cambio — para Oro devuelve dólares por unidad,
-// no euros. No se la use suelta para Oro sin el segundo paso (ver
-// convertirAEurosMasReciente más abajo).
-function tasaMasRecienteAEuros(monedaId) {
-  const filas = state.tiposCambio.filter(
-    tc => String(tc.moneda_id) === String(monedaId) && tc.valor_eur != null
-  );
-  if (filas.length === 0) return null;
-  const masReciente = filas.reduce((a, b) => (b.mes > a.mes ? b : a));
-  return Number(masReciente.valor_eur);
-}
-
-// CASO ESPECIAL Oro: mismo motivo y misma cuenta que convertirAEuros de
-// distribucion.js (ver el comentario grande ahí) pero con la tasa MÁS
-// RECIENTE de cada moneda en vez de la de un mes puntual — es lo que le
-// corresponde a este modo "tasa más reciente" (Snapshot en el mes actual,
-// y Asignación). esOro/idMonedaDolares se importan de distribucion.js para
-// no duplicar el criterio de "qué es Oro"/"cuál es Dólares".
-// CASO ESPECIAL Pesos: mismo motivo y misma cuenta que convertirAEuros de
-// distribucion.js (ver el comentario grande ahí) pero con la tasa MÁS
-// RECIENTE de cada moneda, igual que Oro más abajo.
-function convertirAEurosMasReciente(monedaId, monto) {
-  if (esEuros(monedaId)) return { valor: monto, ok: true };
-  if (esOro(monedaId)) {
-    const tasaOroAUsd = tasaMasRecienteAEuros(monedaId);
-    const dolaresId = idMonedaDolares();
-    const tasaUsdAEur = dolaresId != null ? tasaMasRecienteAEuros(dolaresId) : null;
-    if (tasaOroAUsd == null || tasaUsdAEur == null) return { valor: 0, ok: false };
-    return { valor: monto * tasaOroAUsd * tasaUsdAEur, ok: true };
-  }
-  if (esPesos(monedaId)) {
-    const tasaPesosPorUsd = tasaMasRecienteAEuros(monedaId);
-    const dolaresId = idMonedaDolares();
-    const tasaUsdAEur = dolaresId != null ? tasaMasRecienteAEuros(dolaresId) : null;
-    if (!tasaPesosPorUsd || tasaUsdAEur == null) return { valor: 0, ok: false };
-    return { valor: (monto / tasaPesosPorUsd) * tasaUsdAEur, ok: true };
-  }
-  const tasa = tasaMasRecienteAEuros(monedaId);
-  if (tasa == null) return { valor: 0, ok: false };
-  return { valor: monto * tasa, ok: true };
 }
 
 // Suma, para un conjunto de totales por moneda (una fila del pivot, o el
@@ -180,15 +136,24 @@ function construirPivot(mesCorte) {
 }
 
 // La plata que hay HOY en cada cuenta, ya pasada a euros: es lo que
-// Asignación reparte entre las reservas. A propósito, SIEMPRE sin mesCorte
-// y con la tasa más reciente — el selector de mes de Snapshot (más abajo)
-// no le afecta para nada, Asignación siempre necesita la plata real de
-// ahora, nunca una foto vieja.
+// Asignación reparte entre las reservas. Se llama SIEMPRE sin mesCorte
+// (entran todos los movimientos, sin importar la fecha, incluidos los que
+// Nadia carga a futuro) y convierte con el tipo de cambio del MES ACTUAL
+// (mesActualTexto(), el real, de hoy) — nunca con el de un mes futuro. Hasta
+// la entrada 33 usaba "la tasa más reciente que tengas cargada", pero eso se
+// rompía cuando Nadia cargaba un gasto a futuro: se le armaba una fila de
+// tipo de cambio para ese mes futuro en Configuración > Tipo de cambio, y
+// "más reciente" terminaba usando esa (la del mes que todavía no llegó) en
+// vez de la del mes en curso.
 export function saldoEnEurosPorOrigen() {
   const { pivot, listaMonedaIds, listaOrigenIds } = construirPivot();
+  const mesActual = mesActualTexto();
   let huboIncompleto = false;
   const filas = listaOrigenIds.map(origenId => {
-    const { total, incompleto } = totalEnEuros(pivot[origenId], listaMonedaIds, convertirAEurosMasReciente);
+    const { total, incompleto } = totalEnEuros(
+      pivot[origenId], listaMonedaIds,
+      (monedaId, monto) => convertirAEuros(mesActual, monedaId, monto)
+    );
     if (incompleto) huboIncompleto = true;
     return { origenId, total, incompleto };
   });
@@ -204,10 +169,14 @@ export function renderPivot() {
   renderCheckboxesConceptosSnapshot();
 
   const esMesActual = state.snapshot.mes === mesActualTexto();
+  // mesCorte solo afecta qué MOVIMIENTOS entran (ver el comentario de
+  // arriba del archivo): en el mes actual entran todos, sin importar la
+  // fecha. La conversión a euros ("convertir") es la misma en los dos
+  // casos: siempre el tipo de cambio del mes elegido en el combo, nunca
+  // "el más reciente" — esa distinción quedó SOLO para Asignación
+  // (saldoEnEurosPorOrigen, más arriba).
   const mesCorte = esMesActual ? null : state.snapshot.mes;
-  const convertir = esMesActual
-    ? convertirAEurosMasReciente
-    : (monedaId, monto) => convertirAEuros(state.snapshot.mes, monedaId, monto);
+  const convertir = (monedaId, monto) => convertirAEuros(state.snapshot.mes, monedaId, monto);
 
   const { pivot, listaMonedaIds, listaOrigenIds } = construirPivot(mesCorte);
   const tabla = document.getElementById("pivotTable");
@@ -230,9 +199,10 @@ export function renderPivot() {
     return;
   }
 
-  const tituloIncompleto = esMesActual
-    ? "Falta cargar el tipo de cambio de alguna moneda en Configuración > Tipo de cambio (se usa el más reciente que tengas cargado para cada una)"
-    : `Falta cargar el tipo de cambio de alguna moneda para ${formatoMesLegible(state.snapshot.mes)} en Configuración > Tipo de cambio`;
+  // Mismo texto en los dos modos ahora (ver el comentario de arriba de
+  // "convertir"): la conversión siempre usa el tipo de cambio del mes
+  // elegido, así que el aviso de ⚠ también es siempre el mismo.
+  const tituloIncompleto = `Falta cargar el tipo de cambio de alguna moneda para ${formatoMesLegible(state.snapshot.mes)} en Configuración > Tipo de cambio`;
 
   let html = "<tr><th>Origen</th>" + listaMonedaIds.map(id => `<th>${nombreMoneda(id)}</th>`).join("") + "<th>Total (€)</th></tr>";
   const totales = {};
@@ -258,9 +228,8 @@ export function renderPivot() {
   tabla.innerHTML = html;
 
   if (nota) {
-    const textoNota = esMesActual
-      ? "⚠ = todavía no cargaste el tipo de cambio de alguna moneda en Configuración &gt; Tipo de cambio, ese Total (€) está incompleto. La conversión usa el tipo de cambio más reciente que tengas cargado para cada moneda."
-      : `⚠ = falta cargar el tipo de cambio de alguna moneda para ${formatoMesLegible(state.snapshot.mes)} en Configuración &gt; Tipo de cambio, así que ese total está incompleto.`;
+    // Mismo motivo que tituloIncompleto: ya no depende del modo.
+    const textoNota = `⚠ = falta cargar el tipo de cambio de alguna moneda para ${formatoMesLegible(state.snapshot.mes)} en Configuración &gt; Tipo de cambio, así que ese total está incompleto.`;
     nota.innerHTML = textoNota;
     nota.style.display = huboIncompleto ? "block" : "none";
   }
