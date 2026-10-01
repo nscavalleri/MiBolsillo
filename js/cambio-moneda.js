@@ -25,8 +25,14 @@ import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { avisarError } from './aviso-modal.js';
+import { initFechaPicker, fechaHoyISO } from './fecha-picker.js';
 
 const NOMBRE_CONCEPTO_CAMBIO = "cambio de moneda";
+
+// Instancia de flatpickr del campo "Fecha" de este modal (ver
+// js/fecha-picker.js), se arma una sola vez en setupCambioMoneda() y se
+// reusa en cada abrirModalCambioMoneda().
+let cambioFechaPicker = null;
 
 function conceptoCambioMonedaId() {
   const c = state.conceptos.find(x => x.nombre.trim().toLowerCase() === NOMBRE_CONCEPTO_CAMBIO);
@@ -52,7 +58,7 @@ function abrirModalCambioMoneda() {
   const form = document.getElementById("formCambioMoneda");
   form.reset();
   poblarSelects();
-  document.getElementById("cambioFecha").valueAsDate = new Date();
+  if (cambioFechaPicker) cambioFechaPicker.setDate(new Date(), true); else document.getElementById("cambioFecha").value = fechaHoyISO();
   document.getElementById("cambioMonedaOverlay").classList.add("open");
 }
 
@@ -61,6 +67,7 @@ function cerrarModalCambioMoneda() {
 }
 
 export function setupCambioMoneda() {
+  cambioFechaPicker = initFechaPicker("cambioFecha");
   document.getElementById("btnCambioMoneda").addEventListener("click", abrirModalCambioMoneda);
   document.getElementById("cambioMonedaClose").addEventListener("click", cerrarModalCambioMoneda);
 

@@ -15,6 +15,15 @@
      bloquean en silencio (lo que le pasó a Nadia con los diez tildados:
      solo bajó el primero, sin ningún aviso). -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<!-- flatpickr: selector de fecha de los campos "Fecha" (Agregar/Editar
+     movimiento y Cambio de moneda — ver js/fecha-picker.js), en vez del
+     <input type="date"> nativo del navegador. El nativo mostraba los
+     dígitos en mm/dd/aaaa en el navegador de Nadia en vez de dd/mm/aaaa,
+     pese a <html lang="es"> de arriba — ese orden lo decide el idioma del
+     NAVEGADOR, no el de la página, así que no hay forma de forzarlo con
+     HTML/CSS solo. Con flatpickr el formato queda fijo en dd/mm/aaaa. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
 <body>
 
@@ -569,8 +578,8 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <button type="button" data-tipo="ingreso">Ingreso</button>
 </div>
 
-<label for="fecha">Fecha</label>
-<input type="date" id="fecha" required />
+<label for="fechaVisible">Fecha</label>
+<input type="text" id="fecha" required />
 
 <label for="concepto">Concepto</label>
 <select id="concepto" required></select>
@@ -601,8 +610,8 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <button class="modal-close" id="cambioMonedaClose">✕</button>
 <h3>Cambio de moneda</h3>
 <form id="formCambioMoneda">
-<label for="cambioFecha">Fecha</label>
-<input type="date" id="cambioFecha" required />
+<label for="cambioFechaVisible">Fecha</label>
+<input type="text" id="cambioFecha" required />
 
 <label for="cambioDescripcion">Descripción</label>
 <input type="text" id="cambioDescripcion" placeholder="Ej: cambio dólares a euros" />

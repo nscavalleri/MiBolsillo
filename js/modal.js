@@ -6,6 +6,11 @@ import { state } from './state.js';
 import { getClient } from './config.js';
 import { cargarTodo } from './data-service.js';
 import { avisarError } from './aviso-modal.js';
+import { initFechaPicker, fechaHoyISO } from './fecha-picker.js';
+
+// Instancia de flatpickr del campo "Fecha" (ver js/fecha-picker.js), se
+// arma una sola vez en setupModal() y se reusa en cada abrirModal().
+let fechaPicker = null;
 
 // Concepto por defecto al agregar un gasto nuevo (no se aplica al editar).
 // ID según la base: concepto "Supermercado" = 25.
@@ -82,7 +87,7 @@ export function abrirModal(id) {
   if (id) {
     const m = state.movimientos.find(x => String(x.id) === String(id));
     state.tipoActual = m.tipo;
-    document.getElementById("fecha").value = m.fecha;
+    if (fechaPicker) fechaPicker.setDate(m.fecha, true); else document.getElementById("fecha").value = m.fecha;
     document.getElementById("descripcion").value = m.descripcion || "";
     document.getElementById("monto").value = m.monto;
     poblarSelects();
@@ -90,7 +95,7 @@ export function abrirModal(id) {
     document.getElementById("moneda").value = m.moneda_id;
     document.getElementById("origen").value = m.origen_id;
   } else {
-    document.getElementById("fecha").valueAsDate = new Date();
+    if (fechaPicker) fechaPicker.setDate(new Date(), true); else document.getElementById("fecha").value = fechaHoyISO();
     poblarSelects();
     // Default para un gasto nuevo: Supermercado (si existe y está activo),
     // por ID. Moneda y Origen se completan solos a partir de lo que tenga
@@ -119,6 +124,7 @@ export function cerrarModal() {
 }
 
 export function setupModal() {
+  fechaPicker = initFechaPicker("fecha");
   document.getElementById("btnAgregar").addEventListener("click", () => abrirModal(null));
   document.getElementById("modalClose").addEventListener("click", cerrarModal);
 
