@@ -889,6 +889,10 @@ table.conciliacion-pivot td.conciliacion-vacia { color: var(--border); }
    resto de la app); en pantallas anchas van lado a lado. */
 .backup-fecha-rango { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
 .backup-fecha-rango > div { flex: 1; min-width: 160px; }
+/* Movimientos > "Todo": mientras está tildado, el rango Desde/Hasta queda
+   deshabilitado (no se usa para exportar) — se atenúa, mismo criterio que
+   check-grid-deshabilitado. */
+.backup-fecha-rango-deshabilitado { opacity: 0.45; }
 
 details.collapsible summary {
   font-size: 16px; font-weight: 600; cursor: pointer; list-style: revert;

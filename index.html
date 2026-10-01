@@ -423,14 +423,15 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 </div>
 
 <!-- Configuración > Backup: tildar qué reportes exportar a Excel, uno
-     por tilde (ver js/backup.js). El checkbox de arriba es "Seleccionar
-     todo / Deseleccionar todo"; no se guarda en ningún lado (ni el
-     resto de los tildes de acá), arranca igual cada vez que se entra. -->
+     por tilde (ver js/backup.js). El checkbox de arriba es "Todo"
+     (tilda/destilda los diez reportes de un tirón); no se guarda en
+     ningún lado (ni el resto de los tildes de acá), arranca igual cada
+     vez que se entra. -->
 <div id="configsub-backup" style="display:none;">
 <div class="card">
 <label class="check-item check-item-todos">
 <input type="checkbox" id="backupMarcarTodos" />
-<span>Seleccionar todo / Deseleccionar todo</span>
+<span>Todo</span>
 </label>
 </div>
 
@@ -496,7 +497,11 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <input type="checkbox" id="backupChkMovimientos" checked />
 <span>Movimientos</span>
 </label>
-<div class="backup-fecha-rango">
+<label class="check-item check-item-todos">
+<input type="checkbox" id="backupMovTodo" />
+<span>Todo</span>
+</label>
+<div class="backup-fecha-rango" id="backupMovFechaRango">
 <div>
 <label for="backupMovDesdeMesNombre">Desde</label>
 <div class="mes-selector">

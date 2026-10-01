@@ -12,10 +12,15 @@
 //     Conciliación.
 //   Destildados por defecto: Distribución mensual, Flujo de caja mensual,
 //     Configuración.
-// El checkbox "Seleccionar todo / Deseleccionar todo" de arriba tilda o
-// destilda los diez de un tirón; también se actualiza solo (tildado SOLO
-// cuando los diez están tildados, igual criterio que el "Todos" de
-// check-list.js) cada vez que se toca cualquiera de los diez a mano.
+// El checkbox "Todo" de arriba tilda o destilda los diez de un tirón;
+// también se actualiza solo (tildado SOLO cuando los diez están tildados,
+// igual criterio que el "Todos" de check-list.js) cada vez que se toca
+// cualquiera de los diez a mano.
+//
+// Movimientos tiene además su PROPIO checkbox "Todo" (a pedido de Nadia):
+// tildarlo deshabilita el rango Desde/Hasta (que queda atenuado, mismo
+// criterio que check-grid-deshabilitado) y hace que se exporten TODOS los
+// movimientos cargados, sin filtrar por fecha.
 //
 // Nada de esta pantalla se guarda en Supabase (ni los tildes, ni el mes del
 // Snapshot, ni el rango de Movimientos): son elecciones de "qué exportar
@@ -259,9 +264,13 @@ export function hojasFlujoCajaHistorico() {
   }));
 }
 
+// "desde"/"hasta" en null (o undefined) significa "sin filtrar" — lo usa el
+// checkbox "Todo" de Movimientos (a pedido de Nadia) para exportar todo lo
+// cargado sin importar el rango elegido en los selectores.
 export function filasMovimientos(desde, hasta) {
   return state.movimientos
     .filter(m => {
+      if (desde == null && hasta == null) return true;
       const mes = String(m.fecha).slice(0, 7);
       return mes >= desde && mes <= hasta;
     })
@@ -389,7 +398,9 @@ const REPORTES = [
     chk: "backupChkMovimientos", archivo: "movimientos",
     construir: () => [{
       nombre: "Movimientos",
-      filas: filasMovimientos(state.backup.movDesde || restarMeses(mesActualTexto(), 12), state.backup.movHasta || mesMovimientoMasReciente()),
+      filas: state.backup.movTodo
+        ? filasMovimientos(null, null)
+        : filasMovimientos(state.backup.movDesde || restarMeses(mesActualTexto(), 12), state.backup.movHasta || mesMovimientoMasReciente()),
     }],
   },
   {
@@ -498,6 +509,22 @@ const PREFIJOS_MES = [
   { prefijo: "backupFlujoMensual", clave: "flujoMensualMes" },
 ];
 
+// Mientras "Todo" (Movimientos) está tildado, el rango Desde/Hasta no se
+// usa para exportar — se deshabilitan los cuatro <select> y se atenúa el
+// contenedor, para que se note (mismo criterio que
+// check-grid-deshabilitado). Se llama tanto desde renderBackup() (por si
+// state.backup.movTodo ya venía tildado de antes en esta sesión) como
+// desde el listener del checkbox.
+function actualizarFechaRangoMovimientos() {
+  const deshabilitado = !!state.backup.movTodo;
+  ["backupMovDesdeMesNombre", "backupMovDesdeAnio", "backupMovHastaMesNombre", "backupMovHastaAnio"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = deshabilitado;
+  });
+  const cont = document.getElementById("backupMovFechaRango");
+  if (cont) cont.classList.toggle("backup-fecha-rango-deshabilitado", deshabilitado);
+}
+
 export function renderBackup() {
   PREFIJOS_MES.forEach(({ prefijo, clave }) => {
     if (!state.backup[clave]) state.backup[clave] = mesActualTexto();
@@ -508,6 +535,10 @@ export function renderBackup() {
   if (!state.backup.movDesde) state.backup.movDesde = restarMeses(mesActualTexto(), 12);
   escribirMesSeleccionado("backupMovDesde", state.backup.movDesde);
   escribirMesSeleccionado("backupMovHasta", state.backup.movHasta);
+
+  const chkMovTodo = document.getElementById("backupMovTodo");
+  if (chkMovTodo) chkMovTodo.checked = !!state.backup.movTodo;
+  actualizarFechaRangoMovimientos();
 }
 
 export function setupBackup() {
@@ -537,6 +568,14 @@ export function setupBackup() {
   document.getElementById("backupMovHastaAnio").addEventListener("change", () => {
     state.backup.movHasta = leerMesSeleccionado("backupMovHasta");
   });
+
+  const chkMovTodo = document.getElementById("backupMovTodo");
+  if (chkMovTodo) {
+    chkMovTodo.addEventListener("change", () => {
+      state.backup.movTodo = chkMovTodo.checked;
+      actualizarFechaRangoMovimientos();
+    });
+  }
 
   const chkTodos = document.getElementById("backupMarcarTodos");
   if (chkTodos) {

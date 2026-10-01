@@ -105,16 +105,19 @@ export const state = {
   // Configuración > Backup: qué mes mirar en cada hoja que lo necesita
   // (Snapshot, Distribución mensual, Flujo de caja mensual — cada una el
   // suyo, independiente de la pantalla real de Distribución/Flujo de caja,
-  // a pedido de Nadia) y el rango Desde/Hasta de la hoja "Movimientos".
-  // Arrancan vacíos y se completan con su valor por defecto (ver
-  // renderBackup en js/backup.js) la PRIMERA vez que se entra a la
-  // pantalla, pero no se guardan entre sesiones — mismo criterio que
-  // distribucion.ordenHistorico: si Nadia los cambia a mano, el cambio se
-  // mantiene mientras siga en esta sesión del navegador, pero al volver a
-  // entrar a la app arrancan de cero (confirmado con ella). Qué reportes
-  // están tildados para exportar NO vive acá (son checkbox sueltos en el
-  // HTML, sin estado propio): se leen directo del DOM al tocar "Generar
-  // Excel", así que tampoco se recuerdan entre sesiones — a propósito,
-  // mismo criterio.
-  backup: { snapshotMes: "", distribMensualMes: "", flujoMensualMes: "", movDesde: "", movHasta: "" },
+  // a pedido de Nadia), el rango Desde/Hasta de la hoja "Movimientos", y
+  // "movTodo" — el checkbox "Todo" de Movimientos (a pedido de Nadia): si
+  // está tildado, el rango Desde/Hasta se ignora al exportar y se manda
+  // TODO lo cargado (los selectores quedan además deshabilitados en
+  // pantalla, para que se note). Arrancan vacíos/false y se completan con
+  // su valor por defecto (ver renderBackup en js/backup.js) la PRIMERA vez
+  // que se entra a la pantalla, pero no se guardan entre sesiones — mismo
+  // criterio que distribucion.ordenHistorico: si Nadia los cambia a mano,
+  // el cambio se mantiene mientras siga en esta sesión del navegador, pero
+  // al volver a entrar a la app arrancan de cero (confirmado con ella).
+  // Qué reportes están tildados para exportar NO vive acá (son checkbox
+  // sueltos en el HTML, sin estado propio): se leen directo del DOM al
+  // tocar "Generar Excel", así que tampoco se recuerdan entre sesiones —
+  // a propósito, mismo criterio.
+  backup: { snapshotMes: "", distribMensualMes: "", flujoMensualMes: "", movDesde: "", movHasta: "", movTodo: false },
 };
