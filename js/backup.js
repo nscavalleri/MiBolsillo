@@ -455,6 +455,15 @@ function nombreArchivoConFecha(base, extension) {
   return `mibolsillo_${base}_${fecha}.${extension || "xlsx"}`;
 }
 
+// El .zip (caso de 2+ tildes) usa su PROPIO patrón de nombre, a pedido de
+// Nadia — "YYYYMMDD - Mi bolsillo Backup.zip" — distinto del de cada
+// .xlsx individual (nombreArchivoConFecha de arriba, que no cambió).
+function nombreZipConFecha() {
+  const hoy = new Date();
+  const aaaammdd = hoy.getFullYear() + String(hoy.getMonth() + 1).padStart(2, "0") + String(hoy.getDate()).padStart(2, "0");
+  return `${aaaammdd} - Mi bolsillo Backup.zip`;
+}
+
 function armarLibro(hojas) {
   const XLSX = window.XLSX;
   const wb = XLSX.utils.book_new();
@@ -543,7 +552,7 @@ async function generarSeleccionados() {
   });
   try {
     const blob = await zip.generateAsync({ type: "blob" });
-    descargarBlob(blob, nombreArchivoConFecha("backup", "zip"));
+    descargarBlob(blob, nombreZipConFecha());
   } catch (err) {
     avisarError(`No se pudo armar el .zip: ${err.message}`);
     return;
