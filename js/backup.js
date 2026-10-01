@@ -5,6 +5,13 @@
 // — así que "Backup" exporta una FOTO de lo que hay ahora mismo, no dispara
 // ninguna consulta nueva.
 //
+// Con UN solo tilde se baja un .xlsx directo. Con DOS O MÁS, en vez de
+// disparar varias descargas (una por tilde) se empaquetan todas en UN solo
+// .zip — Nadia probó con los diez tildados y el navegador solo bajó el
+// primer archivo (Snapshot), sin avisar nada; un solo .zip evita el
+// problema de raíz sea cual sea la causa exacta. Ver el comentario grande
+// más abajo, arriba de generarSeleccionados(), para el detalle.
+//
 // Reglas, tal como las pidió Nadia (no cambiar el default de ningún tilde
 // sin volver a preguntarle):
 //   Tildados por defecto: Snapshot, Evolución patrimonial, Distribución
@@ -417,7 +424,22 @@ const REPORTES = [
   },
 ];
 
-// --- Generar los .xlsx (acá sí se usa window.XLSX) --------------------------
+// --- Generar los .xlsx (acá sí se usa window.XLSX/window.JSZip) ------------
+//
+// Si se tilda UN solo reporte, se baja directo como .xlsx — igual que
+// siempre. Si se tildan DOS O MÁS, en vez de disparar una descarga de
+// archivo por tilde se arma UN solo .zip con todos adentro (cada reporte
+// adentro conserva su propio nombre de archivo .xlsx, así que "un archivo
+// por tilde" sigue siendo cierto, solo que empaquetados).
+//
+// Por qué: antes se disparaban las descargas espaciadas 400ms una de otra
+// (para esquivar el bloqueo de "varias ventanas emergentes" de algunos
+// navegadores), pero Nadia probó con los diez tildados y solo bajó
+// Snapshot (el primero) — SIN ningún aviso de descargas bloqueadas en el
+// navegador. Es decir, el espaciado no alcanzaba: lo que sea que cortaba
+// las descargas siguientes lo hacía en silencio. Empaquetar todo en un
+// solo .zip elimina el problema de raíz, sea cual sea la causa exacta:
+// deja de haber "varias descargas", pasa a haber una sola.
 
 function nombreHojaSegura(nombre) {
   // Excel no admite : \ / ? * [ ] en el nombre de una hoja, ni más de 31
@@ -427,20 +449,47 @@ function nombreHojaSegura(nombre) {
   return String(nombre).replace(/[:\\/?*[\]]/g, "-").slice(0, 31);
 }
 
-function nombreArchivoConFecha(base) {
+function nombreArchivoConFecha(base, extension) {
   const hoy = new Date();
   const fecha = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + String(hoy.getDate()).padStart(2, "0");
-  return `mibolsillo_${base}_${fecha}.xlsx`;
+  return `mibolsillo_${base}_${fecha}.${extension || "xlsx"}`;
 }
 
-function descargarLibro(archivoBase, hojas) {
+function armarLibro(hojas) {
   const XLSX = window.XLSX;
   const wb = XLSX.utils.book_new();
   hojas.forEach(h => {
     const ws = XLSX.utils.json_to_sheet(h.filas);
     XLSX.utils.book_append_sheet(wb, ws, nombreHojaSegura(h.nombre));
   });
-  XLSX.writeFile(wb, nombreArchivoConFecha(archivoBase));
+  return wb;
+}
+
+// Caso de UN solo reporte: se baja directo como .xlsx (XLSX.writeFile ya
+// arma el Blob y dispara la descarga solo, no hace falta tocar nada más).
+function descargarLibro(archivoBase, hojas) {
+  window.XLSX.writeFile(armarLibro(hojas), nombreArchivoConFecha(archivoBase, "xlsx"));
+}
+
+// Caso de dos o más reportes: cada uno se arma en memoria (sin disparar
+// descarga propia) y se agrega al .zip con su nombre de archivo de
+// siempre.
+function agregarLibroAlZip(zip, archivoBase, hojas) {
+  const buffer = window.XLSX.write(armarLibro(hojas), { bookType: "xlsx", type: "array" });
+  zip.file(nombreArchivoConFecha(archivoBase, "xlsx"), buffer);
+}
+
+// Dispara UNA sola descarga (de un Blob ya armado, el .zip) con un <a>
+// temporal — mismo mecanismo que usa XLSX.writeFile por dentro.
+function descargarBlob(blob, nombreArchivo) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function mostrarNota(texto) {
@@ -451,11 +500,9 @@ function mostrarNota(texto) {
   nota.style.display = "block";
 }
 
-// Genera los reportes tildados, un archivo .xlsx por tilde. Los dispara con
-// un pequeño espacio entre uno y otro (en vez de todos en el mismo
-// instante): varias descargas de golpe pueden hacer que el navegador
-// bloquee algunas como si fueran ventanas emergentes.
-function generarSeleccionados() {
+// Genera los reportes tildados: uno solo -> .xlsx directo; dos o más -> un
+// solo .zip con todos adentro (ver el comentario grande de arriba).
+async function generarSeleccionados() {
   if (!window.XLSX) {
     mostrarNota("No se pudo cargar la librería para generar Excel (XLSX). Revisá la conexión a internet y volvé a intentar.");
     return;
@@ -469,15 +516,41 @@ function generarSeleccionados() {
     return;
   }
   mostrarNota("");
-  seleccionados.forEach((r, i) => {
-    setTimeout(() => {
-      try {
-        descargarLibro(r.archivo, r.construir());
-      } catch (err) {
-        avisarError(`No se pudo generar el Excel de "${r.archivo}": ${err.message}`);
-      }
-    }, i * 400);
+
+  if (seleccionados.length === 1) {
+    const r = seleccionados[0];
+    try {
+      descargarLibro(r.archivo, r.construir());
+    } catch (err) {
+      avisarError(`No se pudo generar el Excel de "${r.archivo}": ${err.message}`);
+    }
+    return;
+  }
+
+  if (!window.JSZip) {
+    mostrarNota("No se pudo cargar la librería para armar el .zip (JSZip). Revisá la conexión a internet y volvé a intentar.");
+    return;
+  }
+  const zip = new window.JSZip();
+  let huboError = false;
+  seleccionados.forEach(r => {
+    try {
+      agregarLibroAlZip(zip, r.archivo, r.construir());
+    } catch (err) {
+      huboError = true;
+      avisarError(`No se pudo generar el Excel de "${r.archivo}": ${err.message}`);
+    }
   });
+  try {
+    const blob = await zip.generateAsync({ type: "blob" });
+    descargarBlob(blob, nombreArchivoConFecha("backup", "zip"));
+  } catch (err) {
+    avisarError(`No se pudo armar el .zip: ${err.message}`);
+    return;
+  }
+  if (huboError) {
+    mostrarNota("El .zip se generó, pero algún reporte falló (ver el aviso de error) y quedó afuera.");
+  }
 }
 
 // --- UI: checkboxes, selectores de mes y el botón ---------------------------

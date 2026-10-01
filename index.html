@@ -9,6 +9,12 @@
 <!-- SheetJS: arma los .xlsx de Configuración > Backup (js/backup.js). Mismo
      patrón de <script> por CDN que Supabase de arriba, sin paso de build. -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- JSZip: empaqueta en un solo .zip cuando se tildan 2+ reportes en
+     Backup (ver js/backup.js) — así el navegador dispara UNA sola
+     descarga en vez de varias de un tirón, que algunos navegadores
+     bloquean en silencio (lo que le pasó a Nadia con los diez tildados:
+     solo bajó el primero, sin ningún aviso). -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
 
