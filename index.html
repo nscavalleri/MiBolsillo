@@ -6,6 +6,9 @@
 <title>Mi bolsillo</title>
 <link rel="stylesheet" href="css/styles.css" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- SheetJS: arma los .xlsx de Configuración > Backup (js/backup.js). Mismo
+     patrón de <script> por CDN que Supabase de arriba, sin paso de build. -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -363,6 +366,7 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <button class="tab-btn" data-configsub="origenes">Orígenes</button>
 <button class="tab-btn" data-configsub="tipo_cambio">Tipo de cambio</button>
 <button class="tab-btn" data-configsub="reservas">Reservas</button>
+<button class="tab-btn" data-configsub="backup">Backup</button>
 </div>
 
 <div id="configsub-conceptos">
@@ -415,6 +419,125 @@ Falta conectar la base de datos: completá SUPABASE_URL y SUPABASE_ANON_KEY en c
 <input type="number" id="nuevaReservaCantidad" step="0.01" min="0" placeholder="Cantidad (€)" />
 <button type="button" id="btnAgregarReserva">Agregar</button>
 </div>
+</div>
+</div>
+
+<!-- Configuración > Backup: tildar qué reportes exportar a Excel, uno
+     por tilde (ver js/backup.js). El checkbox de arriba es "Seleccionar
+     todo / Deseleccionar todo"; no se guarda en ningún lado (ni el
+     resto de los tildes de acá), arranca igual cada vez que se entra. -->
+<div id="configsub-backup" style="display:none;">
+<div class="card">
+<label class="check-item check-item-todos">
+<input type="checkbox" id="backupMarcarTodos" />
+<span>Seleccionar todo / Deseleccionar todo</span>
+</label>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkSnapshot" checked />
+<span>Snapshot</span>
+</label>
+<label for="backupSnapshotMesNombre">Mes del Snapshot</label>
+<div class="mes-selector">
+<select id="backupSnapshotMesNombre"></select>
+<select id="backupSnapshotAnio"></select>
+</div>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkEvolucion" checked />
+<span>Evolución patrimonial</span>
+</label>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkDistribMensual" />
+<span>Distribución mensual</span>
+</label>
+<label for="backupDistribMensualMesNombre">Mes de Distribución mensual</label>
+<div class="mes-selector">
+<select id="backupDistribMensualMesNombre"></select>
+<select id="backupDistribMensualAnio"></select>
+</div>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkDistribHistorica" checked />
+<span>Distribución histórica</span>
+</label>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkFlujoMensual" />
+<span>Flujo de caja mensual</span>
+</label>
+<label for="backupFlujoMensualMesNombre">Mes de Flujo de caja mensual</label>
+<div class="mes-selector">
+<select id="backupFlujoMensualMesNombre"></select>
+<select id="backupFlujoMensualAnio"></select>
+</div>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkFlujoHistorico" checked />
+<span>Flujo de caja histórico</span>
+</label>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkMovimientos" checked />
+<span>Movimientos</span>
+</label>
+<div class="backup-fecha-rango">
+<div>
+<label for="backupMovDesdeMesNombre">Desde</label>
+<div class="mes-selector">
+<select id="backupMovDesdeMesNombre"></select>
+<select id="backupMovDesdeAnio"></select>
+</div>
+</div>
+<div>
+<label for="backupMovHastaMesNombre">Hasta</label>
+<div class="mes-selector">
+<select id="backupMovHastaMesNombre"></select>
+<select id="backupMovHastaAnio"></select>
+</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkAsignacion" checked />
+<span>Asignación</span>
+</label>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkConciliacion" checked />
+<span>Conciliación</span>
+</label>
+</div>
+
+<div class="card">
+<label class="check-item">
+<input type="checkbox" id="backupChkConfiguracion" />
+<span>Configuración</span>
+</label>
+</div>
+
+<div class="card">
+<button type="button" class="primary" id="btnGenerarBackup">Generar Excel</button>
+<p class="tipo-cambio-nota" id="backupNota" style="display:none;"></p>
 </div>
 </div>
 </div>

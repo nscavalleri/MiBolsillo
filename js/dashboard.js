@@ -65,7 +65,9 @@ function renderCheckboxesConceptosSnapshot() {
 // "convertir" es la función de conversión a usar (una de las dos de más
 // abajo, según el modo — ver el comentario de arriba del archivo): así
 // esta función no necesita saber si el modo es "actual" o "mes puntual".
-function totalEnEuros(totalesPorMoneda, listaMonedaIds, convertir) {
+// Se exporta para que js/backup.js arme la misma columna "Total (€)" del
+// Snapshot al generar el Excel de backup, en vez de reimplementar la suma.
+export function totalEnEuros(totalesPorMoneda, listaMonedaIds, convertir) {
   let total = 0;
   let incompleto = false;
   listaMonedaIds.forEach(monedaId => {
@@ -92,7 +94,10 @@ function totalEnEuros(totalesPorMoneda, listaMonedaIds, convertir) {
 // texto entre dos "YYYY-MM" (el de la fecha del movimiento, recortada a
 // sus primeros 7 caracteres, contra mesCorte), que ordena igual que
 // comparar fechas de verdad.
-function construirPivot(mesCorte) {
+// Se exporta para que js/backup.js arme la hoja "Snapshot" del Excel de
+// backup con el mismo pivot (para el mes que haya elegido ahí), en vez de
+// reimplementar el recorrido de movimientos.
+export function construirPivot(mesCorte) {
   const conceptoIdsIncluidos = new Set(
     state.conceptos.filter(c => c.incluir_en_snapshot !== false).map(c => String(c.id))
   );

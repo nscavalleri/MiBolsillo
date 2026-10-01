@@ -883,6 +883,13 @@ table.conciliacion-pivot td.conciliacion-vacia { color: var(--border); }
 .mes-selector { display: flex; gap: 10px; }
 .mes-selector select { flex: 1; }
 
+/* Configuración > Backup: el par "Desde"/"Hasta" de Movimientos, cada uno
+   con su propio .mes-selector (mes + año) debajo de su etiqueta. En
+   pantallas angostas se apilan uno debajo del otro (mismo quiebre que el
+   resto de la app); en pantallas anchas van lado a lado. */
+.backup-fecha-rango { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+.backup-fecha-rango > div { flex: 1; min-width: 160px; }
+
 details.collapsible summary {
   font-size: 16px; font-weight: 600; cursor: pointer; list-style: revert;
 }

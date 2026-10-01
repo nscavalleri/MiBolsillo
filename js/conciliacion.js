@@ -91,6 +91,33 @@ function mesActualTexto() {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
 }
 
+// Función pura (sin tocar el DOM) que arma, para cada origen y moneda en
+// uso (misma grilla que calcularPivot(), incluidas las combinaciones en
+// cero), el saldo actual y la última conciliación guardada — para que
+// js/backup.js arme la hoja "Conciliación" del Excel de backup reusando
+// este cálculo, en vez de duplicarlo.
+export function datosConciliacionParaExport() {
+  const { pivot, monedaIds } = calcularPivot();
+  const origenIds = Object.keys(pivot).sort((a, b) => nombreOrigen(a).localeCompare(nombreOrigen(b)));
+  const filas = [];
+  origenIds.forEach(origenId => {
+    monedaIds.forEach(monedaId => {
+      const saldoActual = pivot[origenId][monedaId] || 0;
+      const ultima = ultimaConciliacion(origenId, monedaId);
+      filas.push({
+        origenId,
+        origen: nombreOrigen(origenId),
+        monedaId,
+        moneda: nombreMoneda(monedaId),
+        saldoActual,
+        ultimaFecha: ultima ? fechaLegible(ultima.creado_en) : null,
+        ultimoValor: ultima ? Number(ultima.monto) : null,
+      });
+    });
+  });
+  return filas;
+}
+
 function actualizarResumen() {
   const resumen = document.getElementById("conciliacionResumen");
   const casilleros = document.querySelectorAll("#conciliacionTable input[type=\"checkbox\"]");

@@ -116,6 +116,67 @@ function claseSegunObjetivo(diferencia) {
   return diferencia < -TOLERANCIA ? "asig-rojo" : "asig-verde";
 }
 
+// Función pura (sin tocar el DOM) que reconstruye los mismos números que
+// recalcular() de más abajo, pero a partir de lo guardado en la base
+// (state.asignaciones) en vez de los valores tipeados en pantalla — para que
+// js/backup.js arme las hojas "Repartición" y "Resumen por reserva" del
+// Excel de backup reusando este cálculo, en vez de duplicarlo. Mismo orden
+// que recalcular(): primero el remanente de cada cuenta (si tiene), después
+// "Sin asignar", después los totales por reserva.
+export function calcularAsignacion() {
+  const reservas = reservasVisibles();
+  const { filas: filasSaldo, incompleto: saldoIncompleto } = saldoEnEurosPorOrigen();
+
+  const porOrigen = {};
+  const porReserva = {};
+  const porOrigenReserva = {}; // origenId -> reservaId -> monto (lo cargado a mano, sin el remanente)
+  filasSaldo.forEach(f => {
+    porOrigenReserva[f.origenId] = {};
+    reservas.forEach(r => {
+      const monto = montoAsignado(f.origenId, r.id);
+      porOrigenReserva[f.origenId][r.id] = monto;
+      if (monto) {
+        porOrigen[f.origenId] = (porOrigen[f.origenId] || 0) + monto;
+        porReserva[r.id] = (porReserva[r.id] || 0) + monto;
+      }
+    });
+  });
+
+  const filas = filasSaldo.map(f => {
+    const remanenteReservaId = remanenteDe(f.origenId, reservas);
+    let restante;
+    if (remanenteReservaId != null) {
+      const sobra = f.total - (porOrigen[f.origenId] || 0);
+      porOrigen[f.origenId] = (porOrigen[f.origenId] || 0) + sobra;
+      porReserva[remanenteReservaId] = (porReserva[remanenteReservaId] || 0) + sobra;
+      porOrigenReserva[f.origenId][remanenteReservaId] = (porOrigenReserva[f.origenId][remanenteReservaId] || 0) + sobra;
+      // En una fila con remanente, "Sin asignar" solo muestra el caso en que
+      // se repartió de más (mismo criterio que recalcular()).
+      restante = Math.min(sobra, 0);
+    } else {
+      restante = f.total - (porOrigen[f.origenId] || 0);
+    }
+    return {
+      origenId: f.origenId,
+      nombre: nombreOrigen(f.origenId),
+      total: f.total,
+      incompleto: f.incompleto,
+      remanenteReservaId,
+      restante,
+      porReserva: porOrigenReserva[f.origenId],
+    };
+  });
+
+  const resumen = reservas.map(r => {
+    const asignado = porReserva[r.id] || 0;
+    const objetivo = objetivoDe(r.id);
+    const diferencia = diferenciaDe(r.id, asignado);
+    return { id: r.id, nombre: r.nombre, objetivo, asignado, diferencia };
+  });
+
+  return { filas, reservas, resumen, incompleto: saldoIncompleto };
+}
+
 // Al guardar una celda se recarga todo (el patrón de siempre de la app) y
 // eso vuelve a armar la tabla entera, con lo cual el cursor se saldría del
 // campo en el que estabas justo cuando estás cargando una fila tras otra.

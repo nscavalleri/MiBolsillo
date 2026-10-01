@@ -145,7 +145,10 @@ export function escaparAtributo(texto) {
 // Se arma todo de UNA pasada por los movimientos (y no buscando en
 // state.movimientos una vez por celda) porque el reporte puede tener veinte
 // conceptos por cuatro monedas.
-function historicoPorConcepto(mesExcluido) {
+// Se exporta para que js/backup.js arme la hoja "Distribución mensual" del
+// Excel de backup con el mismo promedio por concepto, en vez de duplicar el
+// recorrido de movimientos.
+export function historicoPorConcepto(mesExcluido) {
   const porMoneda = {};   // "concepto|moneda" -> { mes: total en esa moneda }
   const enEuros = {};     // "concepto"        -> { mes: total convertido }
   const faltaTasa = {};   // "concepto"        -> { mes: true }
@@ -850,7 +853,10 @@ function renderCheckboxesMonedas() {
 // no importa qué monedas estén tildadas más abajo, entran todas). Devuelve
 // los totales y qué conceptos quedaron con alguna conversión incompleta
 // (les faltó el tipo de cambio de alguna moneda).
-function totalesEnEurosDelMes(mes, conceptoIdsIncluidos) {
+// Se exporta para que js/backup.js arme la hoja "Distribución mensual" del
+// Excel de backup (en modo "Convertir todo a Euros") con el mismo total por
+// concepto que usa renderReporteEnEuros, en vez de duplicarlo.
+export function totalesEnEurosDelMes(mes, conceptoIdsIncluidos) {
   const totales = {};
   const incompletos = {};
   const movsPorConcepto = {}; // concepto_id -> moneda_id -> [movimientos]
@@ -867,6 +873,28 @@ function totalesEnEurosDelMes(mes, conceptoIdsIncluidos) {
     movsPorConcepto[m.concepto_id][m.moneda_id].push(m);
   });
   return { totales, incompletos, movsPorConcepto };
+}
+
+// Misma agregación "por concepto y moneda" que arma renderReporte() para la
+// tabla sin convertir (ver ese bucle, más abajo) — sin promedio ni detalle,
+// para que la reutilice js/backup.js al generar la hoja "Distribución
+// mensual" del Excel de backup en modo sin convertir, en vez de duplicar el
+// recorrido de movimientos.
+export function datosDistribucionMensualPorMoneda(mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
+  const porConceptoMoneda = {};
+  const monedaIdsUsadas = new Set();
+  state.movimientos.forEach(m => {
+    if (String(m.fecha).slice(0, 7) !== mes) return;
+    if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    if (!monedaIdsIncluidas.has(String(m.moneda_id))) return;
+    const signo = m.tipo === "ingreso" ? 1 : -1;
+    const val = signo * Number(m.monto);
+    if (!porConceptoMoneda[m.concepto_id]) porConceptoMoneda[m.concepto_id] = {};
+    porConceptoMoneda[m.concepto_id][m.moneda_id] = (porConceptoMoneda[m.concepto_id][m.moneda_id] || 0) + val;
+    monedaIdsUsadas.add(m.moneda_id);
+  });
+  const listaMonedaIds = Array.from(monedaIdsUsadas).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
+  return { porConceptoMoneda, listaMonedaIds };
 }
 
 function renderReporteEnEuros(cont, mes, conceptoIdsIncluidos) {
@@ -1064,7 +1092,10 @@ export function formatoMesLegible(mesTexto) {
 // Para una moneda puntual: agrupa los movimientos de esa moneda (entre los
 // conceptos incluidos) por mes-año y por concepto, y guarda esos mismos
 // movimientos aparte (movsPorMesConcepto) para el botón "i" de cada celda.
-function calcularHistoricoPorMoneda(monedaId, conceptoIdsIncluidos) {
+// Se exporta para que js/backup.js arme la hoja "Distribución histórica" del
+// Excel de backup (una hoja por moneda, igual que renderSeccionHistorica),
+// en vez de duplicar el recorrido de movimientos.
+export function calcularHistoricoPorMoneda(monedaId, conceptoIdsIncluidos) {
   const porMesConcepto = {};
   const movsPorMesConcepto = {};
   const mesesUsados = new Set();
@@ -1137,7 +1168,10 @@ function renderSeccionHistorica(moneda, conceptosIncluidos, conceptoIdsIncluidos
 // por mes-año y por concepto, sumando el equivalente en euros de cada
 // moneda, y marca qué celdas mes-concepto quedaron con alguna conversión
 // incompleta por falta de tipo de cambio.
-function calcularHistoricoEnEuros(conceptoIdsIncluidos) {
+// Se exporta para que js/backup.js arme la hoja "Total en Euros" de
+// Distribución histórica (cuando "Convertir todo a Euros" está tildado), en
+// vez de duplicar el recorrido de movimientos.
+export function calcularHistoricoEnEuros(conceptoIdsIncluidos) {
   const porMesConcepto = {};
   const movsPorMesConcepto = {}; // mes -> concepto_id -> moneda_id -> [movs]
   const mesesUsados = new Set();

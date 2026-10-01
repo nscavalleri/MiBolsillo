@@ -14,6 +14,7 @@ import { setupReservas } from './reservas.js';
 import { setupEditarModal } from './editar-modal.js';
 import { setupEvolucion } from './evolucion.js';
 import { setupPivot } from './dashboard.js';
+import { setupBackup } from './backup.js';
 
 setupAllTabs();
 setupAuth();
@@ -29,6 +30,7 @@ setupReservas();
 setupEditarModal();
 setupEvolucion();
 setupPivot();
+setupBackup();
 
 // Al girar la rueda del mouse (o hacer scroll con el trackpad) sobre un
 // campo numérico enfocado, el navegador suma/resta de a uno por cada

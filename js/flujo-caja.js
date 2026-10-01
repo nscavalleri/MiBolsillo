@@ -128,7 +128,10 @@ function sumarAnidadoPorClave(a, b) {
   return out;
 }
 
-function totalesFijoVariableEnEuros(tipoMovimiento, mes, conceptoIdsIncluidos) {
+// Se exporta para que js/backup.js arme la hoja "Flujo de caja mensual" del
+// Excel de backup (en modo "Convertir todo a Euros"), en vez de duplicar el
+// recorrido de movimientos.
+export function totalesFijoVariableEnEuros(tipoMovimiento, mes, conceptoIdsIncluidos) {
   const porConcepto = { fijo: {}, variable: {} };  // tipo -> concepto_id -> total en €
   const incompletos = { fijo: {}, variable: {} };  // tipo -> concepto_id -> true
   const totales = { fijo: 0, variable: 0 };
@@ -152,7 +155,9 @@ function totalesFijoVariableEnEuros(tipoMovimiento, mes, conceptoIdsIncluidos) {
   return { porConcepto, incompletos, totales, totalIncompleto };
 }
 
-function totalesFijoVariablePorMoneda(tipoMovimiento, mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
+// Se exporta por el mismo motivo que totalesFijoVariableEnEuros, para el
+// modo sin convertir de la hoja "Flujo de caja mensual".
+export function totalesFijoVariablePorMoneda(tipoMovimiento, mes, conceptoIdsIncluidos, monedaIdsIncluidas) {
   const porConceptoMoneda = { fijo: {}, variable: {} }; // tipo -> concepto_id -> moneda_id -> total
   const totalesPorMoneda = { fijo: {}, variable: {} };  // tipo -> moneda_id -> total
   const signo = signoDe(tipoMovimiento);
@@ -475,7 +480,9 @@ function renderResumenAhorro(contenedorId, mes, conceptoIdsIncluidos, monedaIdsI
 // es el nombre largo de siempre, que se sigue usando en el título del popup
 // del botón "i" (detalleCeldaHistoricoFlujo) — ahí SÍ hace falta que se
 // entienda solo, sin depender de en qué grupo esté la columna en la tabla.
-const GRUPOS_HISTORICO_FLUJO = [
+// Se exporta para que js/backup.js arme las columnas de la hoja "Flujo de
+// caja histórico" del Excel de backup en el mismo orden que esta tabla.
+export const GRUPOS_HISTORICO_FLUJO = [
   {
     titulo: "Ingresos",
     columnas: [
@@ -511,9 +518,11 @@ const GRUPOS_HISTORICO_FLUJO = [
 // Lista plana (una entrada por columna, en el mismo orden) para todo lo que
 // no necesita saber de grupos — el dispatch de celdaHistoricoFlujo, armar
 // cada fila de la tabla, etc.
-const COLUMNAS_HISTORICO_FLUJO = GRUPOS_HISTORICO_FLUJO.flatMap(g => g.columnas);
+export const COLUMNAS_HISTORICO_FLUJO = GRUPOS_HISTORICO_FLUJO.flatMap(g => g.columnas);
 
-function filaMetricasVacia() {
+// Se exporta porque datosFlujoCajaMensual/datosFlujoCajaHistorico (más
+// abajo) arman esta misma forma a mano para alimentar metricasDelMes.
+export function filaMetricasVacia() {
   return { ingresoFijo: 0, ingresoVariable: 0, gastoFijo: 0, gastoVariable: 0 };
 }
 
@@ -523,7 +532,9 @@ function filaMetricasVacia() {
 // "gastoTotal" quedan en POSITIVO acá (para poder calcular Proporción de
 // gastos/Ahorro sin líos de signo) — se muestran en NEGATIVO en la tabla,
 // ver celdaHistoricoFlujo.
-function metricasDelMes(datosMes) {
+// Se exporta para que js/backup.js arme sus propias nueve métricas (para
+// "Flujo de caja mensual" e "histórico") con la misma fórmula.
+export function metricasDelMes(datosMes) {
   const ingresoTotal = datosMes.ingresoFijo + datosMes.ingresoVariable;
   const gastoTotal = datosMes.gastoFijo + datosMes.gastoVariable;
   const ahorroImporte = ingresoTotal - gastoTotal;
@@ -542,7 +553,10 @@ function metricasDelMes(datosMes) {
 // concepto que arma el botón "i" de cada celda (detalleCeldaHistoricoFlujo,
 // más abajo) — acá cada entrada es un número puntual (sin conversión, así
 // que no hace falta marcar incompletos por concepto).
-function historicoFlujoPorMoneda(monedaId, conceptoIdsIncluidos) {
+// Se exporta para que js/backup.js arme la hoja "Flujo de caja histórico"
+// del Excel de backup (una hoja por moneda), en vez de duplicar el
+// recorrido de movimientos.
+export function historicoFlujoPorMoneda(monedaId, conceptoIdsIncluidos) {
   const porMes = {};
   const detallePorMes = {};
   const mesesUsados = new Set();
@@ -571,7 +585,9 @@ function historicoFlujoPorMoneda(monedaId, conceptoIdsIncluidos) {
 // de "detallePorMes" es un objeto { total, incompleto } (a diferencia de la
 // de arriba, que guarda el número directo) porque, a diferencia del total
 // del mes, la conversión SÍ puede fallar concepto por concepto.
-function historicoFlujoEnEuros(conceptoIdsIncluidos) {
+// Se exporta por el mismo motivo que historicoFlujoPorMoneda, para la hoja
+// "Total en Euros" de Flujo de caja histórico.
+export function historicoFlujoEnEuros(conceptoIdsIncluidos) {
   const porMes = {};
   const detallePorMes = {};
   const mesesUsados = new Set();
@@ -814,6 +830,95 @@ function renderHistoricoFlujo() {
 // para nada la lista de esas otras dos pestañas.
 function renderCheckboxesConceptosFlujo() {
   renderCheckboxesTabla("conceptos", state.conceptos, "distribFlujoConceptosCheckboxes", "Todavía no hay conceptos cargados.", "incluir_en_flujo_caja", true);
+}
+
+// --- Datos para el Excel de backup (js/backup.js) --------------------------
+//
+// Dos funciones puras (sin tocar el DOM) que arman los mismos números que
+// Mensual/Histórica de acá arriba, para que js/backup.js arme las hojas
+// "Flujo de caja mensual" y "Flujo de caja histórico" del Excel de backup
+// reusando este cálculo, en vez de duplicarlo. Usan la MISMA lista de
+// "Conceptos a incluir" (incluir_en_flujo_caja) y "Monedas a incluir"
+// (incluir_en_distribucion) que ya usa esta pestaña — ver el comentario de
+// arriba del archivo.
+//
+// OJO con el signo: totalesFijoVariableEnEuros/PorMoneda devuelven el gasto
+// en NEGATIVO (signoDe("egreso") = -1, igual que el resto de Mensual), pero
+// metricasDelMes() necesita gastoFijo/gastoVariable en POSITIVO (ver su
+// comentario, y cómo los arma historicoFlujoPorMoneda: con +=Number(m.monto),
+// siempre positivo). Por eso acá se niegan antes de pasarlos.
+export function datosFlujoCajaMensual(mes) {
+  const conceptoIdsIncluidos = new Set(
+    state.conceptos.filter(c => c.incluir_en_flujo_caja !== false).map(c => String(c.id))
+  );
+  if (state.distribucion.convertirEuros) {
+    const ingresos = totalesFijoVariableEnEuros("ingreso", mes, conceptoIdsIncluidos);
+    const gastos = totalesFijoVariableEnEuros("egreso", mes, conceptoIdsIncluidos);
+    const metricas = metricasDelMes({
+      ingresoFijo: ingresos.totales.fijo,
+      ingresoVariable: ingresos.totales.variable,
+      gastoFijo: -gastos.totales.fijo,
+      gastoVariable: -gastos.totales.variable,
+    });
+    return {
+      modo: "euros",
+      incompleto: ingresos.totalIncompleto.total || gastos.totalIncompleto.total,
+      filas: [{ etiqueta: "Total en Euros", unidad: " €", ...metricas }],
+    };
+  }
+  const monedaIdsIncluidas = new Set(
+    state.monedas.filter(m => m.incluir_en_distribucion !== false).map(m => String(m.id))
+  );
+  const ingresosPM = totalesFijoVariablePorMoneda("ingreso", mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  const gastosPM = totalesFijoVariablePorMoneda("egreso", mes, conceptoIdsIncluidos, monedaIdsIncluidas);
+  const monedaIds = Array.from(new Set([
+    ...Object.keys(ingresosPM.totalesPorMoneda.total),
+    ...Object.keys(gastosPM.totalesPorMoneda.total),
+  ])).sort((a, b) => nombreMoneda(a).localeCompare(nombreMoneda(b)));
+  const filas = monedaIds.map(monedaId => {
+    const metricas = metricasDelMes({
+      ingresoFijo: ingresosPM.totalesPorMoneda.fijo[monedaId] || 0,
+      ingresoVariable: ingresosPM.totalesPorMoneda.variable[monedaId] || 0,
+      gastoFijo: -(gastosPM.totalesPorMoneda.fijo[monedaId] || 0),
+      gastoVariable: -(gastosPM.totalesPorMoneda.variable[monedaId] || 0),
+    });
+    return { etiqueta: nombreMoneda(monedaId), unidad: " " + nombreMoneda(monedaId), ...metricas };
+  });
+  return { modo: "monedas", incompleto: false, filas };
+}
+
+// Histórico: una hoja por moneda (o "Total en Euros" si está convertido),
+// con una fila por mes y las mismas nueve columnas que la tabla de acá
+// arriba (COLUMNAS_HISTORICO_FLUJO), en el mismo orden.
+export function datosFlujoCajaHistorico() {
+  const conceptoIdsIncluidos = new Set(
+    state.conceptos.filter(c => c.incluir_en_flujo_caja !== false).map(c => String(c.id))
+  );
+  if (state.distribucion.convertirEuros) {
+    const { porMes, mesesUsados, incompletos } = historicoFlujoEnEuros(conceptoIdsIncluidos);
+    const meses = Array.from(mesesUsados).sort();
+    const filas = meses.map(mes => ({
+      mes,
+      incompleto: incompletos.has(mes),
+      ...metricasDelMes(porMes[mes]),
+    }));
+    return { hojas: [{ nombre: "Total en Euros", filas }] };
+  }
+  const monedaIdsIncluidas = new Set(
+    state.monedas.filter(m => m.incluir_en_distribucion !== false).map(m => String(m.id))
+  );
+  const monedasIncluidas = state.monedas.filter(m => monedaIdsIncluidas.has(String(m.id)));
+  const hojas = monedasIncluidas.map(moneda => {
+    const { porMes, mesesUsados } = historicoFlujoPorMoneda(moneda.id, conceptoIdsIncluidos);
+    const meses = Array.from(mesesUsados).sort();
+    const filas = meses.map(mes => ({
+      mes,
+      incompleto: false,
+      ...metricasDelMes(porMes[mes]),
+    }));
+    return { nombre: moneda.nombre, filas };
+  }).filter(hoja => hoja.filas.length > 0);
+  return { hojas };
 }
 
 // Punto de entrada de esta pestaña: la llaman, directamente (no a través de

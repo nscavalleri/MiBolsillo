@@ -21,6 +21,7 @@ import { renderTipoCambio } from './tipo-cambio.js';
 import { renderReservas } from './reservas.js';
 import { renderAsignacion } from './asignacion.js';
 import { renderEvolucion } from './evolucion.js';
+import { renderBackup } from './backup.js';
 
 function ordenarMovimientos(lista) {
   // Más nuevo primero: por fecha descendente y, si coinciden, por
@@ -117,4 +118,5 @@ function renderTodo() {
   renderReservas();
   renderAsignacion();
   renderEvolucion();
+  renderBackup();
 }
