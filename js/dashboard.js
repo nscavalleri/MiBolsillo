@@ -58,6 +58,14 @@ function renderCheckboxesConceptosSnapshot() {
   renderCheckboxesTabla("conceptos", state.conceptos, "snapshotConceptosCheckboxes", "Todavía no hay conceptos cargados.", "incluir_en_snapshot", true);
 }
 
+// "Orígenes a incluir" (a pedido de Nadia): misma mecánica que "Conceptos a
+// incluir" de arriba, pero sobre state.origenes y con su propia columna en
+// la base (origenes.incluir_en_snapshot) — mismo nombre de columna que la
+// de conceptos, pero en otra tabla, así que no se pisan entre sí.
+function renderCheckboxesOrigenesSnapshot() {
+  renderCheckboxesTabla("origenes", state.origenes, "snapshotOrigenesCheckboxes", "Todavía no hay orígenes cargados.", "incluir_en_snapshot", true);
+}
+
 // Suma, para un conjunto de totales por moneda (una fila del pivot, o el
 // total general), el equivalente en euros de cada uno. incompleto=true si
 // alguna moneda con saldo distinto de cero todavía no tiene tipo de
@@ -101,11 +109,21 @@ export function construirPivot(mesCorte) {
   const conceptoIdsIncluidos = new Set(
     state.conceptos.filter(c => c.incluir_en_snapshot !== false).map(c => String(c.id))
   );
+  // "Orígenes a incluir": misma mecánica que "Conceptos a incluir" de
+  // arriba, pero filtrando por origen_id en vez de concepto_id (ver
+  // renderCheckboxesOrigenesSnapshot()). Como esta función la reusan
+  // saldoEnEurosPorOrigen() (Asignación) y js/backup.js (hoja Snapshot del
+  // backup), destildar un origen acá también lo saca de esas dos — igual
+  // que ya pasa hoy con "Conceptos a incluir".
+  const origenIdsIncluidos = new Set(
+    state.origenes.filter(o => o.incluir_en_snapshot !== false).map(o => String(o.id))
+  );
 
   const pivot = {};
   const monedaIdsUsadas = new Set();
   state.movimientos.forEach(m => {
     if (!conceptoIdsIncluidos.has(String(m.concepto_id))) return;
+    if (!origenIdsIncluidos.has(String(m.origen_id))) return;
     if (mesCorte && String(m.fecha).slice(0, 7) > mesCorte) return;
     const signo = m.tipo === "ingreso" ? 1 : -1;
     const val = signo * Number(m.monto);
@@ -131,7 +149,7 @@ export function construirPivot(mesCorte) {
   // todavía no tienen nada.
   if (monedaIdsUsadas.size > 0) {
     state.origenes.forEach(o => {
-      if (o.activo && !pivot[o.id]) pivot[o.id] = {};
+      if (o.activo && origenIdsIncluidos.has(String(o.id)) && !pivot[o.id]) pivot[o.id] = {};
     });
   }
 
@@ -172,6 +190,7 @@ export function renderPivot() {
   // opción), así que se escribe el valor desde el estado en cada render.
   escribirMesSeleccionado("snapshot", state.snapshot.mes);
   renderCheckboxesConceptosSnapshot();
+  renderCheckboxesOrigenesSnapshot();
 
   const esMesActual = state.snapshot.mes === mesActualTexto();
   // mesCorte solo afecta qué MOVIMIENTOS entran (ver el comentario de
@@ -197,8 +216,8 @@ export function renderPivot() {
     const mensaje = state.movimientos.length === 0
       ? "Todavía no hay movimientos cargados."
       : esMesActual
-        ? "No hay movimientos para los conceptos seleccionados."
-        : "No hay movimientos hasta ese mes para los conceptos seleccionados.";
+        ? "No hay movimientos para los conceptos y orígenes seleccionados."
+        : "No hay movimientos hasta ese mes para los conceptos y orígenes seleccionados.";
     tabla.innerHTML = `<tr><td class="empty">${mensaje}</td></tr>`;
     if (nota) nota.style.display = "none";
     return;

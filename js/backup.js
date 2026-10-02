@@ -347,6 +347,7 @@ export function hojasConfiguracion() {
     Nombre: o.nombre,
     Activo: o.activo ? "Sí" : "No",
     "Remanente a reserva (id)": o.reserva_remanente_id ?? "",
+    "Incluir en Snapshot": o.incluir_en_snapshot !== false ? "Sí" : "No",
   }));
   const tiposCambio = state.tiposCambio.map(tc => ({
     Id: tc.id,
