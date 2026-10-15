@@ -147,6 +147,18 @@ export function calcularEvolucion() {
 
 // --- La tabla ---------------------------------------------------------------
 
+// La celda de la columna "Excepcionales": la diferencia (ingresos menos
+// egresos excepcionales) en verde o rojo como en el modal, o "–" si ese mes
+// no tiene nada marcado.
+function celdaExcepcionales(mes) {
+  const d = diferenciaExcepcionales(mes);
+  if (!d) return `<td>–</td>`;
+  const aviso = d.incompleto
+    ? `<span class="valor-incompleto" title="Falta el tipo de cambio de alguna moneda para este mes, así que esta suma está incompleta">⚠</span> `
+    : "";
+  return `<td class="${d.valor >= 0 ? "asig-verde" : "asig-rojo"}">${aviso}${formato(d.valor)}</td>`;
+}
+
 export function renderEvolucion() {
   const tabla = document.getElementById("evolucionTable");
   if (!tabla) return;
@@ -178,6 +190,7 @@ export function renderEvolucion() {
     <th>Variación</th>
     <th>%</th>
     <th></th>
+    <th>Excepcionales</th>
   </tr></thead><tbody>`;
 
   filas.forEach(f => {
@@ -196,6 +209,7 @@ export function renderEvolucion() {
                 data-evo-mes="${f.mes}"
                 title="${tieneNota ? "Ver el detalle de este mes (tiene anotaciones)" : "Anotar qué pasó este mes"}">i</button>
       </td>
+      ${celdaExcepcionales(f.mes)}
     </tr>`;
   });
   html += "</tbody>";
@@ -241,24 +255,43 @@ function poblarFiltrosModal() {
   document.getElementById("evoFiltroMoneda").innerHTML = opciones(state.monedas);
 }
 
-function movimientosDelMes(tipo) {
+// El mes es opcional: el modal usa el que tiene abierto, y la columna
+// "Excepcionales" de la tabla principal lo pasa fila por fila.
+function movimientosDelMes(tipo, mes = mesAbierto) {
   return state.movimientos.filter(m =>
-    String(m.fecha).slice(0, 7) === mesAbierto && m.tipo === tipo);
+    String(m.fecha).slice(0, 7) === mes && m.tipo === tipo);
 }
 
 // Suma en euros de los movimientos marcados como excepcionales de un tipo.
 // Se suma en euros porque los movimientos pueden estar en monedas distintas
 // y sumarlos en crudo no querría decir nada; se usa el tipo de cambio de
 // ese mes, igual que el resto de la pantalla.
-function totalExcepcionales(tipo) {
+function totalExcepcionales(tipo, mes = mesAbierto) {
   let total = 0;
   let incompleto = false;
-  movimientosDelMes(tipo).filter(m => m.excepcional).forEach(m => {
-    const { valor, ok } = convertirAEuros(mesAbierto, m.moneda_id, Number(m.monto));
+  movimientosDelMes(tipo, mes).filter(m => m.excepcional).forEach(m => {
+    const { valor, ok } = convertirAEuros(mes, m.moneda_id, Number(m.monto));
     total += valor;
     if (!ok) incompleto = true;
   });
   return { total, incompleto };
+}
+
+// Lo que muestra la columna "Excepcionales" de la tabla principal: el mismo
+// número que el campo "Diferencia" del modal de ese mes (ingresos
+// excepcionales menos egresos excepcionales, en euros). Si el mes no tiene
+// ningún movimiento marcado como excepcional devuelve null, y la tabla
+// muestra "–" (no 0.00: "no hay nada" no es lo mismo que "suma cero").
+function diferenciaExcepcionales(mes) {
+  const hayAlguno = state.movimientos.some(m =>
+    String(m.fecha).slice(0, 7) === mes && m.excepcional);
+  if (!hayAlguno) return null;
+  const ingresos = totalExcepcionales("ingreso", mes);
+  const egresos = totalExcepcionales("egreso", mes);
+  return {
+    valor: ingresos.total - egresos.total,
+    incompleto: ingresos.incompleto || egresos.incompleto,
+  };
 }
 
 function datosMovimiento(m) {

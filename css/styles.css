@@ -240,7 +240,15 @@ table.evolucion-pivot .valor-wrap { justify-content: center; width: auto; }
   max-height: calc(100vh - 260px);
   min-height: 240px;
   overflow: auto;
+  /* Reserva el lugar de la barra de scroll vertical desde el principio, así
+     la tarjeta (que se ensancha sola según la tabla, ver .card-ancho) la
+     cuenta al calcular su ancho y no aparece un scroll horizontal por esos
+     pocos pixeles. */
+  scrollbar-gutter: stable;
 }
+/* La columna nueva "Excepcionales" tiene un encabezado largo: que no se parta
+   en dos líneas, y que la tarjeta se ensanche lo justo para que entre. */
+table.evolucion-pivot thead th { white-space: nowrap; }
 table.evolucion-pivot th, table.evolucion-pivot td { background: var(--card); }
 table.evolucion-pivot thead th {
   position: sticky; top: 0; z-index: 2;
