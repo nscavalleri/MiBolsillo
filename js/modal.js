@@ -142,9 +142,16 @@ export function setupModal() {
   // monedaSegunConcepto/origenSegunConcepto más arriba). Todo esto queda
   // como punto de partida nomás: el toggle y los <select> se pueden seguir
   // cambiando a mano después si hace falta.
+  //
+  // Moneda y Origen se autocompletan SOLO al agregar un movimiento nuevo. Al
+  // EDITAR uno existente, cambiar el concepto no los toca: el movimiento ya
+  // tiene su moneda y su origen, y pisarlos con los del concepto nuevo hacía
+  // perder lo que estaba bien cargado (a pedido de Nadia). El tipo
+  // (Ingreso/Egreso) sí sigue sugiriéndose en los dos casos.
   document.getElementById("concepto").addEventListener("change", (e) => {
     state.tipoActual = tipoSegunConcepto(e.target.value);
     marcarToggleActivo();
+    if (state.editandoId) return;
     const monedaDefecto = monedaSegunConcepto(e.target.value);
     if (monedaDefecto) document.getElementById("moneda").value = monedaDefecto;
     const origenDefecto = origenSegunConcepto(e.target.value);
