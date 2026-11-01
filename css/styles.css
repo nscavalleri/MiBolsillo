@@ -555,7 +555,14 @@ table.distrib-pivot td.col-promedio { color: var(--muted); }
 }
 .evo-candidato:hover { background: var(--bg); }
 .evo-mas { color: var(--accent-oscuro); font-size: 16px; font-weight: 700; flex-shrink: 0; }
-.evo-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+/* minmax(0, 1fr) y no 1fr a secas: con 1fr una columna no se achica por debajo
+   del ancho de su contenido más largo, así que una descripción larga
+   empujaba la columna de Egresos hacia la derecha, más allá del borde del
+   modal (que aparecía "cortado", con scroll horizontal, sin importar el
+   zoom). Con minmax(0, 1fr) las dos columnas miden siempre lo mismo y lo
+   largo se acomoda adentro. */
+.evo-columnas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+.evo-columna { min-width: 0; }
 @media (max-width: 620px) { .evo-columnas { grid-template-columns: 1fr; } }
 .evo-columna h4 { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
 .evo-columna-titulo { border-bottom: 1px solid var(--border); margin-bottom: 8px; }
@@ -567,9 +574,11 @@ table.distrib-pivot td.col-promedio { color: var(--muted); }
 .evo-mov input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
 .evo-mov-info { flex: 1; min-width: 0; }
 .evo-mov-concepto { display: block; font-size: 13px; font-weight: 600; }
+/* La descripción se parte en varias líneas si no entra, en vez de cortarse con
+   "…": es justo lo que hace falta leer para reconocer el movimiento. */
 .evo-mov-detalle {
   display: block; font-size: 11px; color: var(--muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  white-space: normal; overflow-wrap: anywhere;
 }
 .evo-mov-monto { font-size: 13px; white-space: nowrap; }
 .evo-totales { margin-top: 16px; background: var(--bg); border-radius: 10px; padding: 10px 12px; }
